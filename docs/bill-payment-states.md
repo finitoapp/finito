@@ -144,13 +144,15 @@ customer can try again; another attempt is refused only while one is still in
 progress.
 
 A guest paying a table's bill through Qerko (`qerko/0018`) has no payment
-until `paymentStart`, which makes one for the items the guest pays (part of
-the bill, or what is left of it), pending
-for as long as the attempt runs: the bill's [editing lock](#editing-lock)
-holds while the guest pays, and `paymentStart` is refused (`BILL_LOCKED`)
-while any payment of the bill is pending. Such a payment exists for its one
-Qerko payment, so any end but `PAID` cancels it and the lock releases. A
-part payment leaves the bill open and underpaid for the next guest.
+until `paymentStart`. A guest paying all of it pays the bill; one paying
+part of it has that part split off into a bill of its own
+(`splitBillIntoNewBill`) and pays that bill whole. The payment is pending
+for as long as the attempt runs: the [editing lock](#editing-lock) holds
+the bill it pays, and `paymentStart` is refused (`BILL_LOCKED`) while any
+payment of a bill is pending. The rest of a split bill stays open and
+unlocked. Such a payment exists for its one Qerko payment, so any end but
+`PAID` cancels it, which releases the lock, and moves a part's lines back
+to the bill they came from.
 
 ### Guard
 

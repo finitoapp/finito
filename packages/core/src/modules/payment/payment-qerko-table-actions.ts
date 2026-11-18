@@ -7,6 +7,11 @@ import type {
   QerkoWirePayment,
 } from "../../integrations/qerko/qerko-rpc.ts"
 import { qerkoPaymentAccountQuery } from "../account/account-queries.ts"
+import type { AccountId } from "../account/account-types.ts"
+import {
+  type SplitBillError,
+  splitBillIntoNewBill,
+} from "../bill/bill-actions.ts"
 import {
   type BillStatusSnapshot,
   loadBillStatusSnapshot,
@@ -29,7 +34,6 @@ import {
   createQerkoBillLockedError,
   createQerkoBillNotFoundError,
   createQerkoInvalidDataError,
-  type QerkoBillClosedError,
   type QerkoBillNotFoundError,
   type ResolveQerkoBillError,
   type StartQerkoPaymentError,
@@ -40,21 +44,18 @@ import {
   createQerkoTableBill,
   createQerkoTableList,
   createQerkoTablePaymentId,
+  createQerkoTableSplitBillId,
   deriveQerkoTableOffer,
-  type QerkoAttemptPaidLines,
-  QerkoPaidLinesJson,
   type QerkoTableOffer,
 } from "./payment-qerko-table-utils.ts"
-import {
-  paymentByIdQuery,
-  qerkoPaidLinesByBillIdQuery,
-} from "./payment-queries.ts"
+import { paymentByIdQuery } from "./payment-queries.ts"
 
 /**
  * Qerko's table flow (qerko/0017, qerko/0018): a guest scans Qerko's QR code
  * on a table, Qerko asks for the table's open bills and the guest pays one
- * of them, or part of it. Whether the flow is on is the caller's to judge
- * (`payment-qerko-pos-actions.ts`, qerko/0016); these answer as if it were.
+ * of them, or part of it split off into a bill of its own. Whether the flow
+ * is on is the caller's to judge (`payment-qerko-pos-actions.ts`,
+ * qerko/0016); these answer as if it were.
  */
 
 /** `getTableList`: the catalog's tables, by code (qerko/0017). */
@@ -69,44 +70,18 @@ interface QerkoTableOfferSnapshot {
 }
 
 /**
- * The lines Qerko attempts of a bill paid or are paying (qerko/0018); a
- * failed attempt took none. A record that does not read is left out, which
- * leaves its money untied to lines and the bill offered as its rest.
- */
-const loadQerkoAttemptPaidLines =
-  (
-    billId: BillId
-  ): Task<ReadonlyArray<QerkoAttemptPaidLines>, never, EvoluDep> =>
-  async (run) => {
-    const rows = await run.deps.evolu.loadQuery(
-      qerkoPaidLinesByBillIdQuery(billId)
-    )
-    return ok(
-      rows.flatMap((row): ReadonlyArray<QerkoAttemptPaidLines> => {
-        if (row.closedAt !== null && row.outcome !== "paid") return []
-        const lines = QerkoPaidLinesJson.safeDecode(row.paidLines)
-        return lines.success
-          ? [{ paid: row.outcome === "paid", lines: lines.data }]
-          : []
-      })
-    )
-  }
-
-/**
  * What a bill offers Qerko (qerko/0018), judged by its live status rather
  * than the `closedAt` cache; `null` when it is closed, discarded or has
  * nothing left to pay, which Qerko reads as `BILL_CLOSED`.
  */
 const offerFromSnapshot = (
-  snapshot: BillStatusSnapshot,
-  attempts: ReadonlyArray<QerkoAttemptPaidLines>
+  snapshot: BillStatusSnapshot
 ): QerkoTableOfferSnapshot | null => {
   if (snapshot.status !== "open") return null
   const offer = deriveQerkoTableOffer({
     summaries: snapshot.items,
     ledger: snapshot.ledger.lineRows,
     claimedSum: snapshot.claimedSum,
-    attempts,
   })
   if (offer === null) return null
   return {
@@ -119,12 +94,13 @@ const offerFromSnapshot = (
 /**
  * `getTableContents(code)`: the open bills of the table with that code
  * (qerko/0017), the one opened first first, each as `createQerkoTableBill`
- * makes it. A bill with nothing left to pay is left out; a bill another
- * payment locks is listed, and `paymentStart` answers `BILL_LOCKED`. An
- * unknown code is an empty table: Qerko's protocol has no error for it.
+ * makes it. A bill with nothing left to pay is left out, and so is one a
+ * payment is paying now — another guest's part split off, or a bill paid
+ * whole — which has nothing to pay until that payment ends. An unknown code
+ * is an empty table: Qerko's protocol has no error for it.
  */
 export const listQerkoTableBills =
-  (code: string): Task<ReadonlyArray<QerkoBill>, never, EvoluDep> =>
+  (code: string): Task<ReadonlyArray<QerkoBill>, never, EvoluDep & DateDep> =>
   async (run) => {
     const tableCode = NonEmptyString255Schema.safeParse(code)
     if (!tableCode.success) return ok([])
@@ -136,17 +112,14 @@ export const listQerkoTableBills =
     const bills = await run.deps.evolu.loadQuery(
       openBillsByTableIdQuery(table.id)
     )
-    const offers = await Promise.all(
-      bills.map(async (bill) => {
-        const [snapshot, attempts] = await Promise.all([
-          run(loadBillStatusSnapshot(bill.id)),
-          run.ok(loadQerkoAttemptPaidLines(bill.id)),
-        ])
-        return snapshot.ok ? offerFromSnapshot(snapshot.value, attempts) : null
-      })
+    const editable = await Promise.all(
+      bills.map((bill) => run(requireEditableBill(bill.id)))
     )
     return ok(
-      offers.flatMap((offered) => (offered === null ? [] : [offered.bill]))
+      editable.flatMap((snapshot) => {
+        const offered = snapshot.ok ? offerFromSnapshot(snapshot.value) : null
+        return offered === null ? [] : [offered.bill]
+      })
     )
   }
 
@@ -163,7 +136,9 @@ const parseQerkoTableBillId = (
 /**
  * `getBill` for a table's bill: the bill as `getTableContents` lists it,
  * wherever its table is (qerko/0018), `BILL_NOT_FOUND` for no such bill and
- * `BILL_CLOSED` for one closed, discarded or with nothing left to pay.
+ * `BILL_CLOSED` for one closed, discarded or with nothing left to pay. A bill
+ * a payment is paying now is answered too, and `paymentStart` then says
+ * `BILL_LOCKED`.
  */
 export const resolveQerkoTableBill =
   (idBill: string): Task<QerkoBill, ResolveQerkoBillError, EvoluDep> =>
@@ -171,42 +146,125 @@ export const resolveQerkoTableBill =
     const parsed = parseQerkoTableBillId(idBill)
     if (!parsed.ok) return parsed
     const billId = parsed.value
-    const [snapshot, attempts] = await Promise.all([
-      run(loadBillStatusSnapshot(billId)),
-      run.ok(loadQerkoAttemptPaidLines(billId)),
-    ])
+    const snapshot = await run(loadBillStatusSnapshot(billId))
     if (!snapshot.ok) return err(createQerkoBillNotFoundError({ idBill }))
-    const offered = offerFromSnapshot(snapshot.value, attempts)
+    const offered = offerFromSnapshot(snapshot.value)
     return offered === null
       ? err(createQerkoBillClosedError({ id: billId }))
       : ok(offered.bill)
   }
 
-/** How `createPayment` refusing a table's payment reads to Qerko. */
-const createPaymentRefusals = {
+/**
+ * How a refusal of the bill a payment is for reads to Qerko: the bill gone
+ * is `BILL_NOT_FOUND`, a payment in flight `BILL_LOCKED`, a selection the
+ * bill no longer holds or cannot split `INVALID_DATA`, and anything else
+ * that leaves nothing to pay `BILL_CLOSED`.
+ */
+const billRefusals = {
   BillNotFound: "QerkoBillNotFound",
   BillStatusNotAllowed: "QerkoBillClosed",
+  BillLocked: "QerkoBillLocked",
+  BillTotalBelowPaid: "QerkoInvalidData",
+  BillSplitSameBill: "QerkoInvalidData",
+  BillSplitSelectionStale: "QerkoInvalidData",
+  BillSplitTotalNegative: "QerkoInvalidData",
   BillTotalNotPositive: "QerkoBillClosed",
   NoPayableMethod: "QerkoBillClosed",
 } as const satisfies Record<
-  CreatePaymentError["type"],
-  QerkoBillNotFoundError["type"] | QerkoBillClosedError["type"]
+  SplitBillError["type"] | CreatePaymentError["type"],
+  StartQerkoPaymentError["type"]
 >
+
+const refuseBill = ({
+  type,
+  billId,
+  idBill,
+}: {
+  readonly type: keyof typeof billRefusals
+  readonly billId: BillId
+  readonly idBill: string
+}): StartQerkoPaymentError => {
+  switch (billRefusals[type]) {
+    case "QerkoBillNotFound":
+      return createQerkoBillNotFoundError({ idBill })
+    case "QerkoBillClosed":
+      return createQerkoBillClosedError({ id: billId })
+    case "QerkoBillLocked":
+      return createQerkoBillLockedError({ id: billId, qerkoPaymentId: null })
+    case "QerkoInvalidData":
+      return createQerkoInvalidDataError({ id: billId, reason: "items" })
+  }
+}
+
+/**
+ * Makes the table's payment of `billId` for `amount` and records its start
+ * (qerko/0018): taken through Qerko payments, its id derived from Qerko's
+ * payment id, its tip zero until the guest's Qerko tip replaces it
+ * (qerko/0015). Pending, it locks that bill until Qerko's answer.
+ */
+const payTableBill =
+  ({
+    wire,
+    deviceId,
+    accountId,
+    billId,
+    tableId,
+    amount,
+    currency,
+    splitFromBillId,
+  }: {
+    readonly wire: QerkoWirePayment
+    readonly deviceId: DeviceId | null
+    readonly accountId: AccountId
+    readonly billId: BillId
+    readonly tableId: BillStatusSnapshot["bill"]["tableId"]
+    readonly amount: NonNegativeInteger
+    readonly currency: BillStatusSnapshot["bill"]["currency"]
+    readonly splitFromBillId: BillId | null
+  }): Task<void, StartQerkoPaymentError, EvoluDep & EvoluOwnerDep & DateDep> =>
+  async (run) => {
+    const paymentId = createQerkoTablePaymentId(wire.id)
+    const created = await run(
+      createPayment({
+        id: paymentId,
+        deviceId,
+        billId,
+        tableId,
+        amount,
+        currency,
+        tipAmount: NonNegativeInteger(0),
+        canceledAt: null,
+        expiresAt: null,
+        qerkoPayment: { accountId },
+      })
+    )
+    if (!created.ok) {
+      return err(
+        refuseBill({
+          type: created.error.type,
+          billId: splitFromBillId ?? billId,
+          idBill: wire.idBill,
+        })
+      )
+    }
+    return await run(
+      recordQerkoPaymentStart({ wire, paymentId, currency, splitFromBillId })
+    )
+  }
 
 /**
  * `paymentStart` for a table's bill (qerko/0018). The bill must still be
- * open, have something left to pay, and no payment in flight (`BILL_LOCKED`):
- * the editing lock that keeps staff from changing a bill mid-payment keeps a
- * second payer off it too. Qerko's items must be what the bill offers now —
- * lines still unpaid, or part of them where the bill may be split — or the
- * rest whole (`INVALID_DATA`, Qerko refreshes the bill).
+ * open, have something left to pay and no payment in flight (`BILL_LOCKED`),
+ * and Qerko's items must be what it offers now — all of it, part of it where
+ * it may be split, or its rest (`INVALID_DATA`, Qerko refreshes the bill).
  *
- * Then a payment of those items is made for the bill, taken through Qerko
- * payments, its id derived from Qerko's payment id, and the attempt is
- * recorded on it with the lines it pays. That payment is pending, which
- * locks the bill until Qerko's answer: `PAID` records the money, closing the
- * bill once covered, any other end cancels the payment
- * (`settleQerkoPayment`).
+ * A guest paying the whole bill pays it. A guest paying part of it has that
+ * part split off into a bill of its own on the same table, its id derived
+ * from Qerko's payment id, and pays that bill whole: the rest stays open,
+ * and unlocked, for the other guests. Either way the payment is pending and
+ * locks the bill it pays until Qerko's answer: `PAID` records the money and
+ * closes that bill, any other end cancels the payment and moves a part's
+ * lines back (`settleQerkoPayment`).
  */
 export const startQerkoTablePayment =
   ({
@@ -221,39 +279,45 @@ export const startQerkoTablePayment =
     const parsed = parseQerkoTableBillId(wire.idBill)
     if (!parsed.ok) return parsed
     const billId = parsed.value
+    const partBillId = createQerkoTableSplitBillId(wire.id)
 
-    const paymentId = createQerkoTablePaymentId(wire.id)
-    const [[existing], attempts] = await Promise.all([
-      run.deps.evolu.loadQuery(paymentByIdQuery(paymentId)),
-      run.ok(loadQerkoAttemptPaidLines(billId)),
+    const [[existing], [account], part] = await Promise.all([
+      run.deps.evolu.loadQuery(
+        paymentByIdQuery(createQerkoTablePaymentId(wire.id))
+      ),
+      run.deps.evolu.loadQuery(qerkoPaymentAccountQuery),
+      run(loadBillStatusSnapshot(partBillId)),
     ])
     if (existing !== undefined) {
-      return await run(
-        finishInterruptedStart({ wire, billId, payment: existing, attempts })
-      )
+      return await run(finishInterruptedStart({ wire, billId, existing }))
     }
-
-    const [editable, [account]] = await Promise.all([
-      run(requireEditableBill(billId)),
-      run.deps.evolu.loadQuery(qerkoPaymentAccountQuery),
-    ])
     if (account === undefined || account.isDeleted === 1) {
       return err(createQerkoBillNotFoundError({ idBill: wire.idBill }))
     }
-    if (!editable.ok) {
-      switch (editable.error.type) {
-        case "BillNotFound":
-          return err(createQerkoBillNotFoundError({ idBill: wire.idBill }))
-        case "BillStatusNotAllowed":
-          return err(createQerkoBillClosedError({ id: billId }))
-        case "BillLocked":
-          return err(
-            createQerkoBillLockedError({ id: billId, qerkoPaymentId: null })
-          )
-      }
+    // The part was split off, and an interruption kept its payment from
+    // being made: it is paid as it stands.
+    if (part.ok) {
+      return await run(
+        payTableBill({
+          wire,
+          deviceId,
+          accountId: account.id,
+          billId: partBillId,
+          tableId: part.value.bill.tableId,
+          amount: NonNegativeInteger(Math.max(0, part.value.billTotal)),
+          currency: part.value.bill.currency,
+          splitFromBillId: billId,
+        })
+      )
     }
 
-    const offered = offerFromSnapshot(editable.value, attempts)
+    const editable = await run(requireEditableBill(billId))
+    if (!editable.ok) {
+      return err(
+        refuseBill({ type: editable.error.type, billId, idBill: wire.idBill })
+      )
+    }
+    const offered = offerFromSnapshot(editable.value)
     if (offered === null) return err(createQerkoBillClosedError({ id: billId }))
     const { bill: billRow } = offered.snapshot
     const start = checkQerkoTablePaymentStart({
@@ -268,37 +332,35 @@ export const startQerkoTablePayment =
       )
     }
 
-    const created = await run(
-      createPayment({
-        id: paymentId,
-        deviceId,
-        billId,
-        tableId: billRow.tableId,
-        amount: start.value.amount,
-        currency: billRow.currency,
-        // The guest tips in Qerko, and that tip replaces this one once paid
-        // (qerko/0015).
-        tipAmount: NonNegativeInteger(0),
-        canceledAt: null,
-        expiresAt: null,
-        qerkoPayment: { accountId: account.id },
-      })
-    )
-    if (!created.ok) {
-      const refusal = createPaymentRefusals[created.error.type]
-      return err(
-        refusal === "QerkoBillNotFound"
-          ? createQerkoBillNotFoundError({ idBill: wire.idBill })
-          : createQerkoBillClosedError({ id: billId })
+    const { split, amount } = start.value
+    if (split !== null) {
+      const splitted = await run(
+        splitBillIntoNewBill({
+          deviceId,
+          tableId: billRow.tableId,
+          currency: billRow.currency,
+          sourceBillId: billId,
+          targetBillId: partBillId,
+          items: split,
+        })
       )
+      if (!splitted.ok) {
+        return err(
+          refuseBill({ type: splitted.error.type, billId, idBill: wire.idBill })
+        )
+      }
     }
 
     return await run(
-      recordQerkoPaymentStart({
+      payTableBill({
         wire,
-        paymentId,
+        deviceId,
+        accountId: account.id,
+        billId: split === null ? billId : partBillId,
+        tableId: billRow.tableId,
+        amount,
         currency: billRow.currency,
-        paidLines: start.value.paidLines,
+        splitFromBillId: split === null ? null : billId,
       })
     )
   }
@@ -306,48 +368,32 @@ export const startQerkoTablePayment =
 /**
  * Finishes a start whose payment was made, but whose attempt an
  * interruption — a crash, a closed tab — kept from being written. That
- * payment is what locks the bill now, so the lock would refuse the start
- * that made it; recording the attempt lets Qerko's answer settle it. The
- * lines it pays are read again from the bill as it stands, which its own
- * lock kept still; should they no longer match, it is recorded without
- * them, and its money then reads as untied to lines. A payment staff
- * canceled meanwhile is `BILL_CLOSED`.
+ * payment is what locks its bill now, so the lock would refuse the start
+ * that made it; recording the attempt lets Qerko's answer settle it. A
+ * payment staff canceled meanwhile is `BILL_CLOSED`.
  */
 const finishInterruptedStart =
   ({
     wire,
     billId,
-    payment,
-    attempts,
+    existing,
   }: {
     readonly wire: QerkoWirePayment
     readonly billId: BillId
-    readonly payment: Pick<PaymentRow, "billId" | "canceledAt" | "currency">
-    readonly attempts: ReadonlyArray<QerkoAttemptPaidLines>
+    readonly existing: Pick<PaymentRow, "billId" | "canceledAt" | "currency">
   }): Task<void, StartQerkoPaymentError, EvoluDep & EvoluOwnerDep & DateDep> =>
   async (run) => {
-    if (payment.billId !== billId || payment.canceledAt !== null) {
+    const partBillId = createQerkoTableSplitBillId(wire.id)
+    const ownBill = existing.billId === billId || existing.billId === partBillId
+    if (!ownBill || existing.canceledAt !== null) {
       return err(createQerkoBillClosedError({ id: billId }))
     }
-    const snapshot = await run(loadBillStatusSnapshot(billId))
-    const offered = snapshot.ok
-      ? offerFromSnapshot(snapshot.value, attempts)
-      : null
-    const start =
-      offered === null
-        ? null
-        : checkQerkoTablePaymentStart({
-            wire,
-            offer: offered.offer,
-            billId,
-            currency: payment.currency,
-          })
     return await run(
       recordQerkoPaymentStart({
         wire,
         paymentId: createQerkoTablePaymentId(wire.id),
-        currency: payment.currency,
-        paidLines: start?.ok === true ? start.value.paidLines : null,
+        currency: existing.currency,
+        splitFromBillId: existing.billId === partBillId ? billId : null,
       })
     )
   }

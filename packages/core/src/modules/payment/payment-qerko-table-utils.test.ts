@@ -15,12 +15,10 @@ import {
   PositiveNumber,
 } from "../shared/schema.ts"
 import {
-  applyQerkoPaidLines,
   checkQerkoTablePaymentStart,
   createQerkoTableBill,
   createQerkoTableList,
   deriveQerkoTableOffer,
-  type QerkoAttemptPaidLines,
   type QerkoTableOffer,
 } from "./payment-qerko-table-utils.ts"
 
@@ -69,20 +67,8 @@ const discount = summary("Discount", -1_000)
 
 const offerOf = (
   summaries: ReadonlyArray<BillLineSummary>,
-  {
-    claimedSum = 0,
-    attempts = [],
-  }: {
-    readonly claimedSum?: number
-    readonly attempts?: ReadonlyArray<QerkoAttemptPaidLines>
-  } = {}
-) =>
-  deriveQerkoTableOffer({
-    summaries,
-    ledger: summaries,
-    claimedSum,
-    attempts,
-  })
+  { claimedSum = 0 }: { readonly claimedSum?: number } = {}
+) => deriveQerkoTableOffer({ summaries, ledger: summaries, claimedSum })
 
 const linesOffer = (
   summaries: ReadonlyArray<BillLineSummary>
@@ -130,7 +116,6 @@ describe("deriveQerkoTableOffer", () => {
         summaries: [discount, soup],
         ledger: [discount, soup],
         claimedSum: 0,
-        attempts: [],
       })
     ).toMatchObject({
       kind: "lines",
@@ -144,57 +129,11 @@ describe("deriveQerkoTableOffer", () => {
     })
   })
 
-  test("offers what is left of each line once Qerko paid part of it", () => {
-    expect(
-      offerOf([beers, soup], {
-        claimedSum: 14_000,
-        attempts: [
-          {
-            paid: true,
-            lines: [
-              { lineId: beers.id, quantity: 1, amount: 5_000 },
-              { lineId: soup.id, quantity: 1, amount: 9_000 },
-            ],
-          },
-        ],
-      })
-    ).toMatchObject({
-      kind: "lines",
-      splittable: true,
-      restAmount: 10_000,
-      lines: [{ id: beers.id, quantity: 2, totalAmount: 10_000 }],
-    })
-  })
-
-  test("leaves out what an attempt in progress is paying", () => {
-    expect(
-      offerOf([beers, soup], {
-        attempts: [
-          {
-            paid: false,
-            lines: [{ lineId: soup.id, quantity: 1, amount: 9_000 }],
-          },
-        ],
-      })
-    ).toMatchObject({ lines: [{ id: beers.id }], restAmount: 15_000 })
-  })
-
-  test("offers the rest as one amount once money not tied to lines paid part of it", () => {
+  test("offers the rest as one amount once part of the bill is paid", () => {
     expect(offerOf([beers, soup], { claimedSum: 5_000 })).toEqual({
       kind: "rest",
       restAmount: 19_000,
     })
-    expect(
-      offerOf([beers, soup], {
-        claimedSum: 9_000 + 2_000,
-        attempts: [
-          {
-            paid: true,
-            lines: [{ lineId: soup.id, quantity: 1, amount: 9_000 }],
-          },
-        ],
-      })
-    ).toEqual({ kind: "rest", restAmount: 13_000 })
   })
 
   test.each([
@@ -278,13 +217,13 @@ describe("checkQerkoTablePaymentStart", () => {
         { id: beers.id, name: "Beer", price: "50", quantity: "1" },
         { id: soup.id, name: "Soup", price: "90", quantity: "1" },
       ])
-    ).toEqual({
+    ).toMatchObject({
       ok: true,
       value: {
         amount: 14_000,
-        paidLines: [
-          { lineId: beers.id, quantity: 1, amount: 5_000 },
-          { lineId: soup.id, quantity: 1, amount: 9_000 },
+        split: [
+          { id: beers.id, quantity: 1, totalAmount: 5_000 },
+          { id: soup.id, quantity: 1, totalAmount: 9_000 },
         ],
       },
     })
@@ -295,6 +234,24 @@ describe("checkQerkoTablePaymentStart", () => {
     }
   })
 
+  test("pays the whole bill as it is, splitting nothing off", () => {
+    expect(
+      check(offer, [
+        { id: beers.id, name: "Beer", price: "150", quantity: "3" },
+        { id: soup.id, name: "Soup", price: "90", quantity: "1" },
+        { id: cheese.id, name: "Cheese (0,35)", price: "45.5", quantity: "1" },
+      ])
+    ).toEqual({ ok: true, value: { amount: 28_550, split: null } })
+  })
+
+  test("refuses a part that is only a tip of the cart", () => {
+    const tip = summary("Tip", 2_000, { type: "tip" })
+    const tipped = linesOffer([soup, tip])
+    expect(
+      check(tipped, [{ id: tip.id, name: "Tip", price: "20", quantity: "1" }])
+    ).toEqual({ ok: false, error: "items" })
+  })
+
   test("pays a fractional line only whole, at its total", () => {
     expect(
       check(offer, [
@@ -302,7 +259,7 @@ describe("checkQerkoTablePaymentStart", () => {
       ])
     ).toMatchObject({
       ok: true,
-      value: { paidLines: [{ lineId: cheese.id, quantity: 0.35 }] },
+      value: { split: [{ id: cheese.id, quantity: 0.35, totalAmount: 4_550 }] },
     })
   })
 
@@ -354,7 +311,7 @@ describe("checkQerkoTablePaymentStart", () => {
         { id: beers.id, name: "Beer", price: "150", quantity: "3" },
         { id: discount.id, name: "Discount", price: "-10", quantity: "1" },
       ])
-    ).toMatchObject({ ok: true, value: { amount: 14_000 } })
+    ).toMatchObject({ ok: true, value: { amount: 14_000, split: null } })
   })
 
   test("pays the rest as its one item", () => {
@@ -364,7 +321,7 @@ describe("checkQerkoTablePaymentStart", () => {
     }
     expect(
       check(rest, [{ id: billId, name: "Zbývá", price: "129", quantity: "1" }])
-    ).toEqual({ ok: true, value: { amount: 12_900, paidLines: null } })
+    ).toEqual({ ok: true, value: { amount: 12_900, split: null } })
     expect(
       check(rest, [{ id: billId, name: "Zbývá", price: "100", quantity: "1" }])
     ).toEqual({ ok: false, error: "items" })
@@ -387,23 +344,5 @@ describe("checkQerkoTablePaymentStart", () => {
         currency: "CZK",
       })
     ).toEqual({ ok: false, error: "discount" })
-  })
-})
-
-describe("applyQerkoPaidLines", () => {
-  test("keeps the frozen lines paid, at what Qerko charged, in their order", () => {
-    const frozen = [beers, soup].map((line) => ({
-      ...line,
-      discountShare: null,
-    }))
-    expect(
-      applyQerkoPaidLines(frozen, [
-        { lineId: soup.id, quantity: 1, amount: 9_000 },
-        { lineId: beers.id, quantity: 2, amount: 10_000 },
-      ])
-    ).toMatchObject([
-      { name: "Beer", quantity: 2, totalAmount: 10_000 },
-      { name: "Soup", quantity: 1, totalAmount: 9_000 },
-    ])
   })
 })

@@ -289,12 +289,12 @@ export const qerkoPaymentAttempt = {
    */
   tipNetAmount: NonNegativeIntegerSchema.nullable(),
   /**
-   * The bill lines a table's payment paid (qerko/0018), as JSON
-   * (`QerkoPaidLinesJson`): each line's id, the quantity and the amount Qerko
-   * charged for it. Written once with the start; `null` for a direct payment
-   * and for a table's rest paid as one item.
+   * The table's bill a guest's part was split off from (qerko/0018): the
+   * payment's own bill is that part, and a failed attempt moves its lines
+   * back here. Written once with the start; `null` for a direct payment and
+   * for a table's bill paid whole.
    */
-  paidLines: NonEmptyStringSchema.nullable(),
+  splitFromBillId: BillId.nullable(),
 } as const
 
 export const paymentIndexes = ((create) => [

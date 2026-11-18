@@ -345,7 +345,7 @@ const qerkoPaymentAttemptColumns = [
   "providers",
   "tipAmount",
   "tipNetAmount",
-  "paidLines",
+  "splitFromBillId",
 ] as const
 
 /** One Qerko attempt, by the id `createQerkoPaymentAttemptId` derives. */
@@ -383,28 +383,6 @@ export const qerkoPaymentAttemptsByPaymentIdQuery = (idValue: PaymentId) =>
         qerkoPaymentId: KyselyNotNull
         startedAt: KyselyNotNull
       }>()
-  )
-
-/**
- * The Qerko attempts that paid lines of one bill, or are paying them
- * (qerko/0018): what a table's next guest is no longer offered.
- */
-export const qerkoPaidLinesByBillIdQuery = (billId: BillId) =>
-  createQuery((db) =>
-    db
-      .selectFrom("qerkoPaymentAttempt")
-      .innerJoin("payment", "payment.id", "qerkoPaymentAttempt.paymentId")
-      .select([
-        "qerkoPaymentAttempt.id",
-        "qerkoPaymentAttempt.closedAt",
-        "qerkoPaymentAttempt.outcome",
-        "qerkoPaymentAttempt.paidLines",
-      ])
-      .where("payment.billId", "=", billId)
-      .where("payment.isDeleted", "is not", sqliteTrue)
-      .where("qerkoPaymentAttempt.isDeleted", "is not", sqliteTrue)
-      .where("qerkoPaymentAttempt.paidLines", "is not", null)
-      .$narrowType<{ paidLines: KyselyNotNull }>()
   )
 
 /** Every Qerko attempt still in progress, whichever payment it belongs to. */

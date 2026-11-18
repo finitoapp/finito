@@ -100,7 +100,7 @@ export const answerQerkoGetTableList =
  * flow is off.
  */
 export const answerQerkoGetTableContents =
-  (code: string): Task<ReadonlyArray<QerkoBill>, never, EvoluDep> =>
+  (code: string): Task<ReadonlyArray<QerkoBill>, never, EvoluDep & DateDep> =>
   async (run) => {
     const flows = await run.ok(loadQerkoPaymentFlows())
     return flows.table ? await run(listQerkoTableBills(code)) : ok([])

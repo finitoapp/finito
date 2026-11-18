@@ -33,6 +33,7 @@ import {
   addManualAmountToBill,
   cancelBill,
   createBill,
+  splitBillIntoNewBill,
 } from "../bill/bill-actions.ts"
 import { loadBillStatusSnapshot } from "../bill/bill-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
@@ -68,7 +69,10 @@ import {
   answerQerkoPaymentStart,
   answerQerkoSearchBills,
 } from "./payment-qerko-pos-actions.ts"
-import { createQerkoTablePaymentId } from "./payment-qerko-table-utils.ts"
+import {
+  createQerkoTablePaymentId,
+  createQerkoTableSplitBillId,
+} from "./payment-qerko-table-utils.ts"
 import {
   paymentByIdQuery,
   paymentQerkoPaymentByIdQuery,
@@ -694,11 +698,7 @@ describe("paymentStart of a table's bill", () => {
     await test.run.orThrow(answerQerkoPaymentStart({ wire, deviceId }))
 
     expect(await test.attempts("qerko-1")).toMatchObject([
-      {
-        qerkoPaymentId: "qerko-1",
-        closedAt: null,
-        paidLines: expect.stringContaining(bill.items[0]?.id ?? "-"),
-      },
+      { qerkoPaymentId: "qerko-1", closedAt: null, splitFromBillId: null },
     ])
     await test.run.orThrow(
       settleQerkoPayment({
@@ -759,7 +759,7 @@ describe("paymentStart of a table's bill", () => {
 })
 
 describe("paying part of a table's bill", () => {
-  test("guests pay a bill in parts, each one what is still left of it", async () => {
+  test("a guest's part is split off into a bill of its own and paid whole, the rest left open for the others", async () => {
     await using test = await setup()
     const beer = await test.run.orThrow(
       createCatalogItem({
@@ -796,19 +796,46 @@ describe("paying part of a table's bill", () => {
       minQuantity: "1",
     })
 
-    // The first guest pays their soup and one beer.
+    // The first guest pays their soup and one beer: that part becomes a
+    // bill of its own, paid whole.
     const firstItems = [soup, { ...beers, quantity: "1", price: "50" }]
     const wire = wireFor("qerko-1", bill, { items: firstItems })
     await test.run.orThrow(answerQerkoPaymentStart({ wire, deviceId }))
-    expect(await test.payment("qerko-1")).toMatchObject({ amount: 14_000 })
-    expect(
-      await test.run.orThrow(processQerkoPayment("qerko-1"))
-    ).toMatchObject({
-      items: [
+    const part = createQerkoTableSplitBillId("qerko-1")
+    expect(await test.payment("qerko-1")).toMatchObject({
+      billId: part,
+      amount: 14_000,
+    })
+    expect(await test.attempts("qerko-1")).toMatchObject([
+      { splitFromBillId: billId },
+    ])
+    expect(await test.status(part)).toMatchObject({ billTotal: 14_000 })
+    // The split moves both lines at once, so their order on the receipt is
+    // not the order the bill had them in.
+    const receipt = await test.run.orThrow(processQerkoPayment("qerko-1"))
+    expect(receipt.items).toHaveLength(2)
+    expect(receipt.items).toEqual(
+      expect.arrayContaining([
         { name: "Line 1", quantity: "1", price: "90" },
         { name: "Beer", quantity: "1", price: "50" },
-      ],
+      ])
+    )
+
+    // Meanwhile the rest stays open and unlocked: the next guest sees the
+    // two beers left and pays them at once.
+    const [rest] = await test.contents("T1")
+    expect(rest).toMatchObject({
+      id: billId,
+      items: [{ name: "Beer", quantity: "2", price: "100" }],
     })
+    if (rest === undefined) throw new Error("no bill")
+    await payLines(test, "qerko-2", rest, rest.items)
+    expect(await test.status(billId)).toMatchObject({
+      status: "closed",
+      coverage: "paid",
+      claimedSum: 10_000,
+    })
+
     await test.run.orThrow(
       settleQerkoPayment({
         qerkoPaymentId: "qerko-1",
@@ -817,25 +844,10 @@ describe("paying part of a table's bill", () => {
         deviceId,
       })
     )
-    expect(await test.status(billId)).toMatchObject({
-      status: "open",
-      coverage: "underpaid",
-      claimedSum: 14_000,
-    })
-
-    // The next guest sees the two beers left and pays them.
-    const [rest] = await test.contents("T1")
-    expect(rest).toMatchObject({
-      allowPartialPayment: true,
-      items: [{ name: "Beer", quantity: "2", price: "100" }],
-    })
-    if (rest === undefined) throw new Error("no bill")
-    await payLines(test, "qerko-2", rest, rest.items)
-
-    expect(await test.status(billId)).toMatchObject({
+    expect(await test.status(part)).toMatchObject({
       status: "closed",
       coverage: "paid",
-      claimedSum: 24_000,
+      claimedSum: 14_000,
     })
     expect(await test.contents("T1")).toEqual([])
   })
@@ -858,6 +870,81 @@ describe("paying part of a table's bill", () => {
     )
 
     expect(await test.contents("T1")).toEqual([bill])
+    expect(
+      await test.status(createQerkoTableSplitBillId("qerko-1"))
+    ).toMatchObject({ status: "canceled", items: [] })
+  })
+
+  test("a failed part whose bill is being paid meanwhile stays a bill of its own", async () => {
+    await using test = await setup()
+    const billId = await test.bill(await test.table("T1"), [12_900, 5_000])
+    const [bill] = await test.contents("T1")
+    const [first, second] = bill?.items ?? []
+    if (bill === undefined || first === undefined || second === undefined) {
+      throw new Error("no bill")
+    }
+    await test.run.orThrow(
+      answerQerkoPaymentStart({
+        wire: wireFor("qerko-1", bill, { items: [first] }),
+        deviceId,
+      })
+    )
+    // Another guest pays all that is left, which locks the bill.
+    const [rest] = await test.contents("T1")
+    if (rest === undefined) throw new Error("no rest")
+    await startPaying(test, "T1", "qerko-2")
+    expect(await test.payment("qerko-2")).toMatchObject({ billId })
+
+    await test.run.orThrow(
+      settleQerkoPayment({ qerkoPaymentId: "qerko-1", state: "CANCELLED" })
+    )
+
+    const part = createQerkoTableSplitBillId("qerko-1")
+    expect(await test.status(part)).toMatchObject({
+      status: "open",
+      billTotal: 12_900,
+    })
+    expect(await test.status(billId)).toMatchObject({ billTotal: 5_000 })
+    expect(await test.attempts("qerko-1")).toMatchObject([
+      { outcome: "failed", closedAt: expect.any(Number) },
+    ])
+  })
+
+  test("a part split off before an interruption is paid as it stands", async () => {
+    await using test = await setup()
+    const tableId = await test.table("T1")
+    const billId = await test.bill(tableId, [12_900, 5_000])
+    const [bill] = await test.contents("T1")
+    const [first] = bill?.items ?? []
+    if (bill === undefined || first === undefined) throw new Error("no bill")
+    const snapshot = await test.status(billId)
+    const line = snapshot.items.find((item) => item.id === first.id)
+    if (line === undefined) throw new Error("no line")
+    await test.run.orThrow(
+      splitBillIntoNewBill({
+        deviceId,
+        tableId,
+        currency: "CZK",
+        sourceBillId: billId,
+        targetBillId: createQerkoTableSplitBillId("qerko-1"),
+        items: [line],
+      })
+    )
+
+    await test.run.orThrow(
+      answerQerkoPaymentStart({
+        wire: wireFor("qerko-1", bill, { items: [first] }),
+        deviceId,
+      })
+    )
+
+    expect(await test.payment("qerko-1")).toMatchObject({
+      billId: createQerkoTableSplitBillId("qerko-1"),
+      amount: 12_900,
+    })
+    expect(await test.attempts("qerko-1")).toMatchObject([
+      { splitFromBillId: billId, closedAt: null },
+    ])
   })
 
   test("a bill with a discount is paid whole", async () => {
@@ -903,23 +990,6 @@ describe("paying part of a table's bill", () => {
     })
     await startPaying(test, "T1", "qerko-2")
     expect(await test.payment("qerko-2")).toMatchObject({ amount: 16_900 })
-  })
-
-  test("after money the lines cannot account for, the rest is paid whole", async () => {
-    await using test = await setup()
-    const billId = await test.bill(await test.table("T1"), [12_900, 5_000])
-    const [bill] = await test.contents("T1")
-    const first = bill?.items[0]
-    if (bill === undefined || first === undefined) throw new Error("no bill")
-    await payLines(test, "qerko-1", bill, [first])
-    await test.payCash(billId, 1_000)
-
-    expect(await test.contents("T1")).toMatchObject([
-      {
-        allowPartialPayment: false,
-        items: [{ id: billId, name: "Zbývá zaplatit", price: "40" }],
-      },
-    ])
   })
 })
 

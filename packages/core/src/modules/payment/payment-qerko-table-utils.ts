@@ -1,5 +1,4 @@
 import { createIdFromString, err, ok, type Result } from "@evolu/common"
-import { z } from "zod"
 
 import type {
   QerkoBill,
@@ -7,10 +6,11 @@ import type {
   QerkoTable,
   QerkoWirePayment,
 } from "../../integrations/qerko/qerko-rpc.ts"
-import { jsonCodec } from "../../zod-utils.ts"
 import type { BillRow } from "../bill/bill.ts"
+import type { BillId } from "../bill/bill-types.ts"
 import {
   allocateDiscount,
+  type DiscountShareLine,
   isDiscountLine,
 } from "../bill-line/bill-line-discount-utils.ts"
 import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
@@ -43,6 +43,14 @@ import type { PaymentId } from "./payment-types.ts"
 export const createQerkoTablePaymentId = (qerkoPaymentId: string): PaymentId =>
   createIdFromString<"Payment">(`qerko-table-payment:${qerkoPaymentId}`)
 
+/**
+ * The bill a guest's part of a table's bill is split off into
+ * (qerko/0018), derived from Qerko's payment id like its payment, so a
+ * repeated or interrupted `paymentStart` reaches the same bill.
+ */
+export const createQerkoTableSplitBillId = (qerkoPaymentId: string): BillId =>
+  createIdFromString<"Bill">(`qerko-table-bill:${qerkoPaymentId}`)
+
 /** Whether an attempt is of a payment `paymentStart` made for a table's bill. */
 export const isQerkoTablePaymentAttempt = (
   attempt: Pick<QerkoPaymentAttemptRow, "paymentId" | "qerkoPaymentId">
@@ -70,48 +78,25 @@ export const createQerkoTableList = (
 }
 
 /**
- * The one item a table's bill shows once money Payky cannot tie to lines
- * paid part of it (qerko/0018). In Czech whatever the app's language, like
- * `Platba` (qerko/0014).
+ * The one item a table's bill shows once part of it is paid (qerko/0018):
+ * Payky does not know which lines the money paid. In Czech whatever the
+ * app's language, like `Platba` (qerko/0014).
  */
 export const qerkoTableRestItemName = "Zbývá zaplatit"
 
-/** One bill line a table's payment paid (qerko/0018). */
-const QerkoPaidLineSchema = z.object({
-  /** The line's `BillLineSummaryId`. */
-  lineId: z.string().min(1),
-  quantity: z.number().positive(),
-  /** What Qerko charged for it, in minor units. */
-  amount: z.number().int(),
-})
-export type QerkoPaidLine = z.output<typeof QerkoPaidLineSchema>
-
-/** `qerkoPaymentAttempt.paidLines`. */
-export const QerkoPaidLinesJson = jsonCodec(z.array(QerkoPaidLineSchema))
-
-/** The lines one attempt took, and whether Qerko already said `PAID`. */
-export interface QerkoAttemptPaidLines {
-  readonly paid: boolean
-  readonly lines: ReadonlyArray<QerkoPaidLine>
-}
-
-/** A quantity netted from several, without a float's tail. */
-const roundQuantity = (quantity: number): number => Number(quantity.toFixed(6))
-
-/** A line of a table's bill as offered: what is still left of it. */
-export type QerkoTableLine = QerkoLine & Pick<BillLineSummary, "id">
+/** A line of a table's bill as offered, with its share of any discount. */
+export type QerkoTableLine = BillLineSummary &
+  Pick<DiscountShareLine, "discountShare">
 
 /**
  * What a table's bill offers Qerko (qerko/0018), `restAmount` in all:
  *
- * - `lines`: the lines not yet paid through Qerko, each with the quantity
- *   and amount left of it, as long as every payment that reached the bill
- *   came through Qerko's table flow, which records the lines it paid. A bill
- *   with a discount line is not `splittable`: a guest could pay the goods
- *   and leave the discount behind, so it is paid whole.
- * - `rest`: one amount, the bill's total less what its payments paid, once
- *   money Payky cannot tie to lines reached it (a split at the till, a
- *   direct payment, self-pay), paid whole.
+ * - `lines`: its lines while nothing is paid of it. A guest may pay part of
+ *   them (`splittable`), which splits that part off into a bill of its own;
+ *   a bill with a discount line is paid whole, since a split may leave
+ *   neither bill below zero and a guest could not tell which parts would.
+ * - `rest`: one amount, its total less what its payments paid, once part of
+ *   it is paid, paid whole.
  *
  * `null` when nothing is left to pay, or the bill's goods come to nothing a
  * payment could be made for (payment/0012).
@@ -129,7 +114,6 @@ export const deriveQerkoTableOffer = ({
   summaries,
   ledger,
   claimedSum,
-  attempts,
 }: {
   /** The bill's line summaries as they stand (`loadBillStatusSnapshot`). */
   readonly summaries: ReadonlyArray<BillLineSummary>
@@ -139,48 +123,17 @@ export const deriveQerkoTableOffer = ({
   >
   /** What the bill's payments have paid of it, their tips left out. */
   readonly claimedSum: number
-  /** The lines Qerko attempts paid or are paying; failed ones left out. */
-  readonly attempts: ReadonlyArray<QerkoAttemptPaidLines>
 }): QerkoTableOffer | null => {
   const owed = Math.max(0, deriveBillSummaryTotal(summaries)) - claimedSum
   if (owed <= 0 || deriveBillGoodsTotal(summaries) <= 0) return null
-
-  const paidThroughLines = attempts
-    .filter((attempt) => attempt.paid)
-    .flatMap((attempt) => attempt.lines)
-    .reduce((sum, line) => sum + line.amount, 0)
-  if (claimedSum !== paidThroughLines) {
+  if (claimedSum > 0) {
     return { kind: "rest", restAmount: NonNegativeInteger(owed) }
   }
-
-  const taken = new Map<string, { quantity: number; amount: number }>()
-  for (const line of attempts.flatMap((attempt) => attempt.lines)) {
-    const sums = taken.get(line.lineId) ?? { quantity: 0, amount: 0 }
-    taken.set(line.lineId, {
-      quantity: sums.quantity + line.quantity,
-      amount: sums.amount + line.amount,
-    })
-  }
-  const ordered = orderQerkoLines(allocateDiscount(summaries), ledger)
-  const lines = ordered.flatMap((line): ReadonlyArray<QerkoTableLine> => {
-    const sums = taken.get(line.id)
-    if (sums === undefined) return [line]
-    const quantity = roundQuantity(line.quantity - sums.quantity)
-    if (quantity <= 0) return []
-    return [
-      {
-        ...line,
-        quantity: PositiveNumber(quantity),
-        totalAmount: Integer(line.totalAmount - sums.amount),
-      },
-    ]
-  })
-  const restAmount = lines.reduce((sum, line) => sum + line.totalAmount, 0)
-  if (restAmount <= 0) return null
+  const lines = orderQerkoLines(allocateDiscount(summaries), ledger)
   return {
     kind: "lines",
     splittable: !lines.some(isDiscountLine),
-    restAmount: NonNegativeInteger(restAmount),
+    restAmount: NonNegativeInteger(owed),
     lines,
   }
 }
@@ -192,13 +145,13 @@ const isSplittableLine = (
 ): boolean => offer.splittable && Number.isInteger(line.quantity)
 
 /**
- * The bill Qerko shows for a table's bill (qerko/0018): what is left of its
- * lines, priced as a payment's are (qerko/0014), or one item with the rest.
- * Its id is the bill's, and its name the bill's label or `#` and its number,
- * so guests tell several bills on one table apart. A splittable bill lets the
- * guest pay part of it, each whole quantity one at a time (`minQuantity`
- * `"1"`); any other is paid whole. No discount, no menus; the guest tips in
- * Qerko (qerko/0015).
+ * The bill Qerko shows for a table's bill (qerko/0018): its lines, priced as
+ * a payment's are (qerko/0014), or one item with the rest. Its id is the
+ * bill's, and its name the bill's label or `#` and its number, so guests
+ * tell several bills on one table apart. A splittable bill lets the guest
+ * pay part of it, each whole quantity one at a time (`minQuantity` `"1"`);
+ * any other is paid whole. No discount, no menus; the guest tips in Qerko
+ * (qerko/0015).
  */
 export const createQerkoTableBill = ({
   bill,
@@ -244,8 +197,12 @@ export const createQerkoTableBill = ({
 export interface QerkoTablePaymentStart {
   /** The goods: what its items add up to. */
   readonly amount: NonNegativeInteger
-  /** The lines it pays; `null` for the rest paid as one item. */
-  readonly paidLines: ReadonlyArray<QerkoPaidLine> | null
+  /**
+   * The part of the bill it pays, each line at the quantity and amount paid,
+   * to be split off into a bill of its own; `null` when it pays the whole
+   * bill, or its rest.
+   */
+  readonly split: ReadonlyArray<QerkoTableLine> | null
 }
 
 export type QerkoTablePaymentMismatch = "currency" | "discount" | "items"
@@ -256,14 +213,15 @@ export type QerkoTablePaymentMismatch = "currency" | "discount" | "items"
  * and no discount be applied; the customer's tip is in no item (qerko/0015).
  *
  * - The rest is one item, its id the bill's, at the rest's price.
- * - Each line is paid at most once per start, never above what is left of
- *   it. A line paid whole costs what is left of it; part of a whole quantity
- *   costs its share of that, within one minor unit of Qerko's rounding. A
- *   line Qerko may not split, and every line of a bill that is not
- *   splittable, is paid whole.
+ * - Each line is paid at most once per start, never above its quantity. A
+ *   line paid whole costs its total; part of a whole quantity costs its
+ *   share of that, within one minor unit of Qerko's rounding. A line Qerko
+ *   may not split, and every line of a bill that is not splittable, is paid
+ *   whole. A part must hold goods: a tip line of the cart alone is no sale
+ *   (payment/0012).
  *
  * A bill that changed since Qerko read it — a line added, taken off or paid
- * by another payment — no longer matches, and Qerko refreshes it.
+ * by another guest — no longer matches, and Qerko refreshes it.
  */
 export const checkQerkoTablePaymentStart = ({
   wire,
@@ -301,11 +259,11 @@ export const checkQerkoTablePaymentStart = ({
       rest !== undefined &&
       rest.id === billId &&
       rest.price === offer.restAmount
-      ? ok({ amount: offer.restAmount, paidLines: null })
+      ? ok({ amount: offer.restAmount, split: null })
       : err("items")
   }
 
-  const paidLines: QerkoPaidLine[] = []
+  const paid: QerkoTableLine[] = []
   for (const item of items) {
     const line = offer.lines.find((candidate) => candidate.id === item.id)
     if (line === undefined) return err("items")
@@ -313,8 +271,8 @@ export const checkQerkoTablePaymentStart = ({
       if (!Number.isInteger(item.quantity) || item.quantity > line.quantity) {
         return err("items")
       }
-      const share = (line.totalAmount * item.quantity) / line.quantity
       const whole = item.quantity === line.quantity
+      const share = (line.totalAmount * item.quantity) / line.quantity
       if (
         whole
           ? item.price !== line.totalAmount
@@ -322,53 +280,37 @@ export const checkQerkoTablePaymentStart = ({
       ) {
         return err("items")
       }
-    } else if (
-      String(item.quantity) !== labelQerkoLine(line).quantity ||
-      item.price !== line.totalAmount
-    ) {
-      return err("items")
-    }
-    paidLines.push({
-      lineId: line.id,
-      // A line Qerko may not split goes as one at its total (qerko/0014).
-      quantity: isSplittableLine(offer, line) ? item.quantity : line.quantity,
-      amount: item.price,
-    })
-  }
-
-  if (!offer.splittable && paidLines.length !== offer.lines.length) {
-    return err("items")
-  }
-  const amount = paidLines.reduce((sum, line) => sum + line.amount, 0)
-  return amount > 0
-    ? ok({ amount: NonNegativeInteger(amount), paidLines })
-    : err("items")
-}
-
-/**
- * The lines a table's payment paid, as its receipt lists them (qerko/0018):
- * each of the payment's frozen lines it paid, at the quantity and amount
- * Qerko charged, in the frozen lines' order. A line paid whole keeps its
- * discount share; only a bill without a discount is ever split, so a line
- * paid in part has none.
- */
-export const applyQerkoPaidLines = <
-  T extends QerkoLine & Pick<BillLineSummary, "id">,
->(
-  frozen: ReadonlyArray<T>,
-  paidLines: ReadonlyArray<QerkoPaidLine>
-): ReadonlyArray<T> =>
-  frozen.flatMap((line): ReadonlyArray<T> => {
-    const paid = paidLines.find((candidate) => candidate.lineId === line.id)
-    if (paid === undefined) return []
-    const whole =
-      paid.quantity === line.quantity && paid.amount === line.totalAmount
-    return [
-      {
+      paid.push({
         ...line,
-        quantity: PositiveNumber(paid.quantity),
-        totalAmount: Integer(paid.amount),
-        discountShare: whole ? line.discountShare : null,
-      },
-    ]
+        quantity: PositiveNumber(item.quantity),
+        totalAmount: Integer(item.price),
+      })
+    } else {
+      // A line Qerko may not split goes as one at its total (qerko/0014).
+      if (
+        String(item.quantity) !== labelQerkoLine(line).quantity ||
+        item.price !== line.totalAmount
+      ) {
+        return err("items")
+      }
+      paid.push(line)
+    }
+  }
+
+  // Each item names a different line, so as many items as lines, each at
+  // its line's full quantity, is the whole bill.
+  const whole =
+    paid.length === offer.lines.length &&
+    paid.every(
+      (line) =>
+        line.quantity ===
+        offer.lines.find((candidate) => candidate.id === line.id)?.quantity
+    )
+  if (!offer.splittable && !whole) return err("items")
+  const amount = paid.reduce((sum, line) => sum + line.totalAmount, 0)
+  if (amount <= 0 || deriveBillGoodsTotal(paid) <= 0) return err("items")
+  return ok({
+    amount: NonNegativeInteger(amount),
+    split: whole ? null : paid,
   })
+}
