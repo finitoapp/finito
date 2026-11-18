@@ -69,8 +69,10 @@ it on a timeout, and waits 15 s for `paymentStart`.
   holds the bill it pays: staff cannot change it and Qerko lists it no
   more. The rest of a split bill stays open and unlocked, so other guests
   pay their parts meanwhile.
-- The connection answers `paymentStart` calls one at a time, in the order
-  Qerko made them, while every other call is answered as it comes: the
+- The device holding the connection answers `paymentStart` calls one at a
+  time, in the order Qerko made them, across reconnections too — Qerko
+  repeats an unanswered call on the next connection — while every other
+  call is answered as it comes: the
   check that the bill holds what is paid and the split or payment written
   after it must not interleave with another start's, or two guests would
   both pay the same line. Direct payments' running-attempt check is held
@@ -177,3 +179,4 @@ coverage mismatch after sync.
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > settling a table's payment > a canceled payment whose attempt stayed open is closed by the next settling, its cancellation kept`
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > settling a table's payment > a late CANCELLED does not undo PAID nor cancel the paid payment`
 - `packages/core/src/integrations/qerko/qerko-rpc.test.ts > createQerkoRpcSession > answers paymentStart one at a time, and nothing else waits for it`
+- `packages/core/src/integrations/qerko/qerko-rpc.test.ts > createQerkoRpcSession > a start repeated on a new session waits for the one still running on the session before`

@@ -237,14 +237,33 @@ const posMethods = {
 export type QerkoPosMethod = keyof typeof posMethods
 
 /**
- * Methods a session answers one at a time, in the order Qerko called them,
- * where every other call is answered as it comes. `paymentStart` checks that
- * nothing else is paying the bill and then records its own payment: two
- * guests pressing Pay at once would otherwise both pass the check before
- * either wrote (qerko/0018), and Qerko would charge them both. Qerko waits
- * 15 s for each answer, far longer than one start takes.
+ * Methods answered one at a time, in the order Qerko called them, where
+ * every other call is answered as it comes. `paymentStart` checks that the
+ * bill holds what is paid and then writes the payment: two guests pressing
+ * Pay at once would otherwise both pass the check before either wrote
+ * (qerko/0018), and Qerko would charge them both. Qerko waits 15 s for each
+ * answer, far longer than one start takes.
  */
 const serialPosMethods: ReadonlySet<QerkoPosMethod> = new Set(["paymentStart"])
+
+/** Runs the work it is given one at a time, in the order it was given. */
+export type QerkoSerialQueue = <T>(work: () => Promise<T>) => Promise<T>
+
+/**
+ * A queue for the `serialPosMethods`. The caller holding the connection
+ * keeps one across its sessions: Qerko repeats a call it got no answer to on
+ * the next connection, and that call must wait for the one still running
+ * from the connection before.
+ */
+export const createQerkoSerialQueue = (): QerkoSerialQueue => {
+  let tail: Promise<unknown> = Promise.resolve()
+  return (work) => {
+    const turn = tail.then(work, work)
+    // A failed turn must not stop the ones after it.
+    tail = turn.catch(() => undefined)
+    return turn
+  }
+}
 
 const isQerkoPosMethod = (method: string): method is QerkoPosMethod =>
   Object.hasOwn(posMethods, method)
@@ -317,6 +336,7 @@ export const createQerkoRpcSession = ({
   handlers,
   onState,
   onError,
+  serialQueue = createQerkoSerialQueue(),
   timing = qerkoRpcTiming,
 }: QerkoSocketDep &
   ConsoleDep & {
@@ -328,6 +348,11 @@ export const createQerkoRpcSession = ({
     readonly onState: (state: QerkoSessionState) => void
     /** A handler threw: an unexpected crash, not a protocol failure. */
     readonly onError: (error: unknown) => void
+    /**
+     * Where `paymentStart` waits its turn; one of the session's own unless
+     * given, as the connection job gives the one it keeps across sessions.
+     */
+    readonly serialQueue?: QerkoSerialQueue
     readonly timing?: QerkoRpcTiming
   }): QerkoRpcSession => {
   let authorized = false
@@ -337,8 +362,6 @@ export const createQerkoRpcSession = ({
   const pending = new Map<string, (ok: boolean) => void>()
   let authTimer: ReturnType<typeof setTimeout> | null = null
   let silenceTimer: ReturnType<typeof setTimeout> | null = null
-  /** The last of the `serialPosMethods` calls, which the next one waits for. */
-  let serialTail: Promise<unknown> = Promise.resolve()
 
   const clearTimers = () => {
     if (authTimer !== null) clearTimeout(authTimer)
@@ -403,9 +426,7 @@ export const createQerkoRpcSession = ({
         }
       }
       if (serialPosMethods.has(method)) {
-        const turn = serialTail.then(invoke)
-        serialTail = turn
-        result = await turn
+        result = await serialQueue(invoke)
       } else {
         result = await invoke()
       }

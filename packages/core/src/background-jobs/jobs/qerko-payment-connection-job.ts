@@ -7,6 +7,7 @@ import {
 import type { QerkoConnectionStatus } from "../../integrations/qerko/qerko-connection-status.ts"
 import {
   createQerkoRpcSession,
+  createQerkoSerialQueue,
   type QerkoPosHandlers,
   type QerkoRpcSession,
   type QerkoRpcTiming,
@@ -126,6 +127,12 @@ class QerkoPaymentConnection {
   /** The config a stolen or refused connection stopped at. */
   private stoppedAt: string | null = null
   private holding: Promise<void> | null = null
+  /**
+   * Where `paymentStart` waits its turn, kept across sessions: a start Qerko
+   * repeats on a new connection waits for the one still running from the
+   * connection before (qerko/0018).
+   */
+  private readonly serialQueue = createQerkoSerialQueue()
   private disposed = false
   private wakeUp: (() => void) | null = null
 
@@ -294,6 +301,7 @@ class QerkoPaymentConnection {
         handlers: this.handlers(),
         onState,
         onError,
+        serialQueue: this.serialQueue,
         timing: this.timing,
       })
       // Woken while connected: the config changed, the job stopped, or the

@@ -8,6 +8,7 @@ import {
 } from "./qerko-client.ts"
 import {
   createQerkoRpcSession,
+  createQerkoSerialQueue,
   parseQerkoMessage,
   type QerkoPosHandlers,
   type QerkoSessionState,
@@ -404,6 +405,59 @@ describe("createQerkoRpcSession", () => {
       expect.objectContaining({ uuid: "uuid-first", error: null }),
       expect.objectContaining({ uuid: "uuid-second", error: null }),
     ])
+  })
+
+  test("a start repeated on a new session waits for the one still running on the session before", async () => {
+    const serialQueue = createQerkoSerialQueue()
+    const started: string[] = []
+    const finishes: Array<() => void> = []
+    const open = () => {
+      let socket: QerkoSocketHandlers | null = null
+      const session = createQerkoRpcSession({
+        qerkoSocket: {
+          connect: (_url, handlers) => {
+            socket = handlers
+            return { send: () => {}, close: () => {} }
+          },
+        },
+        console: createConsole(),
+        url: "wss://test",
+        posId: "payky",
+        apiKey: "key",
+        handlers: {
+          ...createHandlers(),
+          paymentStart: (payment) => {
+            started.push(payment.id)
+            return new Promise((resolve) => {
+              finishes.push(() => resolve(ok(null)))
+            })
+          },
+        },
+        onState: () => {},
+        onError: () => {},
+        serialQueue,
+      })
+      const connected = (): QerkoSocketHandlers => {
+        if (socket === null) throw new Error("not connected")
+        return socket
+      }
+      connected().onOpen()
+      connected().onMessage(JSON.stringify(fixtures.authorized))
+      connected().onMessage(JSON.stringify(fixtures.paymentStart))
+      return session
+    }
+
+    // The first connection drops while its start is still running, and
+    // Qerko repeats the start on the next one.
+    open().close()
+    open()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(started).toEqual(["id_of_payment"])
+
+    finishes[0]?.()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(started).toEqual(["id_of_payment", "id_of_payment"])
+    finishes[1]?.()
   })
 
   test("never answers a call without a uuid", async () => {
