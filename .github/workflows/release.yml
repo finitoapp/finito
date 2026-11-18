@@ -203,14 +203,16 @@ jobs:
           cd android
           ./gradlew bundleRelease
 
-      # One APK for arm64-v8a, made from the AAB Google Play gets: bundletool's
+      # One APK per ABI, made from the AAB Google Play gets: bundletool's
       # system mode is the one that fuses a bundle into a single APK for one
-      # device spec (universal mode keeps every ABI, ~200 MB). The spec's
-      # sdkVersion is Finito's minSdk; its density is the highest, so other
-      # screens scale down; its locales are the app's languages. Native
-      # libraries stay uncompressed, as Gradle's own APK had them.
-      # Its name is the one the Finito landing links (apps/landing/src/core/landing-sites.ts).
-      - name: Build the arm64-v8a APK from the AAB and check its signer
+      # device spec (universal mode keeps every ABI, ~200 MB). Each spec names
+      # one ABI; its sdkVersion is Finito's minSdk; its density is the highest,
+      # so other screens scale down; its locales are the app's languages.
+      # Native libraries stay uncompressed, as Gradle's own APK had them.
+      # arm64-v8a's APK keeps the unsuffixed name, the one the Finito landing
+      # links (apps/landing/src/core/landing-sites.ts); the others carry their
+      # ABI in theirs.
+      - name: Build an APK per ABI from the AAB and check their signers
         working-directory: apps/native-app/android/app/build/outputs
         env:
           BUNDLETOOL_VERSION: 1.18.3
@@ -223,30 +225,44 @@ jobs:
             --output "${RUNNER_TEMP}/bundletool.jar" \
             "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar"
           echo "${BUNDLETOOL_SHA256}  ${RUNNER_TEMP}/bundletool.jar" | sha256sum --check --status
-          printf '%s' '{"supportedAbis":["arm64-v8a"],"supportedLocales":["en","cs","sk"],"screenDensity":640,"sdkVersion":24}' \
-            > "${RUNNER_TEMP}/device-spec.json"
-          java -jar "${RUNNER_TEMP}/bundletool.jar" build-apks \
-            --bundle=bundle/release/app-release.aab \
-            --output="${RUNNER_TEMP}/finito.apks" \
-            --mode=system \
-            --device-spec="${RUNNER_TEMP}/device-spec.json" \
-            --system-apk-options=UNCOMPRESSED_NATIVE_LIBRARIES \
-            --ks="${RUNNER_TEMP}/finito-release.keystore" \
-            --ks-pass="pass:${KS_PASS}" \
-            --ks-key-alias="${KEY_ALIAS}" \
-            --key-pass="pass:${KEY_PASS}"
-          unzip -p "${RUNNER_TEMP}/finito.apks" system/system.apk > finito-release-signed.apk
-          if apksigner verify --print-certs finito-release-signed.apk | grep -q "CN=Android Debug"; then
-            echo "::error::The APK is signed with the debug key."
-            exit 1
-          fi
+          mkdir finito-apks
+          for abi in arm64-v8a armeabi-v7a x86_64 x86; do
+            if [[ "${abi}" == arm64-v8a ]]; then
+              apk="finito-apks/finito-release-signed.apk"
+            else
+              apk="finito-apks/finito-release-signed-${abi}.apk"
+            fi
+            printf '{"supportedAbis":["%s"],"supportedLocales":["en","cs","sk"],"screenDensity":640,"sdkVersion":24}' "${abi}" \
+              > "${RUNNER_TEMP}/device-spec-${abi}.json"
+            java -jar "${RUNNER_TEMP}/bundletool.jar" build-apks \
+              --bundle=bundle/release/app-release.aab \
+              --output="${RUNNER_TEMP}/finito-${abi}.apks" \
+              --mode=system \
+              --device-spec="${RUNNER_TEMP}/device-spec-${abi}.json" \
+              --system-apk-options=UNCOMPRESSED_NATIVE_LIBRARIES \
+              --ks="${RUNNER_TEMP}/finito-release.keystore" \
+              --ks-pass="pass:${KS_PASS}" \
+              --ks-key-alias="${KEY_ALIAS}" \
+              --key-pass="pass:${KEY_PASS}"
+            unzip -p "${RUNNER_TEMP}/finito-${abi}.apks" system/system.apk > "${apk}"
+            # Captured first, so an APK apksigner cannot verify fails the step
+            # instead of passing the debug-key check below.
+            certs="$(apksigner verify --print-certs "${apk}")"
+            if grep -q "CN=Android Debug" <<< "${certs}"; then
+              echo "::error::The ${abi} APK is signed with the debug key."
+              exit 1
+            fi
+          done
+          ls -l finito-apks
 
-      # Before Google Play, so a failed upload does not hold back the APK.
-      - name: Keep the APK for the GitHub release
+      # Before Google Play, so a failed upload does not hold back the APKs.
+      - name: Keep the APKs for the GitHub release
         uses: actions/upload-artifact@v4
         with:
           name: finito-apk
-          path: apps/native-app/android/app/build/outputs/finito-release-signed.apk
+          # A directory, not a glob: upload-artifact puts its files at the
+          # artifact's root, where `github-release` reads them.
+          path: apps/native-app/android/app/build/outputs/finito-apks
           if-no-files-found: error
 
       # For uploading to Google Play by hand should the upload below fail;
@@ -293,9 +309,14 @@ jobs:
         with:
           name: Payky / Finito ${{ github.ref_name }}
           generate_release_notes: true
-          # Only the signed APKs, under the names the landings link as
-          # releases/latest/download/<name> (landing/0005).
+          # Only the signed APKs. The landings link app-release-signed.apk and
+          # finito-release-signed.apk (arm64-v8a) as
+          # releases/latest/download/<name> (landing/0005), so those keep
+          # their names; Finito's other ABIs carry theirs in a suffix.
           files: |
             apks/app-release-signed.apk
             apks/finito-release-signed.apk
+            apks/finito-release-signed-armeabi-v7a.apk
+            apks/finito-release-signed-x86_64.apk
+            apks/finito-release-signed-x86.apk
           fail_on_unmatched_files: true

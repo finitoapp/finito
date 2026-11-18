@@ -25,7 +25,10 @@ no fees, no contract and no extra hardware.
 Finito runs on Android and as a PWA at [app.finito.fit](https://app.finito.fit).
 Download the APK from the
 [latest release](https://github.com/finitoapp/finito/releases/latest/download/finito-release-signed.apk)
-or read more at [finito.fit](https://finito.fit).
+or read more at [finito.fit](https://finito.fit). That APK is for arm64-v8a,
+which nearly every Android phone runs; the
+[release page](https://github.com/finitoapp/finito/releases/latest) also has
+`finito-release-signed-armeabi-v7a.apk`, `-x86_64.apk` and `-x86.apk`.
 
 ## Requirements
 

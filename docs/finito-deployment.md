@@ -165,6 +165,8 @@ screens cannot be captured; the page draws a placeholder for them.
 the same tag as Payky's. `plugins/with-release-signing.cjs` signs the release
 build with the key Gradle is handed as `finitoReleaseStoreFile` and its
 passwords; without them it keeps the debug key, as a local or e2e release
-build does, and the job fails on an APK signed by it. The APK is published as
-`finito-release-signed.apk`, the name Finito's landing links, and the AAB is
+build does, and the job fails on an APK signed by it. From the AAB, bundletool
+makes one APK per ABI. The release publishes all four: the `arm64-v8a` one as
+`finito-release-signed.apk`, the name Finito's landing links, and the others as
+`finito-release-signed-<abi>.apk` (`armeabi-v7a`, `x86_64`, `x86`). The AAB is
 uploaded to Google Play's internal track.
