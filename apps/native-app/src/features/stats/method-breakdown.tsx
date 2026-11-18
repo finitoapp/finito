@@ -205,7 +205,7 @@ function MethodDonut({
 
   return (
     <YStack items="center" gap="2">
-      <YStack width={donutSize} height={donutSize}>
+      <YStack w={donutSize} h={donutSize}>
         <Svg width={donutSize} height={donutSize}>
           <Circle
             cx={donutSize / 2}
@@ -255,7 +255,7 @@ function MethodDonut({
         </YStack>
       </YStack>
       {chosen === undefined ? null : (
-        <YStack gap="1" aria-live="polite" width="100%">
+        <YStack gap="1" aria-live="polite" w="100%">
           <Text fontWeight="600">{t(methodLabelKey(chosen.method))}</Text>
           <Text fontSize={13}>
             {`${numberFormat(locale, {
@@ -311,8 +311,8 @@ function MethodRow({
     >
       <XStack items="center" gap="2">
         <YStack
-          width={10}
-          height={10}
+          w={10}
+          h={10}
           rounded={2}
           style={{ backgroundColor: methodColors[method.method] }}
         />

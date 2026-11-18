@@ -372,8 +372,8 @@ function LegendItem({
   return (
     <XStack items="center" gap="2">
       <YStack
-        width={10}
-        height={10}
+        w={10}
+        h={10}
         rounded={2}
         opacity={opacity}
         style={{ backgroundColor: color }}

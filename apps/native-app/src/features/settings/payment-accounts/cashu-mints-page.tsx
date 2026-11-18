@@ -157,7 +157,7 @@ function CashuMints() {
 function MintLabel({ mint }: { readonly mint: string }) {
   return (
     <Text
-      flexShrink={1}
+      shrink={1}
       numberOfLines={1}
       fontSize={fontSize.sm}
       lineHeight={fontSize.sm}

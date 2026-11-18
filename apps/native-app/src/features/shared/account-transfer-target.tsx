@@ -170,7 +170,7 @@ export function AccountTransferTarget({
               onPress={onRestoreWithPhrase}
             >
               <Text
-                flexShrink={1}
+                shrink={1}
                 text="center"
                 fontSize="sm"
                 lineHeight="sm"

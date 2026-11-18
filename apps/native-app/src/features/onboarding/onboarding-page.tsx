@@ -504,7 +504,7 @@ export function OnboardingPage({
                     }}
                   >
                     <Text
-                      flexShrink={1}
+                      shrink={1}
                       text="center"
                       fontSize={fontSize.sm}
                       lineHeight={fontSize.sm}

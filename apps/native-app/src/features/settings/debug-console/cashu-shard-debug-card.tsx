@@ -51,7 +51,7 @@ export function CashuShardDebugCard() {
       key={key}
       fontSize={fontSize.xs}
       lineHeight={fontSize.xs}
-      userSelect="text"
+      select="text"
     >
       {text}
     </Text>

@@ -108,19 +108,19 @@ export function StatsBar({
   readonly tipsShare?: number
 }) {
   return (
-    <YStack height={10} rounded={5} overflow="hidden" bg="track">
+    <YStack h={10} rounded={5} overflow="hidden" bg="track">
       <XStack
-        height={10}
+        h={10}
         rounded={5}
         overflow="hidden"
-        width={`${(share * 100).toFixed(1)}%`}
+        w={`${(share * 100).toFixed(1)}%`}
       >
         <YStack flex={1} bg="chart-1" />
         {tipsShare > 0 ? (
           <YStack
             bg="chart-1"
             opacity={0.45}
-            width={`${(tipsShare * 100).toFixed(1)}%`}
+            w={`${(tipsShare * 100).toFixed(1)}%`}
           />
         ) : null}
       </XStack>

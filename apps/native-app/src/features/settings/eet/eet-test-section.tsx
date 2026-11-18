@@ -192,7 +192,7 @@ function RawMessage({
         bg="surface-raised"
         p={8}
       >
-        <Text fontSize={fontSize.xs} lineHeight={fontSize.xs} userSelect="text">
+        <Text fontSize={fontSize.xs} lineHeight={fontSize.xs} select="text">
           {value}
         </Text>
       </CollapsibleContent>

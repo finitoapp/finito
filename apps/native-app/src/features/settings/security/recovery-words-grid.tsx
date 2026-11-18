@@ -18,12 +18,12 @@ export function RecoveryWordsGrid({
         <XStack
           // biome-ignore lint/suspicious/noArrayIndexKey: the slots are fixed positions
           key={index}
-          width="48%"
+          w="48%"
           items="center"
           gap={8}
         >
           <Text
-            width={20}
+            w={20}
             fontSize={fontSize.xs}
             lineHeight={fontSize.xs}
             color="muted-foreground"
@@ -31,11 +31,7 @@ export function RecoveryWordsGrid({
           >
             {index + 1}
           </Text>
-          <Text
-            testID={`recovery-word-${index + 1}`}
-            flex={1}
-            userSelect="none"
-          >
+          <Text testID={`recovery-word-${index + 1}`} flex={1} select="none">
             {words === null ? "••••" : (words[index] ?? "")}
           </Text>
         </XStack>

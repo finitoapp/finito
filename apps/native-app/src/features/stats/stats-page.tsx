@@ -188,8 +188,8 @@ function StatsSkeleton() {
           <YStack
             // biome-ignore lint/suspicious/noArrayIndexKey: static loading tiles
             key={index}
-            width={index === 0 ? "100%" : "47%"}
-            flexGrow={index === 0 ? 0 : 1}
+            w={index === 0 ? "100%" : "47%"}
+            grow={index === 0 ? 0 : 1}
             gap="2"
             p="3"
             rounded="md"
