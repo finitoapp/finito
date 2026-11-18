@@ -1,7 +1,6 @@
 import { shortenNpub } from "@payky/core/integrations/nostr/nostr-client"
-import ChevronRight from "lucide-react-native/icons/chevron-right"
 import { isWeb, Text, YStack } from "tamagui"
-import { Icon } from "../../../components/ui/icon.tsx"
+import { LucideGlyph } from "../../../components/lucide-glyph"
 import {
   PressFill,
   type PressFillColors,
@@ -17,6 +16,7 @@ import {
 } from "../../../hooks/use-nostr-profile.ts"
 import { useOpenDetail } from "../../../hooks/use-open-detail.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { useAppColors } from "../../../theme/app-colors.ts"
 import { fontSize, fontWeight, shape } from "../../../theme/tokens.ts"
 import { AccountAvatar } from "../account-avatar.tsx"
 
@@ -47,6 +47,7 @@ export function ProfileCard() {
   const identity = useNostrIdentity()
   const profile = useActiveNostrProfile()
   const openDetail = useOpenDetail()
+  const colors = useAppColors()
   const masterPane = useMasterPane()
   const editorOpen = usePathnameSelect(
     (pathname) => masterPane !== null && pathname === "/settings/profile"
@@ -107,7 +108,12 @@ export function ProfileCard() {
           {shortenNpub(identity.npub)}
         </Text>
       </YStack>
-      <Icon icon={ChevronRight} color="muted-foreground" />
+      <LucideGlyph
+        name="chevron-right"
+        size={20}
+        color={colors["muted-foreground"]}
+        allowFontScaling={false}
+      />
     </VerticalNavShell>
   )
 }

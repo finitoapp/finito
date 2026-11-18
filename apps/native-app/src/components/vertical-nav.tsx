@@ -1,5 +1,4 @@
 import type { Href } from "expo-router"
-import ChevronRight from "lucide-react-native/icons/chevron-right"
 import type { ReactNode } from "react"
 import { Linking, Pressable, StyleSheet, View } from "react-native"
 import { isWeb, styled, View as TamaguiView, Text } from "tamagui"
@@ -9,6 +8,7 @@ import { useOpenDetail } from "../hooks/use-open-detail.ts"
 import { useAppColors } from "../theme/app-colors.ts"
 import type { ThemeColor } from "../theme/themes.ts"
 import { control, fontSize, fontWeight, shape } from "../theme/tokens.ts"
+import { LucideGlyph } from "./lucide-glyph"
 import {
   PressFill,
   type PressFillColors,
@@ -258,7 +258,14 @@ export function VerticalNavRow({
       </View>
       {item.disableAction === true ? null : (
         <View style={rowStyles.action}>
-          {item.action ?? <ChevronRight size={20} color={colors.color} />}
+          {item.action ?? (
+            <LucideGlyph
+              name="chevron-right"
+              size={20}
+              color={colors.color}
+              allowFontScaling={false}
+            />
+          )}
         </View>
       )}
     </>

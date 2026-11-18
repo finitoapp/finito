@@ -8,31 +8,15 @@ import {
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { eetSettingsQuery } from "@payky/core/modules/eet/eet-queries"
 import type { Href } from "expo-router"
-import type { LucideIcon } from "lucide-react-native"
-import BadgeDollarSign from "lucide-react-native/icons/badge-dollar-sign"
-import CalendarCheck from "lucide-react-native/icons/calendar-check"
-import HeartHandshake from "lucide-react-native/icons/heart-handshake"
-import House from "lucide-react-native/icons/house"
-import Info from "lucide-react-native/icons/info"
-import Landmark from "lucide-react-native/icons/landmark"
-import Languages from "lucide-react-native/icons/languages"
-import LifeBuoy from "lucide-react-native/icons/life-buoy"
-import MonitorSmartphone from "lucide-react-native/icons/monitor-smartphone"
-import Percent from "lucide-react-native/icons/percent"
-import ReceiptText from "lucide-react-native/icons/receipt-text"
-import Server from "lucide-react-native/icons/server"
-import ShieldCheck from "lucide-react-native/icons/shield-check"
-import Sparkles from "lucide-react-native/icons/sparkles"
-import Stamp from "lucide-react-native/icons/stamp"
-import SunMoon from "lucide-react-native/icons/sun-moon"
-import Table2 from "lucide-react-native/icons/table-2"
-import Tag from "lucide-react-native/icons/tag"
-import UserRound from "lucide-react-native/icons/user-round"
 import { type ReactNode, Suspense } from "react"
 import { StyleSheet, View } from "react-native"
 import { Text } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { languageOptions } from "../../components/language-options.ts"
+import {
+  LucideGlyph,
+  type LucideGlyphName,
+} from "../../components/lucide-glyph"
 import { MenuBarSpacer } from "../../components/menu-nav.tsx"
 import { Screen } from "../../components/screen.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
@@ -67,7 +51,7 @@ import { themeLabelKeys } from "./theme/theme-settings-page.tsx"
  * the database is a `DeferredValue`, so the row shows before it.
  */
 interface SettingRow {
-  readonly icon: LucideIcon
+  readonly icon: LucideGlyphName
   readonly title: TranslationKey
   readonly value?: ReactNode
   readonly href: Href
@@ -201,12 +185,18 @@ function createSettingsNavItems(
 ) {
   return settings.map((item) => {
     const label = t(item.title)
-    const RowIcon = item.icon
 
     return {
       kind: "link" as const,
       href: item.href,
-      icon: <RowIcon size={20} color={colors["muted-foreground"]} />,
+      icon: (
+        <LucideGlyph
+          name={item.icon}
+          size={20}
+          color={colors["muted-foreground"]}
+          allowFontScaling={false}
+        />
+      ),
       accessibilityLabel: label,
       label: (
         <View style={labelStyles.label}>
@@ -260,10 +250,14 @@ export function SettingsPage() {
   // grid itself is a mode of home (navigation/0004).
   const salesItems = createSettingsNavItems(
     [
-      { icon: Tag, title: "catalog.items.title", href: "/settings/items" },
-      { icon: Table2, title: "catalog.tables.title", href: "/settings/tables" },
+      { icon: "tag", title: "catalog.items.title", href: "/settings/items" },
       {
-        icon: House,
+        icon: "table-2",
+        title: "catalog.tables.title",
+        href: "/settings/tables",
+      },
+      {
+        icon: "house",
         title: "settings.homeScreen.title",
         value: (
           <DeferredValue>
@@ -279,17 +273,17 @@ export function SettingsPage() {
   const taxItems = createSettingsNavItems(
     [
       {
-        icon: Percent,
+        icon: "percent",
         title: "settings.taxRates.title",
         href: "/settings/tax-rates",
       },
       {
-        icon: ReceiptText,
+        icon: "receipt-text",
         title: "settings.paymentNumberSeries.title",
         href: "/settings/payment-number-series",
       },
       {
-        icon: Stamp,
+        icon: "stamp",
         title: "settings.eet.title",
         value: (
           <DeferredValue>
@@ -305,22 +299,22 @@ export function SettingsPage() {
   const accountItems = createSettingsNavItems(
     [
       {
-        icon: UserRound,
+        icon: "user-round",
         title: "settings.accounts.nav.title",
         href: "/settings/accounts",
       },
       {
-        icon: MonitorSmartphone,
+        icon: "monitor-smartphone",
         title: "devices.title",
         href: "/settings/access",
       },
       {
-        icon: ShieldCheck,
+        icon: "shield-check",
         title: "settings.backup.title",
         href: "/settings/security",
       },
       {
-        icon: Server,
+        icon: "server",
         title: "settings.backends.title",
         href: "/settings/backends",
       },
@@ -331,14 +325,14 @@ export function SettingsPage() {
   const appearanceItems = createSettingsNavItems(
     [
       {
-        icon: Languages,
+        icon: "languages",
         title: "settings.language.title",
         value: languageOptions.find((option) => option.value === language)
           ?.label,
         href: "/settings/language",
       },
       {
-        icon: SunMoon,
+        icon: "sun-moon",
         title: "settings.theme.title",
         value: (
           <DeferredValue>
@@ -387,7 +381,7 @@ function PaymentsNav({ cardClosure }: { readonly cardClosure: boolean }) {
   const items = createSettingsNavItems(
     [
       {
-        icon: Landmark,
+        icon: "landmark",
         title: "settings.paymentAccounts.title",
         value: (
           <DeferredValue>
@@ -399,14 +393,14 @@ function PaymentsNav({ cardClosure }: { readonly cardClosure: boolean }) {
       ...(cardClosure
         ? [
             {
-              icon: CalendarCheck,
+              icon: "calendar-check",
               title: "settings.cardClosure.title",
               href: "/settings/card-closure",
             } as const,
           ]
         : []),
       {
-        icon: BadgeDollarSign,
+        icon: "badge-dollar-sign",
         title: "settings.tips.title",
         value: (
           <DeferredValue>
@@ -433,26 +427,26 @@ function SupportNav({ assistant }: { readonly assistant: boolean }) {
   const items = createSettingsNavItems(
     [
       {
-        icon: LifeBuoy,
+        icon: "life-buoy",
         title: "settings.supportChat.title",
         href: "/settings/support",
       },
       ...(assistant
         ? [
             {
-              icon: Sparkles,
+              icon: "sparkles",
               title: "settings.assistant.title",
               href: "/settings/assistant",
             } as const,
           ]
         : []),
       {
-        icon: HeartHandshake,
+        icon: "heart-handshake",
         title: "settings.donations.title",
         href: "/settings/donations",
       },
       {
-        icon: Info,
+        icon: "info",
         title: "settings.about.title",
         href: "/settings/about",
       },
