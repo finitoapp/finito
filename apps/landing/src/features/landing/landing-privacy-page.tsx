@@ -27,42 +27,41 @@ const numberedTitle = /^\d+\.\s/u
 export function privacyPolicySections(
   body: string
 ): ReadonlyArray<PolicySection> {
-  const paragraphs = body.split(/\n{2,}/u).slice(1)
-  return paragraphs.reduce<ReadonlyArray<PolicySection>>(
-    (sections, paragraph) => {
-      const lines = paragraph.split("\n")
-      const [first = "", ...rest] = lines
-      const startsSection = numberedTitle.test(first)
-      const blocks = linesToBlocks(startsSection ? rest : lines)
-      const last = sections.at(-1)
-      if (startsSection || last === undefined) {
-        return [...sections, { title: startsSection ? first : null, blocks }]
+  const sections: PolicySection[] = []
+  for (const paragraph of body.split(/\n{2,}/u).slice(1)) {
+    const lines = paragraph.split("\n")
+    const [first = "", ...rest] = lines
+    const startsSection = numberedTitle.test(first)
+    const blocks = linesToBlocks(startsSection ? rest : lines)
+    const last = sections.at(-1)
+    if (startsSection || last === undefined) {
+      sections.push({ title: startsSection ? first : null, blocks })
+    } else {
+      sections[sections.length - 1] = {
+        ...last,
+        blocks: [...last.blocks, ...blocks],
       }
-      return [
-        ...sections.slice(0, -1),
-        { ...last, blocks: [...last.blocks, ...blocks] },
-      ]
-    },
-    []
-  )
+    }
+  }
+  return sections
 }
 
 function linesToBlocks(
   lines: ReadonlyArray<string>
 ): ReadonlyArray<PolicyBlock> {
-  return lines.reduce<ReadonlyArray<PolicyBlock>>((blocks, line) => {
+  const blocks: PolicyBlock[] = []
+  for (const line of lines) {
     const last = blocks.at(-1)
-    if (line.startsWith(listItemPrefix)) {
+    if (!line.startsWith(listItemPrefix)) {
+      blocks.push({ kind: "paragraph", text: line })
+    } else if (last?.kind === "list") {
       const item = line.slice(listItemPrefix.length)
-      return last?.kind === "list"
-        ? [
-            ...blocks.slice(0, -1),
-            { kind: "list", items: [...last.items, item] },
-          ]
-        : [...blocks, { kind: "list", items: [item] }]
+      blocks[blocks.length - 1] = { kind: "list", items: [...last.items, item] }
+    } else {
+      blocks.push({ kind: "list", items: [line.slice(listItemPrefix.length)] })
     }
-    return [...blocks, { kind: "paragraph", text: line }]
-  }, [])
+  }
+  return blocks
 }
 
 // An address in the text, without the full stop that may end its sentence.

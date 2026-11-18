@@ -19,15 +19,15 @@
     "cap:ios:run": "bun run cap:ios:sync && cap run ios"
   },
   "dependencies": {
-    "@capacitor/android": "8.5.3",
+    "@capacitor/android": "8.6.2",
     "@capacitor/app": "8.1.2",
     "@capacitor/filesystem": "8.1.5",
     "@capacitor/haptics": "8.0.2",
-    "@capacitor/ios": "8.5.3",
+    "@capacitor/ios": "8.6.2",
     "@capacitor/share": "8.0.3",
-    "@capacitor/core": "8.5.3"
+    "@capacitor/core": "8.6.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.3"
+    "@capacitor/cli": "8.6.2"
   }
 }

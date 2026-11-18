@@ -7,4 +7,4 @@ appId: ${APP_ID}
 - evalScript: ${output.eetMock = http.get(MOCK_URL + PATH)}
 - assertTrue:
     condition: ${output.eetMock.ok}
-    label: 'EET mock: ${PATH} answered ${output.eetMock.status}: ${output.eetMock.body}'
+    label: "EET mock: ${PATH} answered ${output.eetMock.status}: ${output.eetMock.body}"

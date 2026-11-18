@@ -47,5 +47,5 @@ tags: [switchio]
 # The terminal's totals: the one 5.90 payment, nothing refunded.
 - assertVisible: ${output.re(output.t["settings.cardClosure.result.payments"])}
 - assertVisible: '1× · .5\.90'
-- assertVisible: '0× · .0'
+- assertVisible: "0× · .0"
 - assertVisible: ${output.t["settings.cardClosure.result.batch"]}
