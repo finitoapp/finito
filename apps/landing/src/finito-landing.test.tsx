@@ -10,7 +10,7 @@ vi.mock("@/core/app-env.ts", () => ({
 
 const { landingDocuments, renderLandingDocument, renderRobots, renderSitemap } =
   await import("@/landing-server.tsx")
-const { landingResources } = await import("@/core/landing-site.ts")
+const { landingResources, landingSite } = await import("@/core/landing-site.ts")
 
 const template = `<!doctype html><html lang="cs"><head><!--landing-head--></head><body><div id="root"><!--landing-app--></div></body></html>`
 
@@ -122,11 +122,46 @@ describe("Finito's landing", () => {
   })
 
   // Installing happens in the app on its own origin; the landing has no
-  // manifest to install from, and Finito is not in Zapstore.
-  test("offers no install from the page and no Zapstore", () => {
+  // manifest to install from.
+  test("offers no install from the page", () => {
     const html = renderLandingDocument(template, "en")
 
     expect(html).not.toContain('rel="manifest"')
-    expect(html).not.toContain("zapstore.dev")
+  })
+
+  test("offers Google Play first, then Zapstore and the APK", () => {
+    const html = renderLandingDocument(template, "en")
+    const data: unknown = JSON.parse(
+      html.match(
+        /<script type="application\/ld\+json">(.*?)<\/script>/su
+      )?.[1] ?? "null"
+    )
+
+    expect(data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "@type": "SoftwareApplication",
+          installUrl:
+            "https://play.google.com/store/apps/details?id=fit.finito.app",
+        }),
+      ])
+    )
+    const download = html.split('id="download"')[1]?.split("</section>")[0]
+    expect(
+      [...(download ?? "").matchAll(/<a [^>]*href="([^"]+)"/gu)].map(
+        (match) => match[1]
+      )
+    ).toEqual([
+      "https://app.finito.fit/onboarding?lang=en",
+      "https://play.google.com/store/apps/details?id=fit.finito.app",
+      "https://zapstore.dev/apps/fit.finito.app",
+      "https://github.com/finitoapp/finito/releases/latest/download/finito-release-signed.apk",
+    ])
+    expect(landingSite.googlePlayUrl).toBe(
+      "https://play.google.com/store/apps/details?id=fit.finito.app"
+    )
+    expect(landingSite.zapstoreUrl).toBe(
+      "https://zapstore.dev/apps/fit.finito.app"
+    )
   })
 })

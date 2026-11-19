@@ -1,14 +1,13 @@
 import type { LucideIcon } from "lucide-react"
 import {
+  ArrowDownIcon,
   BanknoteIcon,
-  DownloadIcon,
   LandmarkIcon,
   PlayIcon,
   ZapIcon,
 } from "lucide-react"
 import { type PointerEvent, useId } from "react"
 import { buttonVariants } from "@/components/ui/button.tsx"
-import { landingAppEntryUrl } from "@/core/landing-site.ts"
 import {
   mockupBoxStyle,
   mockupHeight,
@@ -24,6 +23,10 @@ import {
   percent,
 } from "@/features/landing/landing-parts.tsx"
 import { useLandingTranslation } from "@/features/landing/landing-translation.ts"
+import {
+  nativeLinkProps,
+  useMainWayIn,
+} from "@/features/landing/landing-ways-in.tsx"
 import type { TranslationKey } from "@/i18n/resources.ts"
 import { cn } from "@/lib/utils.ts"
 
@@ -272,8 +275,14 @@ function AccentedTitle() {
   )
 }
 
+const mainActionClassName = cn(
+  buttonVariants({ size: "lg" }),
+  "landing-nudge h-12 rounded-full px-7 text-base font-semibold has-data-[icon=inline-start]:pl-6"
+)
+
 export function LandingHero() {
   const { language, t } = useLandingTranslation()
+  const mainWayIn = useMainWayIn(language)
 
   return (
     <section className="landing-dots relative isolate overflow-hidden">
@@ -284,17 +293,25 @@ export function LandingHero() {
             {t("landing.hero.subtitle")}
           </p>
           <div className="landing-rise landing-delay-2 flex flex-wrap gap-3">
-            <a
+            {mainWayIn.kind === "native" ? (
+              <a
+                {...nativeLinkProps(mainWayIn.option)}
+                className={mainActionClassName}
+              >
+                <mainWayIn.option.icon
+                  aria-hidden="true"
+                  data-icon="inline-start"
+                />
+                {t(mainWayIn.option.label)}
+              </a>
+            ) : (
               // A plain link: the app is another document (landing/0003).
-              href={landingAppEntryUrl(language)}
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "landing-nudge h-12 rounded-full px-7 text-base font-semibold has-data-[icon=inline-start]:pl-6"
-              )}
-            >
-              <PlayIcon aria-hidden="true" data-icon="inline-start" />
-              {t("landing.cta.start")}
-            </a>
+              <a href={mainWayIn.href} className={mainActionClassName}>
+                <PlayIcon aria-hidden="true" data-icon="inline-start" />
+                {t("landing.cta.start")}
+              </a>
+            )}
+            {/* Every way in waits in the download section (landing/0016). */}
             <a
               href="#download"
               className={cn(
@@ -302,8 +319,8 @@ export function LandingHero() {
                 "h-12 rounded-full px-7 text-base font-semibold has-data-[icon=inline-start]:pl-6"
               )}
             >
-              <DownloadIcon aria-hidden="true" data-icon="inline-start" />
-              {t("landing.cta.download")}
+              <ArrowDownIcon aria-hidden="true" data-icon="inline-start" />
+              {t("landing.cta.moreOptions")}
             </a>
           </div>
         </div>

@@ -31,6 +31,8 @@ export interface LandingSite {
   readonly appOrigin: string | null
   /** The newest release's APK, named by the release workflow (docs/releases.md). */
   readonly apkUrl: string
+  /** The app's listing in Google Play, if it has one. */
+  readonly googlePlayUrl: string | null
   /** The app's listing in Zapstore, if it has one. */
   readonly zapstoreUrl: string | null
 }
@@ -45,6 +47,7 @@ export const landingSites = {
     paths: createLandingSitePaths("/landing"),
     appOrigin: null,
     apkUrl: `${releasesUrl}/app-release-signed.apk`,
+    googlePlayUrl: null,
     zapstoreUrl: "https://zapstore.dev/apps/me.payky",
   },
   finito: {
@@ -53,7 +56,9 @@ export const landingSites = {
     paths: createLandingSitePaths("", { terminal: true }),
     appOrigin: finitoBrand.apiBaseUrl,
     apkUrl: `${releasesUrl}/finito-release-signed.apk`,
-    zapstoreUrl: null,
+    googlePlayUrl:
+      "https://play.google.com/store/apps/details?id=fit.finito.app",
+    zapstoreUrl: "https://zapstore.dev/apps/fit.finito.app",
   },
 } as const satisfies Record<BrandId, LandingSite>
 

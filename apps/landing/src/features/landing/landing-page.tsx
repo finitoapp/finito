@@ -27,7 +27,10 @@ import {
   landingTechPaths,
   landingTerminalPaths,
 } from "@/core/landing-site.ts"
-import { LandingClosing } from "@/features/landing/landing-closing.tsx"
+import {
+  LandingClosing,
+  LandingDownload,
+} from "@/features/landing/landing-closing.tsx"
 import { LandingFeatureStory } from "@/features/landing/landing-feature-story.tsx"
 import { LandingHeader } from "@/features/landing/landing-header.tsx"
 import { LandingHero } from "@/features/landing/landing-hero.tsx"
@@ -391,6 +394,7 @@ export function LandingPage({ language }: { readonly language: Language }) {
       <LandingFeatureStory />
       <NotNeeded />
       <More />
+      <LandingDownload />
       <Faq items={faqItems} />
       <LandingClosing />
     </LandingShell>

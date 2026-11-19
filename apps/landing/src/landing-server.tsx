@@ -170,7 +170,8 @@ const structuredData = {
         applicationCategory: "FinanceApplication",
         operatingSystem: "Android, Web",
         downloadUrl: landingSite.apkUrl,
-        installUrl: landingSite.zapstoreUrl ?? undefined,
+        installUrl:
+          landingSite.googlePlayUrl ?? landingSite.zapstoreUrl ?? undefined,
         inLanguage: language,
         offers: { "@type": "Offer", price: "0", priceCurrency: "CZK" },
       },
@@ -256,8 +257,8 @@ function LandingHead({
         rel="apple-touch-icon"
         href={`${landingSite.appOrigin ?? ""}/apple-touch-icon.png`}
       />
-      {/* The app's own manifest, so the browser can install it from here
-          (landing/0005), where the landing shares its origin (landing/0013). */}
+      {/* The app's own manifest, so the browser can install it from its menu
+          (landing/0016), where the landing shares its origin (landing/0013). */}
       {installsFromLanding ? (
         <link rel="manifest" href="/manifest.webmanifest" />
       ) : null}

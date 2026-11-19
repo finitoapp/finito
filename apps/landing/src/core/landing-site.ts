@@ -44,7 +44,7 @@ export const landingAppEntryUrl = (language: Language): string =>
     : new URL(landingAppEntryPath(language), landingSite.appOrigin).href
 
 /**
- * Whether the browser can install the app from the landing (landing/0005):
+ * Whether the browser can install the app from the landing (landing/0016):
  * only where the landing shares the app's origin and so its manifest.
  */
 export const installsFromLanding = landingSite.appOrigin === null

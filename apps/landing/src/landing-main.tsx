@@ -44,7 +44,7 @@ const page = (
 
 // An app added to the home screen can start at the page it was added from
 // rather than at the manifest's start URL, as iOS has done; installed, it
-// belongs in the app, in this page's language (landing/0005).
+// belongs in the app, in this page's language (landing/0016).
 if (readLandingRedirectEnvironment().installedPwa) {
   location.replace(landingAppEntryUrl(language))
 } else if (rootElement.firstElementChild !== null) {

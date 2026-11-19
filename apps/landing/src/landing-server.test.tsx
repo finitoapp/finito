@@ -112,17 +112,25 @@ describe("renderLandingDocument", () => {
     )
   })
 
-  test("offers a native and a web-based way into the app", () => {
+  // Prerendered as a page away from Android sees it: the web app is the main
+  // way in, and the download section, before the FAQ, lists every way.
+  test("offers every way in before the FAQ, opening the web app first", () => {
     const document = renderLandingDocument(template, "en")
+    const download = document.split('id="download"')[1]?.split("</section>")[0]
+    const links = [
+      ...(download ?? "").matchAll(/<a [^>]*href="([^"]+)"/gu),
+    ].map((match) => match[1])
 
-    for (const key of [
-      "landing.closing.get.native.title",
-      "landing.closing.get.native.action",
-      "landing.closing.get.webBased.title",
-      "landing.closing.get.webBased.action",
-    ] as const) {
-      expect(document).toContain(resources.en[key])
-    }
+    expect(document.indexOf('id="download"')).toBeLessThan(
+      document.indexOf(resources.en["landing.faq.title"])
+    )
+    expect(download).toContain(resources.en["landing.closing.get.title"])
+    expect(links).toEqual([
+      "/onboarding?lang=en",
+      "https://zapstore.dev/apps/me.payky",
+      "https://github.com/finitoapp/finito/releases/latest/download/app-release-signed.apk",
+    ])
+    expect(document).toContain(resources.en["landing.cta.moreOptions"])
   })
 
   test.each([

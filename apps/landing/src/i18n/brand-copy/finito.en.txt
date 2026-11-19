@@ -4,15 +4,6 @@ Finito
 landing.closing.contact.body
 Leave an email or a phone number and we'll get in touch. We'll answer your questions, set Finito up with you and fine-tune it for your business, so payments run smoothly and securely.
 
-landing.closing.get.body
-Finito is free and installs in a minute. Pick how you want to run it.
-
-landing.closing.get.install.done
-Finito is installed. Open it from your home screen or your list of apps.
-
-landing.closing.get.title
-Install Finito
-
 landing.cta.start
 Start Finito
 

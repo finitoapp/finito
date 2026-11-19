@@ -134,7 +134,7 @@ function NotOnboarded() {
         window.location.replace(landingPaths[preferredLandingLanguage()])
       } else {
         // An app installed from the landing page starts in its language
-        // (landing/0005).
+        // (landing/0016).
         const lang = environment.installedPwa
           ? readInstallLanguage()
           : undefined

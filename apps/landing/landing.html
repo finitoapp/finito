@@ -8,18 +8,6 @@
     <!-- The page's head, the app's icon and manifest included (landing-server.tsx). -->
     <!--landing-head-->
     <script>
-      // Chromium offers the install once, possibly before the page's module
-      // runs, so the offer is kept here for the install card
-      // (landing-install-prompt.ts) to pick up.
-      addEventListener("beforeinstallprompt", (event) => {
-        event.preventDefault()
-        window.paykyInstallPrompt = event
-      })
-      addEventListener("appinstalled", () => {
-        window.paykyInstallPrompt = undefined
-      })
-    </script>
-    <script>
       // The landing page's own theme (use-landing-theme.ts), applied before
       // the first paint so the prerendered page never flashes the wrong one.
       ;(() => {

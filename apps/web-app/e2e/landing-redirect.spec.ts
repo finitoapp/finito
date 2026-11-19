@@ -3,26 +3,19 @@ import { expect, test } from "./support/fixtures.ts"
 
 import { translate } from "./support/i18n.ts"
 
-/** Opens a group's menu, retrying until the prerendered page has hydrated. */
-const chooseWayIn = async (
-  page: Page,
-  language: "cs" | "en" | "sk",
-  group: "native" | "webBased",
-  option: "zapstore" | "apk" | "install" | "web"
-) => {
-  const item = page.getByRole("menuitem", {
-    name: translate(language, `landing.closing.get.${option}.label`),
+/** The download section's button that opens the web app. */
+const webAppLink = (page: Page, language: "cs" | "en" | "sk") =>
+  page.locator("#download").getByRole("link", {
+    name: translate(language, "landing.cta.startShort"),
+    exact: true,
   })
-  await expect(async () => {
-    await page
-      .getByRole("button", {
-        name: translate(language, `landing.closing.get.${group}.action`),
-      })
-      .click()
-    await expect(item).toBeVisible({ timeout: 1000 })
-  }).toPass()
-  return item
-}
+
+/** Makes the page see an Android phone (landing/0016). */
+const pretendAndroid = `
+  Object.defineProperty(navigator, "userAgent", {
+    get: () => "Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36",
+  })
+`
 
 test("a new browser visitor lands on the landing page until they open the app", async ({
   page,
@@ -33,7 +26,7 @@ test("a new browser visitor lands on the landing page until they open the app", 
   })
 
   await test.step("the landing page opens onboarding", async () => {
-    await (await chooseWayIn(page, "cs", "webBased", "web")).click()
+    await webAppLink(page, "cs").click()
     await expect(
       page.getByRole("heading", { name: translate("cs", "onboarding.title") })
     ).toBeVisible()
@@ -86,7 +79,7 @@ test("the app starts in the language of the landing page it was opened from", as
   page,
 }) => {
   await page.goto("/landing", { waitUntil: "domcontentloaded" })
-  await (await chooseWayIn(page, "cs", "webBased", "web")).click()
+  await webAppLink(page, "cs").click()
 
   await expect(
     page.getByRole("heading", { name: translate("cs", "onboarding.title") })
@@ -105,7 +98,7 @@ test("a device with an account keeps its language when opened from the landing p
   seededPage: page,
 }) => {
   await page.goto("/landing", { waitUntil: "domcontentloaded" })
-  await (await chooseWayIn(page, "cs", "webBased", "web")).click()
+  await webAppLink(page, "cs").click()
 
   await expect(page).toHaveURL("/")
   await expect(
@@ -121,27 +114,19 @@ const pretendInstalled = `
       : matchMedia(query)
 `
 
-test("the landing page installs the app, which starts in the page's language", async ({
+test("an app installed from the landing page starts in the page's language", async ({
   page,
 }) => {
   await page.goto("/landing/sk", { waitUntil: "domcontentloaded" })
 
-  await test.step("the browser's own install offer opens from the menu", async () => {
-    await page.evaluate(() => {
-      const offer = Object.assign(
-        new Event("beforeinstallprompt", { cancelable: true }),
-        {
-          prompt: async () => {
-            dispatchEvent(new Event("appinstalled"))
-          },
-        }
-      )
-      dispatchEvent(offer)
-    })
-    await (await chooseWayIn(page, "sk", "webBased", "install")).click()
-    await expect(
-      page.getByText(translate("sk", "landing.closing.get.install.done"))
-    ).toBeVisible()
+  await test.step("the browser installs the app from its own menu", async () => {
+    // Retried until the page has hydrated and listens for the install.
+    await expect(async () => {
+      await page.evaluate(() => dispatchEvent(new Event("appinstalled")))
+      expect(
+        await page.evaluate(() => localStorage.getItem("payky.installLanguage"))
+      ).toBe('"sk"')
+    }).toPass()
   })
 
   await test.step("the installed app opens onboarding in Slovak", async () => {
@@ -164,33 +149,51 @@ test("an installed app that starts on the landing page goes to onboarding in its
   ).toBeVisible()
 })
 
-test("the native app comes from Zapstore or as the newest APK", async ({
+test("the download section offers every way in, the web app first", async ({
   page,
 }) => {
   await page.goto("/landing/en", { waitUntil: "domcontentloaded" })
+  const download = page.locator("#download")
 
+  await expect(webAppLink(page, "en")).toHaveAttribute(
+    "href",
+    "/onboarding?lang=en"
+  )
   await expect(
-    await chooseWayIn(page, "en", "native", "zapstore")
+    download.getByRole("link", {
+      name: translate("en", "landing.closing.get.zapstore.label"),
+    })
   ).toHaveAttribute("href", "https://zapstore.dev/apps/me.payky")
   await expect(
-    page.getByRole("menuitem", {
+    download.getByRole("link", {
       name: translate("en", "landing.closing.get.apk.label"),
     })
   ).toHaveAttribute(
     "href",
     "https://github.com/finitoapp/finito/releases/latest/download/app-release-signed.apk"
   )
+  await page
+    .getByRole("link", { name: translate("en", "landing.cta.moreOptions") })
+    .click()
+  await expect(download).toBeInViewport()
 })
 
-test("without the browser's install offer, the landing page says how to install by hand", async ({
-  page,
-}) => {
+test("on Android the main way in is the store", async ({ page }) => {
+  await page.addInitScript({ content: pretendAndroid })
   await page.goto("/landing/en", { waitUntil: "domcontentloaded" })
-  await (await chooseWayIn(page, "en", "webBased", "install")).click()
 
   await expect(
-    page.getByText(translate("en", "landing.closing.get.install.manual"))
-  ).toBeVisible()
+    page.getByRole("banner").getByRole("link", {
+      name: translate("en", "landing.cta.download"),
+      exact: true,
+    })
+  ).toHaveAttribute("href", "https://zapstore.dev/apps/me.payky")
+  await expect(
+    page.getByRole("link", { name: translate("en", "landing.cta.start") })
+  ).toHaveCount(0)
+  await expect(page.locator("#download a").first()).toHaveText(
+    translate("en", "landing.closing.get.zapstore.label")
+  )
 })
 
 test("the landing page's start buttons open the app in its language", async ({
@@ -202,10 +205,9 @@ test("the landing page's start buttons open the app in its language", async ({
     [translate("sk", "landing.cta.start"), false],
     [translate("sk", "landing.cta.startShort"), true],
   ] as const) {
-    await expect(page.getByRole("link", { name, exact })).toHaveAttribute(
-      "href",
-      "/onboarding?lang=sk"
-    )
+    for (const link of await page.getByRole("link", { name, exact }).all()) {
+      await expect(link).toHaveAttribute("href", "/onboarding?lang=sk")
+    }
   }
 
   await page

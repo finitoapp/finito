@@ -1,6 +1,6 @@
 # 0005 The landing page offers four ways into the app
 
-Status: accepted
+Status: superseded by landing/0016
 Date: 2026-10-11
 
 ## Context
