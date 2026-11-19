@@ -2,30 +2,10 @@ export const enLanding = {
   "landing.closing.contact.body":
     "Leave an email or a phone number and we'll get in touch. We'll answer your questions, set {appName} up with you and fine-tune it for your business, so payments run smoothly and securely.",
   "landing.closing.contact.title": "We'll help you",
-  "landing.closing.get.apk.hint": "No automatic updates",
-  "landing.closing.get.apk.label": "APK from GitHub",
-  "landing.closing.get.body":
-    "{appName} is free and installs in a minute. Pick how you want to run it.",
-  "landing.closing.get.install.done":
-    "{appName} is installed. Open it from your home screen or your list of apps.",
-  "landing.closing.get.install.hint":
-    "Its own window and icon, automatic updates",
-  "landing.closing.get.install.label": "Install as a PWA",
-  "landing.closing.get.install.manual":
-    "On iPhone and iPad, tap Share in Safari and choose Add to Home Screen. In other browsers, look for Install in the browser menu.",
-  "landing.closing.get.native.action": "Get it for Android",
-  "landing.closing.get.native.body": "For Android, with every feature.",
-  "landing.closing.get.native.title": "Native app",
-  "landing.closing.get.recommended": "Recommended",
-  "landing.closing.get.title": "Install {appName}",
-  "landing.closing.get.web.hint": "Automatic updates, nothing to install",
-  "landing.closing.get.web.label": "Open in the browser",
-  "landing.closing.get.webBased.action": "Start the web app",
-  "landing.closing.get.webBased.body":
-    "For Android, iPhone, iPad and computers, without the features that need native code, such as card payments through a terminal.",
-  "landing.closing.get.webBased.title": "Web app",
-  "landing.closing.get.zapstore.hint": "Automatic updates",
-  "landing.closing.get.zapstore.label": "Zapstore (recommended)",
+  "landing.closing.get.apk.label": "APK",
+  "landing.closing.get.googlePlay.label": "Google Play",
+  "landing.closing.get.title": "Get the app",
+  "landing.closing.get.zapstore.label": "Zapstore",
   "landing.contact.business.label": "Business",
   "landing.contact.channel.email": "Email",
   "landing.contact.channel.legend": "Where should we reach you?",
@@ -47,6 +27,7 @@ export const enLanding = {
   "landing.contact.sent.title": "Thanks, got it.",
   "landing.contact.submit": "Get in touch",
   "landing.cta.download": "Download",
+  "landing.cta.moreOptions": "More options",
   "landing.cta.start": "Start {appName}",
   "landing.cta.startShort": "Start",
   "landing.eet.changes.cards.body":

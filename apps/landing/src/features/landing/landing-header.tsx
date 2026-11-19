@@ -1,4 +1,5 @@
 import {
+  DownloadIcon,
   HouseIcon,
   LanguagesIcon,
   type LucideIcon,
@@ -24,12 +25,12 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx"
-import {
-  landingAppEntryUrl,
-  landingEetPaths,
-  landingPaths,
-} from "@/core/landing-site.ts"
+import { landingEetPaths, landingPaths } from "@/core/landing-site.ts"
 import { useLandingTranslation } from "@/features/landing/landing-translation.ts"
+import {
+  nativeLinkProps,
+  useMainWayIn,
+} from "@/features/landing/landing-ways-in.tsx"
 import { useLandingTheme } from "@/features/landing/use-landing-theme.ts"
 import type { Language, TranslationKey } from "@/i18n/resources.ts"
 import { cn } from "@/lib/utils.ts"
@@ -124,11 +125,12 @@ function switchTheme(origin: Element, apply: () => void) {
 /**
  * Brand and menu on the left; on the right the one action, the language and
  * the appearance. The menu's links sit in the bar on wide screens and behind
- * a menu button on narrow ones. The header's button goes straight into the
- * app, as the hero's does.
+ * a menu button on narrow ones. The header's button is the page's main way
+ * in, as the hero's is: the store on Android, the app elsewhere (landing/0016).
  */
 export function LandingHeader() {
   const { language, setLanguage, t } = useLandingTranslation()
+  const mainWayIn = useMainWayIn(language)
   const [theme, setTheme] = useLandingTheme()
   const ThemeIcon = themeIcons[theme]
   const themeLabel = `${t("landing.theme.label")}: ${t(themeLabelKeys[theme])}`
@@ -172,15 +174,27 @@ export function LandingHeader() {
 
         <div className="flex items-center gap-1">
           <a
-            // A plain link: the app is another document (landing/0003).
-            href={landingAppEntryUrl(language)}
+            // The main way in: the store on Android, else the app, a plain
+            // link to another document (landing/0003, landing/0016).
+            {...(mainWayIn.kind === "native"
+              ? nativeLinkProps(mainWayIn.option)
+              : { href: mainWayIn.href })}
             className={cn(
               buttonVariants({ size: "lg" }),
               "mr-2 rounded-full px-4 font-semibold has-data-[icon=inline-start]:pl-3.5"
             )}
           >
-            <PlayIcon aria-hidden="true" data-icon="inline-start" />
-            {t("landing.cta.startShort")}
+            {mainWayIn.kind === "native" ? (
+              <>
+                <DownloadIcon aria-hidden="true" data-icon="inline-start" />
+                {t("landing.cta.download")}
+              </>
+            ) : (
+              <>
+                <PlayIcon aria-hidden="true" data-icon="inline-start" />
+                {t("landing.cta.startShort")}
+              </>
+            )}
           </a>
 
           <DropdownMenu>

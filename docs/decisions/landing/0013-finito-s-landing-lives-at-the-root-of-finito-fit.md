@@ -28,9 +28,9 @@ landing projects share it.
   origin. Finito's links to the app on app.finito.fit (the edge landing to
   the edge app, through `VITE_PAYKY_API_BASE_URL`), with the page's language.
 - **Installing.** Only a landing on the app's own origin offers the browser's
-  install (landing/0005), since it shares the app's manifest; Finito's
-  leaves it to the app. Finito is not in Zapstore, so its landing offers the
-  APK alone among the native ways in, `finito-release-signed.apk`.
+  install (landing/0016), since it shares the app's manifest; Finito's
+  leaves it to the app. Its native ways in are Google Play, Zapstore and
+  `finito-release-signed.apk` (landing/0016).
 - **Search.** Canonical, alternate and sitemap addresses name the brand's
   production site; the prerender writes `sitemap.xml` and `robots.txt` for it.
 - **Lightning address.** finito.fit and edge.finito.fit forward
@@ -57,7 +57,7 @@ in the device's language.
 - `apps/landing/src/finito-landing.test.tsx > Finito's landing > lives at the root of finito.fit`
 - `apps/landing/src/finito-landing.test.tsx > Finito's landing > names Finito and none of Payky's hosts`
 - `apps/landing/src/finito-landing.test.tsx > Finito's landing > sends visitors to the app on app.finito.fit`
-- `apps/landing/src/finito-landing.test.tsx > Finito's landing > offers no install from the page and no Zapstore`
+- `apps/landing/src/finito-landing.test.tsx > Finito's landing > offers no install from the page`
 - `apps/landing/src/i18n/brand-copy.test.ts > landing brand copy > names the app and its hosts only through placeholders`
 - `apps/landing/src/i18n/brand-copy.test.ts > landing brand copy > puts no name-dependent preposition before the name`
 - `packages/web-shared/src/landing-redirect.test.ts > a landing at the domain's root > reads %s as %s`

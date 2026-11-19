@@ -4,31 +4,10 @@ export const skLanding = {
   "landing.closing.contact.body":
     "Nechajte nám e-mail alebo telefón a ozveme sa. Zodpovieme vaše otázky, {appName} s vami nastavíme a vyladíme ho pre vašu prevádzku, aby platenie bežalo hladko a bezpečne.",
   "landing.closing.contact.title": "Pomôžeme vám",
-  "landing.closing.get.apk.hint": "Bez automatických aktualizácií",
-  "landing.closing.get.apk.label": "APK z GitHubu",
-  "landing.closing.get.body":
-    "{appName} je zadarmo a nainštalujete ho za minútu. Vyberte si, kde ho chcete používať.",
-  "landing.closing.get.install.done":
-    "{appName} je nainštalované. Otvorte ho z plochy alebo zo zoznamu aplikácií.",
-  "landing.closing.get.install.hint":
-    "Vlastné okno a ikona, automatické aktualizácie",
-  "landing.closing.get.install.label": "Nainštalovať ako PWA",
-  "landing.closing.get.install.manual":
-    "Na iPhone a iPade ťuknite v Safari na Zdieľať a zvoľte Pridať na plochu. V ostatných prehliadačoch hľadajte v menu voľbu Inštalovať.",
-  "landing.closing.get.native.action": "Stiahnuť pre Android",
-  "landing.closing.get.native.body": "Pre Android, so všetkými funkciami.",
-  "landing.closing.get.native.title": "Natívna aplikácia",
-  "landing.closing.get.recommended": "Odporúčame",
-  "landing.closing.get.title": "Nainštalujte si {appName}",
-  "landing.closing.get.web.hint":
-    "Automatické aktualizácie, nič sa neinštaluje",
-  "landing.closing.get.web.label": "Otvoriť v prehliadači",
-  "landing.closing.get.webBased.action": "Spustiť webovú aplikáciu",
-  "landing.closing.get.webBased.body":
-    "Pre Android, iPhone, iPad aj počítač, bez funkcií, ktoré potrebujú natívny kód, napríklad platieb kartou cez terminál.",
-  "landing.closing.get.webBased.title": "Webová aplikácia",
-  "landing.closing.get.zapstore.hint": "Automatické aktualizácie",
-  "landing.closing.get.zapstore.label": "Zapstore (odporúčané)",
+  "landing.closing.get.apk.label": "APK",
+  "landing.closing.get.googlePlay.label": "Google Play",
+  "landing.closing.get.title": "Stiahnite si aplikáciu",
+  "landing.closing.get.zapstore.label": "Zapstore",
   "landing.contact.business.label": "Podnik",
   "landing.contact.channel.email": "E-mail",
   "landing.contact.channel.legend": "Ako sa vám máme ozvať?",
@@ -53,6 +32,7 @@ export const skLanding = {
   "landing.contact.sent.title": "Ďakujeme, máme to.",
   "landing.contact.submit": "Ozvite sa mi",
   "landing.cta.download": "Stiahnuť",
+  "landing.cta.moreOptions": "Viac možností",
   "landing.cta.start": "Spustiť {appName}",
   "landing.cta.startShort": "Spustiť",
   "landing.eet.changes.cards.body":

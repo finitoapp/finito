@@ -112,7 +112,7 @@ export function markAppEntered(): void {
   try {
     localStorage.setItem(appEnteredStorageKey, "1")
     // Onboarding has its language by now; a language picked there must not
-    // be undone by the installed app's next start (landing/0005).
+    // be undone by the installed app's next start (landing/0016).
     localStorage.removeItem(installLanguageStorageKey)
   } catch {
     // Same as above.
@@ -149,7 +149,7 @@ export function rememberLandingLanguage(language: Language): void {
 
 /**
  * Kept when the app is installed from the landing page, whose start URL
- * cannot carry the page's language (landing/0005).
+ * cannot carry the page's language (landing/0016).
  */
 export function rememberInstallLanguage(language: Language): void {
   try {

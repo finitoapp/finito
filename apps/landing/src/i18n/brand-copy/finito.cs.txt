@@ -4,15 +4,6 @@ Finito
 landing.closing.contact.body
 Nechte nám e-mail nebo telefon a ozveme se. Zodpovíme vaše dotazy, Finito s vámi nastavíme a vyladíme ho pro váš provoz, aby placení běželo hladce a bezpečně.
 
-landing.closing.get.body
-Finito je zdarma a nainstalujete ho za minutu. Vyberte si, kde ho chcete používat.
-
-landing.closing.get.install.done
-Finito je nainstalované. Otevřete ho z plochy nebo ze seznamu aplikací.
-
-landing.closing.get.title
-Nainstalujte si Finito
-
 landing.cta.start
 Spustit Finito
 
