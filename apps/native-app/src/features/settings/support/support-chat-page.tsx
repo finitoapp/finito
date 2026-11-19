@@ -40,7 +40,7 @@ import { DmInboxWarning } from "./dm-inbox-warning.tsx"
 import { useSendSupportMessage } from "./use-send-support-message.ts"
 import {
   useDmInbox,
-  usePublishDmRelayList,
+  useDmRelayList,
   useSupportMessages,
   useSupportTeam,
 } from "./use-support-chat.ts"
@@ -79,14 +79,12 @@ function SupportChat({ pubkey }: { readonly pubkey: string }) {
     team: team.data,
     inbox: inbox.data,
   })
-  const dmRelayList = usePublishDmRelayList({ pubkey, team: team.data })
-  // The first message of an account without a DM relay list publishes one
-  // alongside it: until then support has nowhere to reply.
+  const dmRelayList = useDmRelayList({ pubkey, team: team.data })
+  // Every message makes sure support's client can find where to reply: an
+  // account without a DM relay list gets one alongside its first message,
+  // even one sent before the check finished (support/0004).
   const sendAndOpenReplies = async (text: string) => {
-    await Promise.all([
-      send(text),
-      inbox.data?.state === "missing" ? dmRelayList.publish() : undefined,
-    ])
+    await Promise.all([send(text), dmRelayList.ensure()])
   }
   const entries: ReadonlyArray<ChatEntry> = [
     ...toChatEntries(messages.data ?? []),
@@ -163,8 +161,8 @@ function SupportChat({ pubkey }: { readonly pubkey: string }) {
           unverified={inbox.data?.state === "unverified"}
           publishFailed={dmRelayList.failed}
           onVerify={async () => {
-            const { data } = await inbox.refetch()
-            if (data?.state === "missing") await dmRelayList.publish()
+            await inbox.refetch()
+            await dmRelayList.ensure()
           }}
           onPublish={dmRelayList.publish}
         />

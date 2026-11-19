@@ -42,7 +42,7 @@ import { ProfileAvatar } from "@/features/settings/profile/profile-avatar.tsx"
 import {
   supportMessagesQueryKey,
   useDmInbox,
-  usePublishDmRelayList,
+  useDmRelayList,
   useSupportMessages,
   useSupportTeam,
 } from "@/features/settings/support/use-support-chat.ts"
@@ -79,14 +79,12 @@ export function SupportChatPage() {
     team: team.data,
     inbox: inbox.data,
   })
-  const dmRelayList = usePublishDmRelayList({ pubkey, team: team.data })
-  // The first message of an account without a DM relay list publishes one
-  // alongside it: until then support has nowhere to reply.
+  const dmRelayList = useDmRelayList({ pubkey, team: team.data })
+  // Every message makes sure support's client can find where to reply: an
+  // account without a DM relay list gets one alongside its first message,
+  // even one sent before the check finished (support/0004).
   const sendAndOpenReplies = async (text: string) => {
-    await Promise.all([
-      send(text),
-      inbox.data?.state === "missing" ? dmRelayList.publish() : undefined,
-    ])
+    await Promise.all([send(text), dmRelayList.ensure()])
   }
   // Without the team there is nobody to write to: the chat says so instead
   // of falling back to a list built into the app (support/0001).
@@ -120,8 +118,8 @@ export function SupportChatPage() {
           unverified={inbox.data?.state === "unverified"}
           publishFailed={dmRelayList.failed}
           onVerify={async () => {
-            const { data } = await inbox.refetch()
-            if (data?.state === "missing") await dmRelayList.publish()
+            await inbox.refetch()
+            await dmRelayList.ensure()
           }}
           onPublish={dmRelayList.publish}
         />

@@ -1,5 +1,6 @@
 import {
   type DmInbox,
+  ensureDmRelayList,
   fetchSupportMessages,
   loadDmInbox,
   mergeSupportMessages,
@@ -9,7 +10,7 @@ import {
   subscribeSupportMessages,
 } from "@payky/core/integrations/nostr/nostr-support-chat"
 import { fetchSupportTeam } from "@payky/core/integrations/nostr/support-team-client"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { apiUrl } from "../../../core/native-env.ts"
 import { useAppRun } from "../../../hooks/use-app-run.ts"
@@ -43,6 +44,30 @@ export const useSupportTeam = () => {
   })
 }
 
+/**
+ * The account's DM inbox, which says where support's replies arrive. Shared by
+ * `useDmInbox` and `useDmRelayList`, so a message sent while the check still
+ * runs waits for that same check instead of starting another or skipping it.
+ */
+const dmInboxQuery = ({
+  pubkey,
+  team,
+  appRun,
+}: {
+  readonly pubkey: string
+  readonly team: SupportTeam | undefined
+  readonly appRun: ReturnType<typeof useAppRun>
+}) =>
+  queryOptions({
+    queryKey: dmInboxQueryKey(pubkey),
+    queryFn: async () => {
+      if (team === undefined) throw new Error("The support team is not loaded.")
+      await using run = appRun()
+      return await run.ok(loadDmInbox({ team }))
+    },
+    staleTime: 5 * 60_000,
+  })
+
 /** The account's DM inbox, which says where support's replies arrive. */
 export const useDmInbox = ({
   pubkey,
@@ -53,51 +78,64 @@ export const useDmInbox = ({
 }) => {
   const appRun = useAppRun()
   return useQuery({
-    queryKey: dmInboxQueryKey(pubkey),
+    ...dmInboxQuery({ pubkey, team, appRun }),
     enabled: team !== undefined,
-    queryFn: async () => {
-      if (team === undefined) throw new Error("The support team is not loaded.")
-      await using run = appRun()
-      return await run.ok(loadDmInbox({ team }))
-    },
-    staleTime: 5 * 60_000,
   })
 }
 
 /**
- * Publishes the account's DM relay list (support/0001) and remembers whether
- * the last attempt failed, which the chat warns about. A published list is
- * written into the inbox's cache: relays may not serve it back yet.
+ * Keeps the account's DM relay list where support's clients look for it
+ * (support/0001, support/0004) and remembers whether the last attempt
+ * failed, which the chat warns about. `ensure` goes with every message: it
+ * waits for the inbox check, then publishes a list for an account that has
+ * none or copies a found one to the relays that lack it. `publish` replaces
+ * the list, after the chat's warning. Either writes the resulting inbox into
+ * its cache: relays may not serve a new list back yet.
  */
-export const usePublishDmRelayList = ({
+export const useDmRelayList = ({
   pubkey,
   team,
 }: {
   readonly pubkey: string
   readonly team: SupportTeam | undefined
 }) => {
+  const appRun = useAppRun()
   const runToast = useRunToast()
   const queryClient = useQueryClient()
   const [failed, setFailed] = useState(false)
 
-  const publish = async () => {
-    if (team === undefined) return
-    const outcome = { published: false }
-    await runToast(async (run) => {
-      const result = await run(publishDmRelayList({ team }))
-      // A rejection is shown by the chat's warning, not a toast.
-      outcome.published = result.ok
-    })
-    setFailed(!outcome.published)
-    if (outcome.published) {
-      queryClient.setQueryData(dmInboxQueryKey(pubkey), {
-        relays: team.relays,
-        state: "found",
-      } satisfies DmInbox)
+  const settle = (inbox: DmInbox | undefined) => {
+    setFailed(inbox === undefined)
+    if (inbox !== undefined) {
+      queryClient.setQueryData(dmInboxQueryKey(pubkey), inbox)
     }
   }
 
-  return { publish, failed }
+  const ensure = async () => {
+    if (team === undefined) return
+    const outcome: { inbox?: DmInbox } = {}
+    await runToast(async (run) => {
+      const inbox = await queryClient.fetchQuery(
+        dmInboxQuery({ pubkey, team, appRun })
+      )
+      const result = await run(ensureDmRelayList({ team, inbox }))
+      // A rejection is shown by the chat's warning, not a toast.
+      if (result.ok) outcome.inbox = result.value
+    })
+    settle(outcome.inbox)
+  }
+
+  const publish = async () => {
+    if (team === undefined) return
+    const outcome: { inbox?: DmInbox } = {}
+    await runToast(async (run) => {
+      const result = await run(publishDmRelayList({ team }))
+      if (result.ok) outcome.inbox = result.value
+    })
+    settle(outcome.inbox)
+  }
+
+  return { ensure, publish, failed }
 }
 
 /**
