@@ -16,8 +16,8 @@ export const table = {
    * (catalog/0008): a count nobody knows is not shown at all.
    */
   seatCount: PositiveIntegerSchema.nullable(),
-  // Not read or written by any feature yet — reserved for a future QR code
-  // sticker on the physical table that resolves straight to it.
+  // Generated once and never edited: the table's id towards Qerko, whose QR
+  // codes on the physical tables are paired with it (qerko/0017).
   code: NonEmptyString255Schema,
   sortOrder: NonNegativeIntegerSchema,
 } as const

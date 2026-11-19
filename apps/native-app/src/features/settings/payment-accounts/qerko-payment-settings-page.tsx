@@ -9,8 +9,14 @@ import {
 import {
   saveQerkoPaymentAccount,
   setQerkoPaymentConnectionDevice,
+  setQerkoPaymentFlows,
 } from "@payky/core/modules/account/account-actions"
 import { qerkoPaymentAccountQuery } from "@payky/core/modules/account/account-queries"
+import type { AccountId } from "@payky/core/modules/account/account-types"
+import {
+  deriveQerkoPaymentFlows,
+  type QerkoPaymentFlows,
+} from "@payky/core/modules/account/account-utils"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
 import { deviceByIdQuery } from "@payky/core/modules/device/device-queries"
@@ -24,7 +30,7 @@ import CircleCheck from "lucide-react-native/icons/circle-check"
 import LoaderCircle from "lucide-react-native/icons/loader-circle"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { type ReactNode, useState } from "react"
-import { Text, XStack } from "tamagui"
+import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../../atoms/account.ts"
 import { qerkoConnectionStatusStore } from "../../../atoms/qerko-connection-status.ts"
 import { DetailRow } from "../../../components/detail-row.tsx"
@@ -372,6 +378,13 @@ function QerkoPaymentPairedView({
             />
           </SettingsTileList>
 
+          {paymentAccount === undefined ? null : (
+            <QerkoPaymentFlowSwitches
+              accountId={paymentAccount.id}
+              flows={deriveQerkoPaymentFlows(paymentAccount)}
+            />
+          )}
+
           {!hasLocation ? (
             // Pairing was left before its location was chosen (qerko/0007).
             <QerkoLocationChooser
@@ -423,6 +436,58 @@ function QerkoPaymentPairedView({
         }}
       />
     </>
+  )
+}
+
+/**
+ * The two flows Qerko payments serve, each on its own switch, as web's
+ * (qerko/0016): a QR code for one payment and a table's open bill
+ * (qerko/0017). Native difference: each switch is a `SwitchRow`.
+ */
+function QerkoPaymentFlowSwitches({
+  accountId,
+  flows,
+}: {
+  readonly accountId: AccountId
+  readonly flows: QerkoPaymentFlows
+}) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const save = (flow: keyof QerkoPaymentFlows) => (next: boolean) =>
+    runToast(async (run) => {
+      await run.ok(setQerkoPaymentFlows({ accountId, [flow]: next }))
+    })
+  const direct = useInlineChoice(flows.direct, save("direct"))
+  const table = useInlineChoice(flows.table, save("table"))
+
+  return (
+    <YStack gap={8}>
+      <Text
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        fontWeight={fontWeight.semibold}
+      >
+        {t("settings.qerkoPayment.flows.title")}
+      </Text>
+      <SwitchRow
+        label={t("settings.qerkoPayment.directPayment.label")}
+        description={t("settings.qerkoPayment.directPayment.description")}
+        checked={direct.value}
+        disabled={direct.saving}
+        onCheckedChange={(checked) => {
+          void direct.choose(checked)
+        }}
+      />
+      <SwitchRow
+        label={t("settings.qerkoPayment.tablePayment.label")}
+        description={t("settings.qerkoPayment.tablePayment.description")}
+        checked={table.value}
+        disabled={table.saving}
+        onCheckedChange={(checked) => {
+          void table.choose(checked)
+        }}
+      />
+    </YStack>
   )
 }
 

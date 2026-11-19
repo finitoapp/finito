@@ -128,6 +128,13 @@ export const enSettings = {
   "settings.qerkoPayment.paired.success.noDevice":
     "No device accepts them yet. Choose one below.",
   "settings.qerkoPayment.enabled.label": "Enable Qerko payments",
+  "settings.qerkoPayment.flows.title": "What customers pay through Qerko",
+  "settings.qerkoPayment.directPayment.label": "Direct payment",
+  "settings.qerkoPayment.directPayment.description":
+    "The payment screen shows a Qerko QR code for the amount being charged.",
+  "settings.qerkoPayment.tablePayment.label": "Table payment",
+  "settings.qerkoPayment.tablePayment.description":
+    "Guests scan Qerko's QR code on their table and pay its open bill whole. Pair the QR codes with your tables in Qerko's administration.",
   "settings.qerkoPayment.status.notPaired": "Not paired with Qerko",
   "settings.qerkoTerminal.enabled.label": "Enable Qerko terminal",
   "settings.qerkoTerminal.environment.description":

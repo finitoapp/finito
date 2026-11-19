@@ -1,6 +1,7 @@
 import { expect, test } from "./support/fixtures.ts"
 import { translate } from "./support/i18n.ts"
-import { gotoPage } from "./support/navigation.ts"
+import { toggleInlineSwitch } from "./support/inline-edit.ts"
+import { gotoPage, reloadPage } from "./support/navigation.ts"
 import {
   qerkoLegalEntityName,
   qerkoLocationName,
@@ -10,7 +11,7 @@ import {
 
 const t = (key: Parameters<typeof translate>[1]) => translate("en", key)
 
-test("pair Qerko payments: the right code leads on to the location, and finishing turns the method on", async ({
+test("pair Qerko payments: the right code leads on to the location, finishing turns the method on, and its flows switch on their own", async ({
   seededPage: page,
 }) => {
   const qerko = await routeFakeQerko(page)
@@ -68,5 +69,22 @@ test("pair Qerko payments: the right code leads on to the location, and finishin
     ).toBeVisible()
     await expect(page.getByText(new RegExp(qerkoLegalEntityName))).toBeVisible()
     expect(qerko.pairedLocationId).toBe("loc-1")
+  })
+
+  await test.step("direct and table payments start on, and each switch is saved on its own", async () => {
+    const direct = page.getByRole("switch", {
+      name: t("settings.qerkoPayment.directPayment.label"),
+    })
+    const table = page.getByRole("switch", {
+      name: t("settings.qerkoPayment.tablePayment.label"),
+    })
+    await expect(direct).toBeChecked()
+    await expect(table).toBeChecked()
+
+    await toggleInlineSwitch(page, "settings.qerkoPayment.tablePayment.label")
+    await reloadPage(page, "en", "settings.qerkoPayment.title")
+
+    await expect(direct).toBeChecked()
+    await expect(table).not.toBeChecked()
   })
 })

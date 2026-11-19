@@ -288,6 +288,13 @@ export const qerkoPaymentAttempt = {
    * only; like Qerko's other fees it is not recorded as money (qerko/0015).
    */
   tipNetAmount: NonNegativeIntegerSchema.nullable(),
+  /**
+   * The table's bill a guest's part was split off from (qerko/0018): the
+   * payment's own bill is that part, and a failed attempt moves its lines
+   * back here. Written once with the start; `null` for a direct payment and
+   * for a table's bill paid whole.
+   */
+  splitFromBillId: BillId.nullable(),
 } as const
 
 export const paymentIndexes = ((create) => [

@@ -300,6 +300,8 @@ export const qerkoPaymentAccountQuery = createQuery((db) =>
       "account.isDeleted",
       "accountQerkoPayment.currency",
       "accountQerkoPayment.connectionDeviceId",
+      "accountQerkoPayment.directPaymentEnabled",
+      "accountQerkoPayment.tablePaymentEnabled",
     ])
     .where("account.kind", "=", "qerkoPayment")
     .where("accountQerkoPayment.isDeleted", "is not", sqliteTrue)
@@ -494,6 +496,7 @@ export const enabledPaymentMethodAccountsQuery = createQuery((db) =>
       "accountQerkoTerminal.currency as qerkoTerminalCurrency",
       "accountQerkoPayment.currency as qerkoPaymentCurrency",
       "accountQerkoPayment.connectionDeviceId as qerkoPaymentConnectionDeviceId",
+      "accountQerkoPayment.directPaymentEnabled as qerkoDirectPaymentEnabled",
       "accountLightningAddress.address as lightningAddress",
     ])
     .where("account.isDeleted", "is not", sqliteTrue)

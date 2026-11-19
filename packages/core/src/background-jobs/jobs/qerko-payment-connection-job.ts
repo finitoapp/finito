@@ -7,6 +7,7 @@ import {
 import type { QerkoConnectionStatus } from "../../integrations/qerko/qerko-connection-status.ts"
 import {
   createQerkoRpcSession,
+  createQerkoSerialQueue,
   type QerkoPosHandlers,
   type QerkoRpcSession,
   type QerkoRpcTiming,
@@ -22,10 +23,15 @@ import type {
 } from "../../modules/payment/payment-errors.ts"
 import {
   processQerkoPayment,
-  resolveQerkoBill,
   settleQerkoPayment,
-  startQerkoPayment,
 } from "../../modules/payment/payment-qerko-payment-actions.ts"
+import {
+  answerQerkoGetBill,
+  answerQerkoGetTableContents,
+  answerQerkoGetTableList,
+  answerQerkoPaymentStart,
+  answerQerkoSearchBills,
+} from "../../modules/payment/payment-qerko-pos-actions.ts"
 import { qerkoPluginQuery } from "../../modules/qerko-plugin/qerko-plugin-queries.ts"
 import type {
   AppBackgroundJob,
@@ -121,6 +127,12 @@ class QerkoPaymentConnection {
   /** The config a stolen or refused connection stopped at. */
   private stoppedAt: string | null = null
   private holding: Promise<void> | null = null
+  /**
+   * Where `paymentStart` waits its turn, kept across sessions: a start Qerko
+   * repeats on a new connection waits for the one still running from the
+   * connection before (qerko/0018).
+   */
+  private readonly serialQueue = createQerkoSerialQueue()
   private disposed = false
   private wakeUp: (() => void) | null = null
 
@@ -289,6 +301,7 @@ class QerkoPaymentConnection {
         handlers: this.handlers(),
         onState,
         onError,
+        serialQueue: this.serialQueue,
         timing: this.timing,
       })
       // Woken while connected: the config changed, the job stopped, or the
@@ -311,18 +324,21 @@ class QerkoPaymentConnection {
     const { deviceId } = this.run.deps
     return {
       searchBills: async (qrIdentifier) => {
-        const bill = await this.run(resolveQerkoBill(qrIdentifier))
-        if (bill.ok) return ok([bill.value])
-        return bill.error.type === "QerkoBillNotFound"
-          ? ok([])
-          : err(toRpcError(bill.error))
+        const bills = await this.run(answerQerkoSearchBills(qrIdentifier))
+        return bills.ok ? bills : err(toRpcError(bills.error))
       },
       getBill: async (idBill) => {
-        const bill = await this.run(resolveQerkoBill(idBill))
+        const bill = await this.run(answerQerkoGetBill(idBill))
         return bill.ok ? bill : err(toRpcError(bill.error))
       },
+      getTableList: async () =>
+        ok(await this.run.ok(answerQerkoGetTableList())),
+      getTableContents: async (idTable) =>
+        ok(await this.run.ok(answerQerkoGetTableContents(idTable))),
       paymentStart: async (payment) => {
-        const started = await this.run(startQerkoPayment(payment))
+        const started = await this.run(
+          answerQerkoPaymentStart({ wire: payment, deviceId })
+        )
         return started.ok ? ok(null) : err(toRpcError(started.error))
       },
       paymentProcessed: async (idPayment) => {

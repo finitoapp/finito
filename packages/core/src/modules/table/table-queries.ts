@@ -2,6 +2,7 @@ import type { KyselyNotNull } from "@evolu/common"
 
 import { createQuery } from "../../evolu/schema.ts"
 import { buildDiacriticInsensitiveSearchCondition } from "../../utils/sql-text-search.ts"
+import type { NonEmptyString255 } from "../shared/schema.ts"
 import type { TableId } from "./table-types.ts"
 
 export const tablesQuery = createQuery((db) =>
@@ -108,4 +109,25 @@ export const tableByIdQuery = (idValue: TableId) =>
         code: KyselyNotNull
         sortOrder: KyselyNotNull
       }>()
+  )
+
+/**
+ * The table Qerko names by its code (qerko/0017): Qerko's QR codes are paired
+ * with `getTableList`'s ids, which are table codes. Codes are generated and
+ * should be unique; were two tables to share one, the first in `sortOrder`
+ * answers for it, as `getTableList` lists only that one.
+ */
+export const tableByCodeQuery = (code: NonEmptyString255) =>
+  createQuery((db) =>
+    db
+      .selectFrom("table")
+      .select(["id", "code", "name"])
+      .where("code", "=", code)
+      .where("name", "is not", null)
+      .where("sortOrder", "is not", null)
+      .where("isDeleted", "is", null)
+      .$narrowType<{ code: KyselyNotNull; name: KyselyNotNull }>()
+      .orderBy("sortOrder", "asc")
+      .orderBy("id", "asc")
+      .limit(1)
   )

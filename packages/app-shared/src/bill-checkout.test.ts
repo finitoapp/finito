@@ -52,6 +52,7 @@ const account = (
   cardCurrency: kind === "cardSwitchio" ? currency : null,
   qerkoTerminalCurrency: kind === "qerkoTerminal" ? currency : null,
   qerkoPaymentCurrency: kind === "qerkoPayment" ? currency : null,
+  qerkoDirectPaymentEnabled: null,
   lightningAddress:
     kind === "lightningAddress" ? NonEmptyString255("cafe@example.com") : null,
 })

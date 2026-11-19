@@ -14,6 +14,9 @@ import type {
 } from "../../integrations/qerko/qerko-rpc.ts"
 import type { AccountId } from "../account/account-types.ts"
 import { settingsQuery } from "../app-settings/app-settings-queries.ts"
+import { splitBill } from "../bill/bill-actions.ts"
+import { loadBillStatusSnapshot } from "../bill/bill-guards.ts"
+import type { BillId } from "../bill/bill-types.ts"
 import { billLinesByBillIdQuery } from "../bill-line/bill-line-queries.ts"
 import {
   calculateTaxRecap,
@@ -36,6 +39,7 @@ import {
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
 import {
+  type FiatCurrency,
   NonEmptyString255,
   NonEmptyStringSchema,
   NonNegativeInteger,
@@ -43,7 +47,7 @@ import {
 } from "../shared/schema.ts"
 import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
 import type { PaymentRow, QerkoPaymentAttemptRow } from "./payment.ts"
-import { markPaymentCharged } from "./payment-actions.ts"
+import { cancelPayment, markPaymentCharged } from "./payment-actions.ts"
 import {
   createQerkoBillClosedError,
   createQerkoBillLockedError,
@@ -73,6 +77,7 @@ import {
   readQerkoTip,
   summarizeQerkoPaymentParts,
 } from "./payment-qerko-payment-utils.ts"
+import { isQerkoTablePaymentAttempt } from "./payment-qerko-table-utils.ts"
 import {
   paymentByIdQuery,
   paymentQerkoPaymentByIdQuery,
@@ -317,19 +322,48 @@ export const startQerkoPayment =
       )
     }
 
-    // Qerko's tip is fixed once its payment exists, so it is written with the
-    // start, once (qerko/0013, qerko/0015).
-    const tip = readQerkoTip(wire, payment.currency)
+    return await run(
+      recordQerkoPaymentStart({
+        wire,
+        paymentId: payment.id,
+        currency: payment.currency,
+      })
+    )
+  }
+
+/**
+ * Records a Qerko payment's start, its attempt (qerko/0013), for the payment
+ * it pays: a direct one's (`startQerkoPayment`) or the one made for a
+ * table's bill (`startQerkoTablePayment`, qerko/0018). Qerko's tip is fixed
+ * once its payment exists, so it is written with the start, once
+ * (qerko/0015).
+ */
+export const recordQerkoPaymentStart =
+  ({
+    wire,
+    paymentId,
+    currency,
+    splitFromBillId = null,
+  }: {
+    readonly wire: QerkoWirePayment
+    readonly paymentId: PaymentId
+    readonly currency: FiatCurrency
+    /** The table's bill its payment's bill was split off from (qerko/0018). */
+    readonly splitFromBillId?: BillId | null
+  }): Task<void, never, EvoluDep & EvoluOwnerDep & DateDep> =>
+  async (run) => {
+    const tip = readQerkoTip(wire, currency)
     await runMutationWithCompletion((options) =>
       run.deps.evolu.upsert(
         "qerkoPaymentAttempt",
         {
-          id: attemptId,
-          paymentId: payment.id,
+          id: createQerkoPaymentAttemptId(wire.id),
+          paymentId,
           qerkoPaymentId: NonEmptyString255(wire.id),
           startedAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
           tipAmount: tip.tipAmount,
           tipNetAmount: tip.tipNetAmount,
+          splitFromBillId,
         },
         { ...options, owner: run.deps.evoluOwner }
       )
@@ -399,6 +433,69 @@ export const processQerkoPayment =
   }
 
 /**
+ * Undoes a table's payment whose Qerko payment failed (qerko/0018): cancels
+ * the payment, which releases the lock it holds, and moves the lines of a
+ * guest's part back to the bill they were split off from, which cancels the
+ * emptied part. The lines go back only while the attempt is open, the first
+ * time it is settled: a part left apart since — its bill closed or locked
+ * meanwhile, so the move was refused — stays an open bill of its own on the
+ * table, which staff or a guest settle like any other. A payment already
+ * paid another way stays, and so do its lines.
+ */
+const undoQerkoTablePayment =
+  (
+    attempt: QerkoPaymentAttemptRow
+  ): Task<void, SettleQerkoPaymentError, EvoluDep & EvoluOwnerDep & DateDep> =>
+  async (run) => {
+    const [payment] = await run.deps.evolu.loadQuery(
+      paymentByIdQuery(attempt.paymentId)
+    )
+    if (payment === undefined) return ok()
+    if (payment.canceledAt === null) {
+      const canceled = await run(cancelPayment(attempt.paymentId))
+      if (!canceled.ok) {
+        // Paid another way: the money stands, and so do the payment and
+        // its lines.
+        return canceled.error.type === "PaymentAlreadyPaid"
+          ? ok()
+          : err(canceled.error)
+      }
+    }
+
+    const sourceBillId = attempt.splitFromBillId
+    const partBillId = payment.billId
+    if (
+      attempt.closedAt !== null ||
+      sourceBillId === null ||
+      partBillId === null
+    ) {
+      return ok()
+    }
+    const part = await run(loadBillStatusSnapshot(partBillId))
+    if (
+      !part.ok ||
+      part.value.status !== "open" ||
+      part.value.items.length === 0
+    ) {
+      return ok()
+    }
+    const moved = await run(
+      splitBill({
+        sourceBillId: partBillId,
+        targetBillId: sourceBillId,
+        items: part.value.items,
+      })
+    )
+    if (!moved.ok) {
+      run.deps.console.warn(
+        "A failed Qerko table payment's lines stay on a bill of their own.",
+        { partBillId, sourceBillId, reason: moved.error.type }
+      )
+    }
+    return ok()
+  }
+
+/**
  * Records what Qerko says a Qerko payment ended as — from `paymentClosed` on
  * the websocket or from `get-payment` — and is the one place either does
  * (qerko/0013, qerko/0015). Only `PAID` is money; any other final state is a
@@ -449,6 +546,17 @@ export const settleQerkoPayment =
     }
 
     if (outcome === "failed") {
+      // A table's payment exists only for its one Qerko payment (qerko/0018):
+      // once that failed, nothing else will pay it, and while pending it
+      // locks its bill. A direct payment stays, for the customer to try
+      // again. Undone before the attempt is closed, so an attempt still open
+      // sends the sync job back to finish it, and the cancel on every
+      // settling after while the payment is still uncanceled, whatever the
+      // attempt says — unless Qerko said paid.
+      if (attempt.outcome !== "paid" && isQerkoTablePaymentAttempt(attempt)) {
+        const undone = await run(undoQerkoTablePayment(attempt))
+        if (!undone.ok) return undone
+      }
       await run.ok(
         fillQerkoPaymentAttempt({
           attempt,

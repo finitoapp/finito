@@ -101,7 +101,10 @@ Finito open.
 | `get-locations`, `pair-location`, `get-payment`, `cancel-payment`, URLs, QR | `packages/core/src/integrations/qerko/qerko-client.ts` |
 | Account kind `qerkoPayment`, `accountQerkoPayment.connectionDeviceId` | `modules/account/` |
 | `paymentQerkoPayment`, `qerkoPaymentAttempt` | `modules/payment/payment.ts` |
-| What Payky answers Qerko, and settling | `modules/payment/payment-qerko-payment-actions.ts` |
+| Which flow answers each of Qerko's calls, by the switches | `modules/payment/payment-qerko-pos-actions.ts` |
+| What Payky answers Qerko for a payment, and settling | `modules/payment/payment-qerko-payment-actions.ts` |
+| Tables and their bills (`getTableList`, `getTableContents`) | `modules/payment/payment-qerko-table-actions.ts`, `-utils.ts` |
+| The switches `directPaymentEnabled`, `tablePaymentEnabled` | `modules/account/account.ts` (`accountQerkoPayment`) |
 | The connection, on the chosen device | `background-jobs/jobs/qerko-payment-connection-job.ts` |
 | `get-payment` when `paymentClosed` never came | `background-jobs/jobs/qerko-payment-sync-job.ts` |
 | The refund | `modules/refund/refund-qerko-payment-actions.ts` |
@@ -162,7 +165,45 @@ in Qerko; the tip set on Payky's tip screen never reaches Qerko
 | `paymentProcessed(id)` | marks the attempt processing, answers the receipt (Qerko cancels without one): the bill's items, no tip, and the VAT breakdown of the goods alone; a VAT payer's keypad payment at the rate set for keypad amounts (`qerko/0014`) |
 | `paymentClosed(id, PAID)` | reads the `Payment` with `get-payment`, records the money, closes the attempt as paid; when the parts are the goods and `tipBrutto`, that tip replaces the payment's own (`qerko/0015`, `payment/0018`) |
 | `paymentClosed(id, other)` | closes the attempt as failed, no money (`qerko/0015`) |
-| table and order calls | answered empty or `NO_SUCH_METHOD` |
+| `getTableList`, `getTableContents` | the table flow, below |
+| order calls | `NO_SUCH_METHOD`; `pairCustomer` answered empty |
+
+### Two flows, two switches
+
+Qerko payments serve two flows, each on its own switch in the settings
+(`qerko/0016`): **Direct payment** ("Přímá platba"), the QR code on the
+payment screen above, and **Table payment** ("Platba od stolu"), Qerko's QR
+code on a table, below. Both are stored nullable on `accountQerkoPayment`
+and `null` is on, so an account paired before them serves both. A flow that
+is off answers as if Payky had nothing for it: `searchBills`,
+`getTableList` and `getTableContents` an empty list, `getBill` and
+`paymentStart` `BILL_NOT_FOUND`; with direct payments off the payment
+screen shows no Qerko tab. A payment already started is settled either way.
+
+### A table's bill
+
+The restaurant pairs Qerko's QR codes with its tables in Qerko's
+administration, from `getTableList`: the catalog's tables, `id` their
+`code`, with their name (`qerko/0017`). A guest's scan calls
+`getTableContents(code)`, answered with the table's open bills, the one
+opened first first; an unknown or empty table is an empty list. Several
+bills on a table are listed apart, by label or `#` and number.
+
+A bill offers what is left of it (`qerko/0018`) and the guest tips in
+Qerko. While nothing is paid of it, it offers its lines and may be paid in
+part (`allowPartialPayment`): any lines, and a whole quantity one at a time;
+a fractional quantity goes whole. A guest paying part of it has that part
+split off into a bill of its own on the same table, which the guest pays
+whole; the rest stays open, and unlocked, for the other guests. A bill with
+a discount is paid whole, and so is one partly paid already (a split at the
+till, a direct payment), as one item "Zbývá zaplatit". A bill a payment is
+paying now is not listed.
+
+| Qerko calls | Payky does |
+| --- | --- |
+| `getBill(billId)` | the bill as listed; `BILL_CLOSED` once closed, discarded or with nothing left |
+| `paymentStart(Payment)` | answered one at a time, so two guests cannot both pay one line; `BILL_LOCKED` while any payment of the bill is pending; `INVALID_DATA` unless every item is a line still on the bill, at most its quantity, at its price (part of a line at its share, within one minor unit); otherwise splits a part off into a bill of its own (`splitFromBillId` on the attempt), then makes a pending payment of the bill paid, through Qerko payments, its id and the part's from Qerko's payment id, and records the attempt. The pending payment locks the bill it pays. |
+| `paymentProcessed`, `paymentClosed` | as for a direct payment; a final state other than `PAID` also cancels the payment, which unlocks its bill, and moves a part's lines back to the bill they came from |
 
 An attempt still open 30 s after it started is asked about with `get-payment`
 by every device's sync job and by the payment screen (`qerko/0012`). Every

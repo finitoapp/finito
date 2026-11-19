@@ -150,10 +150,11 @@ export const openBillsQuery = createQuery((db) =>
 )
 
 /**
- * Every open bill currently assigned to one table. Read by `deleteTable`:
- * the POS floor view only renders non-deleted tables plus the bills with no
- * table at all, so deleting an occupied table would leave its bill with no
- * tile to reach it from.
+ * Every open bill currently assigned to one table, the one opened first
+ * first. Read by `deleteTable`: the POS floor view only renders non-deleted
+ * tables plus the bills with no table at all, so deleting an occupied table
+ * would leave its bill with no tile to reach it from. And by Qerko's
+ * `getTableContents` (qerko/0017), which judges each bill's status live.
  */
 export const openBillsByTableIdQuery = (tableId: TableId) =>
   createQuery((db) =>
@@ -164,6 +165,8 @@ export const openBillsByTableIdQuery = (tableId: TableId) =>
       .where("canceledAt", "is", null)
       .where("closedAt", "is", null)
       .where("isDeleted", "is not", sqliteTrue)
+      .orderBy("createdAt", "asc")
+      .orderBy("id", "asc")
   )
 
 /**

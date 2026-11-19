@@ -8,6 +8,7 @@ import {
 } from "./qerko-client.ts"
 import {
   createQerkoRpcSession,
+  createQerkoSerialQueue,
   parseQerkoMessage,
   type QerkoPosHandlers,
   type QerkoSessionState,
@@ -35,6 +36,12 @@ const fixtures = {
     type: "method-call-request",
   },
   getTableList: { uuid, method: "getTableList", type: "method-call-request" },
+  getTableContents: {
+    uuid,
+    method: "getTableContents",
+    args: ["id_of_table", null],
+    type: "method-call-request",
+  },
   paymentStart: {
     uuid,
     method: "paymentStart",
@@ -109,6 +116,8 @@ const bill = {
   denyMenus: true,
 }
 
+const table = { id: "id_of_table", name: "Table 1" }
+
 const createHandlers = (): QerkoPosHandlers & {
   readonly calls: Array<ReadonlyArray<unknown>>
 } => {
@@ -122,6 +131,14 @@ const createHandlers = (): QerkoPosHandlers & {
     getBill: async (id) => {
       calls.push(["getBill", id])
       return err(qerkoRpcError("BILL_CLOSED"))
+    },
+    getTableList: async () => {
+      calls.push(["getTableList"])
+      return ok([table])
+    },
+    getTableContents: async (id) => {
+      calls.push(["getTableContents", id])
+      return ok([bill])
     },
     paymentStart: async (payment) => {
       calls.push(["paymentStart", payment.id, payment.parts.length])
@@ -260,16 +277,24 @@ describe("createQerkoRpcSession", () => {
     test.receive(fixtures.paymentProcessed)
     test.receive(fixtures.paymentClosed)
     test.receive(fixtures.getTableList)
+    test.receive(fixtures.getTableContents)
     await vi.advanceTimersByTimeAsync(0)
 
-    expect(test.handlers.calls).toEqual([
-      ["searchBills", "qr_identifier"],
-      ["getBill", "id_of_bill"],
-      ["paymentStart", "id_of_payment", 2],
-      ["paymentProcessed", "id_of_payment"],
-      ["paymentClosed", "id_of_payment", "PAID"],
-    ])
-    expect(test.replies()).toHaveLength(6)
+    // `paymentStart` waits its turn (`serialPosMethods`), so the order of
+    // the calls is not the order they arrived in.
+    expect(test.handlers.calls).toHaveLength(7)
+    expect(test.handlers.calls).toEqual(
+      expect.arrayContaining([
+        ["searchBills", "qr_identifier"],
+        ["getBill", "id_of_bill"],
+        ["paymentStart", "id_of_payment", 2],
+        ["paymentProcessed", "id_of_payment"],
+        ["paymentClosed", "id_of_payment", "PAID"],
+        ["getTableList"],
+        ["getTableContents", "id_of_table"],
+      ])
+    )
+    expect(test.replies()).toHaveLength(7)
     expect(test.replies()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -287,7 +312,14 @@ describe("createQerkoRpcSession", () => {
           result: { items: [], taxInfo: [] },
         }),
         expect.objectContaining({ calledMethod: "paymentClosed", error: null }),
-        expect.objectContaining({ calledMethod: "getTableList", result: [] }),
+        expect.objectContaining({
+          calledMethod: "getTableList",
+          result: [table],
+        }),
+        expect.objectContaining({
+          calledMethod: "getTableContents",
+          result: [bill],
+        }),
       ])
     )
   })
@@ -307,6 +339,125 @@ describe("createQerkoRpcSession", () => {
         error: expect.objectContaining({ code: "INVALID_DATA" }),
       }),
     ])
+  })
+
+  test.each([
+    ["no table", []],
+    ["an empty table", [""]],
+    ["a table that is not a string", [42]],
+  ])(
+    "answers getTableContents with %s as BAD_PARAMETER",
+    async (_name, args) => {
+      const test = setup()
+      test.authorize()
+      test.receive({ ...fixtures.getTableContents, args })
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(test.handlers.calls).toEqual([])
+      expect(test.replies()).toEqual([
+        expect.objectContaining({
+          calledMethod: "getTableContents",
+          error: expect.objectContaining({ code: "BAD_PARAMETER" }),
+        }),
+      ])
+    }
+  )
+
+  test("answers paymentStart one at a time, and nothing else waits for it", async () => {
+    const started: string[] = []
+    const finishes: Array<() => void> = []
+    const test = setup({
+      paymentStart: (payment) => {
+        started.push(payment.id)
+        return new Promise((resolve) => {
+          finishes.push(() => resolve(ok(null)))
+        })
+      },
+    })
+    test.authorize()
+    const start = (id: string) => {
+      const [payment] = fixtures.paymentStart.args
+      test.receive({
+        ...fixtures.paymentStart,
+        uuid: `uuid-${id}`,
+        args: [{ ...payment, id }],
+      })
+    }
+    start("first")
+    start("second")
+    test.receive(fixtures.getBill)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(started).toEqual(["first"])
+    expect(test.replies()).toEqual([
+      expect.objectContaining({ calledMethod: "getBill" }),
+    ])
+
+    finishes[0]?.()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(started).toEqual(["first", "second"])
+
+    finishes[1]?.()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(
+      test.replies().filter((reply) => reply.uuid.startsWith("uuid-"))
+    ).toEqual([
+      expect.objectContaining({ uuid: "uuid-first", error: null }),
+      expect.objectContaining({ uuid: "uuid-second", error: null }),
+    ])
+  })
+
+  test("a start repeated on a new session waits for the one still running on the session before", async () => {
+    const serialQueue = createQerkoSerialQueue()
+    const started: string[] = []
+    const finishes: Array<() => void> = []
+    const open = () => {
+      let socket: QerkoSocketHandlers | null = null
+      const session = createQerkoRpcSession({
+        qerkoSocket: {
+          connect: (_url, handlers) => {
+            socket = handlers
+            return { send: () => {}, close: () => {} }
+          },
+        },
+        console: createConsole(),
+        url: "wss://test",
+        posId: "payky",
+        apiKey: "key",
+        handlers: {
+          ...createHandlers(),
+          paymentStart: (payment) => {
+            started.push(payment.id)
+            return new Promise((resolve) => {
+              finishes.push(() => resolve(ok(null)))
+            })
+          },
+        },
+        onState: () => {},
+        onError: () => {},
+        serialQueue,
+      })
+      const connected = (): QerkoSocketHandlers => {
+        if (socket === null) throw new Error("not connected")
+        return socket
+      }
+      connected().onOpen()
+      connected().onMessage(JSON.stringify(fixtures.authorized))
+      connected().onMessage(JSON.stringify(fixtures.paymentStart))
+      return session
+    }
+
+    // The first connection drops while its start is still running, and
+    // Qerko repeats the start on the next one.
+    open().close()
+    open()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(started).toEqual(["id_of_payment"])
+
+    finishes[0]?.()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(started).toEqual(["id_of_payment", "id_of_payment"])
+    finishes[1]?.()
   })
 
   test("never answers a call without a uuid", async () => {

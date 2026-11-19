@@ -9,8 +9,14 @@ import {
 import {
   saveQerkoPaymentAccount,
   setQerkoPaymentConnectionDevice,
+  setQerkoPaymentFlows,
 } from "@payky/core/modules/account/account-actions"
 import { qerkoPaymentAccountQuery } from "@payky/core/modules/account/account-queries"
+import type { AccountId } from "@payky/core/modules/account/account-types"
+import {
+  deriveQerkoPaymentFlows,
+  type QerkoPaymentFlows,
+} from "@payky/core/modules/account/account-utils"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
 import { deviceByIdQuery } from "@payky/core/modules/device/device-queries"
@@ -377,6 +383,13 @@ function QerkoPaymentPairedView({
           />
         </ul>
 
+        {paymentAccount === undefined ? null : (
+          <QerkoPaymentFlowSwitches
+            accountId={paymentAccount.id}
+            flows={deriveQerkoPaymentFlows(paymentAccount)}
+          />
+        )}
+
         {!hasLocation ? (
           // Pairing was left before its location was chosen (qerko/0007).
           <QerkoLocationChooser
@@ -431,6 +444,73 @@ function QerkoPaymentPairedView({
         </Button>
       </CardFooter>
     </Card>
+  )
+}
+
+/**
+ * The two flows Qerko payments serve, each on its own switch (qerko/0016): a
+ * QR code for one payment on the payment screen, and a table's open bill
+ * from Qerko's QR code on the table (qerko/0017). Both start on.
+ */
+function QerkoPaymentFlowSwitches({
+  accountId,
+  flows,
+}: {
+  readonly accountId: AccountId
+  readonly flows: QerkoPaymentFlows
+}) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const save = (flow: keyof QerkoPaymentFlows) => async (next: boolean) => {
+    await runToast(async (run) => {
+      await run.ok(setQerkoPaymentFlows({ accountId, [flow]: next }))
+    })
+  }
+  const direct = useInlineChoice(flows.direct, save("direct"))
+  const table = useInlineChoice(flows.table, save("table"))
+  const directId = useId()
+  const tableId = useId()
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="font-medium">{t("settings.qerkoPayment.flows.title")}</p>
+      <Field orientation="horizontal">
+        <Switch
+          id={directId}
+          checked={direct.value}
+          disabled={direct.saving}
+          onCheckedChange={(checked) => {
+            void direct.choose(checked)
+          }}
+        />
+        <FieldContent>
+          <FieldLabel htmlFor={directId}>
+            {t("settings.qerkoPayment.directPayment.label")}
+          </FieldLabel>
+          <FieldDescription>
+            {t("settings.qerkoPayment.directPayment.description")}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+      <Field orientation="horizontal">
+        <Switch
+          id={tableId}
+          checked={table.value}
+          disabled={table.saving}
+          onCheckedChange={(checked) => {
+            void table.choose(checked)
+          }}
+        />
+        <FieldContent>
+          <FieldLabel htmlFor={tableId}>
+            {t("settings.qerkoPayment.tablePayment.label")}
+          </FieldLabel>
+          <FieldDescription>
+            {t("settings.qerkoPayment.tablePayment.description")}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+    </div>
   )
 }
 

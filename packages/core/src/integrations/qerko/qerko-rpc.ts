@@ -42,6 +42,17 @@ export const QerkoBillSchema = z.object({
 })
 export type QerkoBill = z.output<typeof QerkoBillSchema>
 
+/**
+ * A table as `getTableList` lists it, for pairing Qerko's QR codes with the
+ * restaurant's tables in Qerko's administration; `getTableContents` gets its
+ * `id` back (qerko/0017).
+ */
+export const QerkoTableSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+})
+export type QerkoTable = z.output<typeof QerkoTableSchema>
+
 export const QerkoTaxInfoSchema = z.object({
   rate: DecimalSchema,
   base: DecimalSchema,
@@ -133,6 +144,12 @@ export interface QerkoPosHandlers {
     qrIdentifier: string
   ) => Promise<QerkoRpcResult<ReadonlyArray<QerkoBill>>>
   readonly getBill: (idBill: string) => Promise<QerkoRpcResult<QerkoBill>>
+  readonly getTableList: () => Promise<
+    QerkoRpcResult<ReadonlyArray<QerkoTable>>
+  >
+  readonly getTableContents: (
+    idTable: string
+  ) => Promise<QerkoRpcResult<ReadonlyArray<QerkoBill>>>
   readonly paymentStart: (
     payment: QerkoWirePayment
   ) => Promise<QerkoRpcResult<null>>
@@ -172,9 +189,11 @@ const PaymentArgs = z.tuple([QerkoWirePaymentSchema]).rest(z.unknown())
 const ErrorArgs = z.tuple([QerkoRpcErrorSchema]).rest(z.unknown())
 
 /**
- * Every method Qerko may call on the POS. The table and order methods are
- * answered empty: Payky has no tables or menus to show in Qerko, and a payment
- * is found by its QR code alone.
+ * Every method Qerko may call on the POS. A payment is found by its QR code
+ * (`searchBills`) or by its table (`getTableList`, `getTableContents`,
+ * qerko/0017); the handlers answer each flow only while it is on
+ * (qerko/0016). Payky has no menus, so `pairCustomer` is answered empty and
+ * the order methods are unknown (`NO_SUCH_METHOD`).
  */
 const posMethods = {
   noop: async () => ok(null),
@@ -202,8 +221,11 @@ const posMethods = {
       ? badParameter
       : handlers.paymentClosed(parsed[0], parsed[1])
   },
-  getTableList: async () => ok([]),
-  getTableContents: async () => ok([]),
+  getTableList: async (_args, handlers) => handlers.getTableList(),
+  getTableContents: async (args, handlers) => {
+    const parsed = firstArgs(StringArgs, args)
+    return parsed === null ? badParameter : handlers.getTableContents(parsed[0])
+  },
   pairCustomer: async () => ok(null),
   /** Qerko reporting a failure of ours; logged, never answered. */
   error: async (args, _handlers, console) => {
@@ -213,6 +235,35 @@ const posMethods = {
 } satisfies Record<string, MethodHandler>
 
 export type QerkoPosMethod = keyof typeof posMethods
+
+/**
+ * Methods answered one at a time, in the order Qerko called them, where
+ * every other call is answered as it comes. `paymentStart` checks that the
+ * bill holds what is paid and then writes the payment: two guests pressing
+ * Pay at once would otherwise both pass the check before either wrote
+ * (qerko/0018), and Qerko would charge them both. Qerko waits 15 s for each
+ * answer, far longer than one start takes.
+ */
+const serialPosMethods: ReadonlySet<QerkoPosMethod> = new Set(["paymentStart"])
+
+/** Runs the work it is given one at a time, in the order it was given. */
+export type QerkoSerialQueue = <T>(work: () => Promise<T>) => Promise<T>
+
+/**
+ * A queue for the `serialPosMethods`. The caller holding the connection
+ * keeps one across its sessions: Qerko repeats a call it got no answer to on
+ * the next connection, and that call must wait for the one still running
+ * from the connection before.
+ */
+export const createQerkoSerialQueue = (): QerkoSerialQueue => {
+  let tail: Promise<unknown> = Promise.resolve()
+  return (work) => {
+    const turn = tail.then(work, work)
+    // A failed turn must not stop the ones after it.
+    tail = turn.catch(() => undefined)
+    return turn
+  }
+}
 
 const isQerkoPosMethod = (method: string): method is QerkoPosMethod =>
   Object.hasOwn(posMethods, method)
@@ -285,6 +336,7 @@ export const createQerkoRpcSession = ({
   handlers,
   onState,
   onError,
+  serialQueue = createQerkoSerialQueue(),
   timing = qerkoRpcTiming,
 }: QerkoSocketDep &
   ConsoleDep & {
@@ -296,6 +348,11 @@ export const createQerkoRpcSession = ({
     readonly onState: (state: QerkoSessionState) => void
     /** A handler threw: an unexpected crash, not a protocol failure. */
     readonly onError: (error: unknown) => void
+    /**
+     * Where `paymentStart` waits its turn; one of the session's own unless
+     * given, as the connection job gives the one it keeps across sessions.
+     */
+    readonly serialQueue?: QerkoSerialQueue
     readonly timing?: QerkoRpcTiming
   }): QerkoRpcSession => {
   let authorized = false
@@ -360,11 +417,18 @@ export const createQerkoRpcSession = ({
   ) => {
     let result: QerkoRpcResult<unknown>
     if (isQerkoPosMethod(method)) {
-      try {
-        result = await posMethods[method](args, handlers, console)
-      } catch (error) {
-        onError(error)
-        result = err(qerkoRpcError("UNKNOWN", "Internal error"))
+      const invoke = async (): Promise<QerkoRpcResult<unknown>> => {
+        try {
+          return await posMethods[method](args, handlers, console)
+        } catch (error) {
+          onError(error)
+          return err(qerkoRpcError("UNKNOWN", "Internal error"))
+        }
+      }
+      if (serialPosMethods.has(method)) {
+        result = await serialQueue(invoke)
+      } else {
+        result = await invoke()
       }
     } else {
       result = err(qerkoRpcError("NO_SUCH_METHOD", `No such method: ${method}`))

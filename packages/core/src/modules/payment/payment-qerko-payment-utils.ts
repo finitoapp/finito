@@ -135,8 +135,11 @@ export const readQerkoTip = (
   tipNetAmount: qerkoTipToMinorUnits(wire.tipNetto, currency),
 })
 
-const decimal = (value: number, currency: FiatCurrency): string =>
-  minorUnitsToDecimalString({ value: Integer(value), currency })
+/** An amount in minor units as Qerko writes it: a decimal string. */
+export const formatQerkoAmount = (
+  value: number,
+  currency: FiatCurrency
+): string => minorUnitsToDecimalString({ value: Integer(value), currency })
 
 /** The one line a Qerko bill and receipt show: the payment's goods. */
 export const qerkoPaymentItemName = (serialNumber: number | null): string =>
@@ -261,7 +264,7 @@ interface QerkoLineLabel {
  * any other as one with the quantity in the name (`Sýr (0,35)`), since Qerko
  * draws a quantity without decimals.
  */
-const labelQerkoLine = (line: QerkoLine): QerkoLineLabel =>
+export const labelQerkoLine = (line: QerkoLine): QerkoLineLabel =>
   Number.isInteger(line.quantity)
     ? { name: line.name, quantity: String(line.quantity) }
     : {
@@ -302,7 +305,7 @@ export const createQerkoBill = ({
               type: line.type,
             }),
             name: label.name,
-            price: decimal(line.totalAmount, currency),
+            price: formatQerkoAmount(line.totalAmount, currency),
             quantity: label.quantity,
             minQuantity: "0",
           }
@@ -311,7 +314,7 @@ export const createQerkoBill = ({
           {
             id: paymentId,
             name: qerkoPaymentItemName(serialNumber),
-            price: decimal(content.goodsAmount, currency),
+            price: formatQerkoAmount(content.goodsAmount, currency),
             quantity: "1",
             minQuantity: "0",
           },
@@ -445,8 +448,8 @@ const createQerkoTaxInfo = ({
 }): Array<QerkoTaxInfo> => {
   const zeroRate = (base: number): QerkoTaxInfo => ({
     rate: "0",
-    base: decimal(base, currency),
-    tax: decimal(0, currency),
+    base: formatQerkoAmount(base, currency),
+    tax: formatQerkoAmount(0, currency),
   })
   if (taxRecap === null) return [zeroRate(content.goodsAmount)]
 
@@ -480,8 +483,8 @@ const createQerkoTaxInfo = ({
     .map(
       ([rate, sums]): QerkoTaxInfo => ({
         rate,
-        base: decimal(sums.base, currency),
-        tax: decimal(sums.tax, currency),
+        base: formatQerkoAmount(sums.base, currency),
+        tax: formatQerkoAmount(sums.tax, currency),
       })
     )
   const zero = sumsByRate.get("0")
@@ -518,14 +521,14 @@ export const createQerkoReceipt = ({
           return {
             name: label.name,
             quantity: label.quantity,
-            price: decimal(line.totalAmount, currency),
+            price: formatQerkoAmount(line.totalAmount, currency),
           }
         })
       : [
           {
             name: qerkoPaymentItemName(serialNumber),
             quantity: "1",
-            price: decimal(content.goodsAmount, currency),
+            price: formatQerkoAmount(content.goodsAmount, currency),
           },
         ],
   taxInfo: createQerkoTaxInfo({ content, currency, taxRecap }),

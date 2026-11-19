@@ -759,7 +759,8 @@ export const saveQerkoTerminalAccount =
 /**
  * Enables or disables Qerko payments (qerko/0007), mirroring
  * {@link saveQerkoTerminalAccount}. A currency change moves to that
- * currency's account and takes the device holding the connection with it.
+ * currency's account and takes the device holding the connection and the
+ * flows turned on (qerko/0016) with it.
  */
 export const saveQerkoPaymentAccount =
   ({
@@ -800,6 +801,11 @@ export const saveQerkoPaymentAccount =
           id,
           currency,
           connectionDeviceId: moved ? current.connectionDeviceId : undefined,
+          // The flows the merchant chose go with it (qerko/0016).
+          directPaymentEnabled: moved
+            ? current.directPaymentEnabled
+            : undefined,
+          tablePaymentEnabled: moved ? current.tablePaymentEnabled : undefined,
         }),
         mutationOptions
       )
@@ -847,6 +853,38 @@ export const setQerkoPaymentConnectionDevice =
       run.deps.evolu.update(
         "accountQerkoPayment",
         { id: accountId, connectionDeviceId: deviceId },
+        { ...options, owner: run.deps.evoluOwner }
+      )
+    )
+    return ok()
+  }
+
+/**
+ * Turns one of Qerko's flows on or off (qerko/0016): `direct`, a QR code for
+ * one payment, or `table`, a table's open bill (qerko/0017). Only the flows
+ * given are written; one never written reads as on.
+ */
+export const setQerkoPaymentFlows =
+  ({
+    accountId,
+    direct,
+    table,
+  }: {
+    readonly accountId: AccountId
+    readonly direct?: boolean
+    readonly table?: boolean
+  }): Task<void, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const toSqlite = (value: boolean | undefined) =>
+      value === undefined ? undefined : value ? sqliteTrue : sqliteFalse
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.update(
+        "accountQerkoPayment",
+        removeUndefinedValues({
+          id: accountId,
+          directPaymentEnabled: toSqlite(direct),
+          tablePaymentEnabled: toSqlite(table),
+        }),
         { ...options, owner: run.deps.evoluOwner }
       )
     )

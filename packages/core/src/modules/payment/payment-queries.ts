@@ -345,6 +345,7 @@ const qerkoPaymentAttemptColumns = [
   "providers",
   "tipAmount",
   "tipNetAmount",
+  "splitFromBillId",
 ] as const
 
 /** One Qerko attempt, by the id `createQerkoPaymentAttemptId` derives. */
