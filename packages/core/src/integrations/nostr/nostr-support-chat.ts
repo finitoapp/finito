@@ -74,13 +74,26 @@ export interface SupportTeam {
  * - `unverified`: no indexer answered, or the list names no relay, so
  *   support may have nowhere to reply and publishing could replace a list.
  */
-export type DmInboxState = "found" | "missing" | "unverified"
+export type DmInboxState = DmInbox["state"]
 
-/** Where Amethyst delivers the account's DMs: its kind 10050 relays. */
-export interface DmInbox {
-  readonly relays: ReadonlyArray<string>
-  readonly state: DmInboxState
-}
+/** Where Amethyst delivers the account's DM inbox: its kind 10050 relays. */
+export type DmInbox =
+  | {
+      readonly state: "found"
+      readonly relays: ReadonlyArray<string>
+      /** The newest list as the account signed it. */
+      readonly list: Event
+      /**
+       * The team's relays and indexers that answered without `list`. Clients
+       * look a list up there, so `ensureDmRelayList` copies it to them
+       * (support/0004).
+       */
+      readonly lacking: ReadonlyArray<string>
+    }
+  | {
+      readonly state: "missing" | "unverified"
+      readonly relays: ReadonlyArray<string>
+    }
 
 export interface SupportMessage {
   /** The rumor id, the same in every member's copy. */
@@ -300,8 +313,10 @@ const readRelays = (team: SupportTeam, inbox: DmInbox) =>
 
 /**
  * The account's kind 10050 relays, looked up wherever it may live. The list
- * is Linky's as much as Payky's, so it is only ever read here; `missing` is
- * what allows `publishDmRelayList` for an account that has none. Each relay is asked on its own, because nostr-tools reports one that
+ * is Linky's as much as Payky's, so it is never changed: `missing` is what
+ * allows `publishDmRelayList` for an account that has none, and a found
+ * list's `lacking` says where `ensureDmRelayList` copies it as it is. Each
+ * relay is asked on its own, because nostr-tools reports one that
  * timed out like one that answered: a relay answered when its query ended
  * before the timeout and its socket is open. Relays that did not answer are
  * left out rather than blocking the list for good — a dead default relay
@@ -339,6 +354,12 @@ export const loadDmInbox =
         return { relay, lists, endedAt: date.now().getTime() }
       })
     )
+    const status = nostr.pool.listConnectionStatus()
+    const answered = answers.filter(
+      ({ relay, endedAt }) =>
+        endedAt - startedAt < RELAY_MAX_WAIT_MS &&
+        status.get(normalizeURL(relay)) === true
+    )
     const newest = answers
       .flatMap(({ lists }) => lists)
       .reduce<Event | undefined>(
@@ -356,21 +377,23 @@ export const loadDmInbox =
         run.deps.console.warn(
           "[support] The DM relay list names no relay, so support cannot reply."
         )
+        return ok({ relays, state: "unverified" })
       }
-      return ok({ relays, state: relays.length > 0 ? "found" : "unverified" })
+      const lookedUpOn = dmRelayListRelays(team)
+      const lacking = answered
+        .filter(
+          ({ relay, lists }) =>
+            lookedUpOn.includes(relay) &&
+            !lists.some((list) => list.id === newest.id)
+        )
+        .map(({ relay }) => relay)
+      return ok({ relays, state: "found", list: newest, lacking })
     }
 
-    const status = nostr.pool.listConnectionStatus()
-    const answered = answers
-      .filter(
-        ({ relay, endedAt }) =>
-          endedAt - startedAt < RELAY_MAX_WAIT_MS &&
-          status.get(normalizeURL(relay)) === true
-      )
-      .map(({ relay }) => relay)
-    const silent = asked.filter((relay) => !answered.includes(relay))
+    const answeredRelays = answered.map(({ relay }) => relay)
+    const silent = asked.filter((relay) => !answeredRelays.includes(relay))
     const indexerAnswered = team.indexerRelays.some((relay) =>
-      answered.includes(relay)
+      answeredRelays.includes(relay)
     )
     if (!indexerAnswered) {
       run.deps.console.warn(
@@ -390,37 +413,29 @@ export const loadDmInbox =
   }
 
 /**
- * Publishes a kind 10050 list naming the team's relays, to them and to the
- * indexers Amethyst looks it up on for an account with no NIP-65 relays. It
- * replaces whatever list the account has, so it is for one found `missing`,
- * or one the user chose to replace after a warning (support/0001).
+ * Where the account's 10050 list goes: the team's relays, which Amethyst
+ * reads as the relays it has seen the account on, and the indexers, where it
+ * looks a list up for an account with no NIP-65 relays.
  */
-export const publishDmRelayList =
+const dmRelayListRelays = (team: SupportTeam) =>
+  unique([...team.relays, ...team.indexerRelays])
+
+/** `event` to `relays`, ok once any of them accepted it. */
+const publishAccountEvent =
   ({
-    team,
+    event,
+    relays,
   }: {
-    readonly team: SupportTeam
-  }): Task<
-    void,
-    NostrPublishRejectedError,
-    NostrDep & MasterKeyDep & DateDep
-  > =>
+    readonly event: Event
+    readonly relays: ReadonlyArray<string>
+  }): Task<void, NostrPublishRejectedError, NostrDep & MasterKeyDep> =>
   async (run) => {
     const secretKey = deriveNostrSecretKey(run.deps.masterKey)
     const results = await Promise.allSettled(
-      run.deps.nostr.pool.publish(
-        [...unique([...team.relays, ...team.indexerRelays])],
-        finalizeEvent(
-          {
-            kind: DirectMessageRelaysList,
-            created_at: Math.floor(run.deps.date.now().getTime() / 1000),
-            tags: team.relays.map((relay) => ["relay", relay]),
-            content: "",
-          },
-          secretKey
-        ),
-        { maxWait: RELAY_MAX_WAIT_MS, onauth: authSigner(secretKey) }
-      )
+      run.deps.nostr.pool.publish([...relays], event, {
+        maxWait: RELAY_MAX_WAIT_MS,
+        onauth: authSigner(secretKey),
+      })
     )
     if (isPublishAccepted(results)) return ok()
 
@@ -430,6 +445,74 @@ export const publishDmRelayList =
       { reasons }
     )
     return err(createNostrPublishRejectedError({ reasons }))
+  }
+
+/**
+ * Publishes a kind 10050 list naming the team's relays to them and to the
+ * indexers (`dmRelayListRelays`), and returns the inbox it makes. It replaces
+ * whatever list the account has, so it is for one found `missing`, or one
+ * the user chose to replace after a warning (support/0001).
+ */
+export const publishDmRelayList =
+  ({
+    team,
+  }: {
+    readonly team: SupportTeam
+  }): Task<
+    DmInbox,
+    NostrPublishRejectedError,
+    NostrDep & MasterKeyDep & DateDep
+  > =>
+  async (run) => {
+    const list = finalizeEvent(
+      {
+        kind: DirectMessageRelaysList,
+        created_at: Math.floor(run.deps.date.now().getTime() / 1000),
+        tags: team.relays.map((relay) => ["relay", relay]),
+        content: "",
+      },
+      deriveNostrSecretKey(run.deps.masterKey)
+    )
+    const published = await run(
+      publishAccountEvent({ event: list, relays: dmRelayListRelays(team) })
+    )
+    if (!published.ok) return published
+    return ok({ state: "found", relays: team.relays, list, lacking: [] })
+  }
+
+/**
+ * Makes the account's DM relay list findable where clients look for it,
+ * alongside a message to support (support/0004): an account found to have
+ * none gets one, and a found list is copied, as signed and unchanged, to the
+ * team's relays and indexers that answered without it — the same replaceable
+ * event, so Linky's list stays Linky's and a list already everywhere is not
+ * sent again. An unverified inbox is left to the chat's warning. Returns the
+ * inbox as it now stands.
+ */
+export const ensureDmRelayList =
+  ({
+    team,
+    inbox,
+  }: {
+    readonly team: SupportTeam
+    readonly inbox: DmInbox
+  }): Task<
+    DmInbox,
+    NostrPublishRejectedError,
+    NostrDep & MasterKeyDep & DateDep
+  > =>
+  async (run) => {
+    if (inbox.state !== "found") {
+      return inbox.state === "missing"
+        ? await run(publishDmRelayList({ team }))
+        : ok(inbox)
+    }
+    if (inbox.lacking.length === 0) return ok(inbox)
+    const copied = await run(
+      publishAccountEvent({ event: inbox.list, relays: inbox.lacking })
+    )
+    if (!copied.ok) return copied
+    return ok({ ...inbox, lacking: [] })
   }
 
 /** How far back NIP-59 may date a gift wrap, so how far back to listen. */
@@ -574,7 +657,7 @@ export type SupportNotReachedError = ReturnType<
  * with one recipient only, splitting the group into 1:1 chats). Every copy
  * goes to the team's relays, which each member lists as a DM relay, so the
  * members' own lists are never looked up. Amethyst delivers the replies to
- * the account's DM inbox, which `publishDmRelayList` sets up; the account's
+ * the account's DM inbox, which `ensureDmRelayList` makes findable; the account's
  * own copy goes where the chat reads.
  * Ok once a relay accepted a copy for support: the account's own copy alone
  * reaches nobody, so it is published only then. A message in the history is

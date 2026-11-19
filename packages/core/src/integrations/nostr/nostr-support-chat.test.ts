@@ -25,6 +25,7 @@ import type { NostrDep } from "./nostr-client.ts"
 import {
   appendClientTrailer,
   type DmInbox,
+  ensureDmRelayList,
   fetchSupportMessages,
   loadDmInbox,
   mergeSupportMessages,
@@ -57,8 +58,6 @@ const team: SupportTeam = {
   relays: [supportRelay],
   indexerRelays: [profileRelay],
 }
-/** An account whose DM relays Linky set up. */
-const linkyInbox: DmInbox = { relays: [linkyRelay], state: "found" }
 
 const client: SupportClientInfo = { version: "1.2.3", platform: "android" }
 
@@ -69,10 +68,13 @@ interface Published {
 
 const createFakeNostrDep = ({
   stored = [],
+  heldBy = () => true,
   connected = [appRelay, profileRelay, supportRelay, linkyRelay],
   accepts = () => true,
 }: {
   readonly stored?: ReadonlyArray<Event>
+  /** Whether `relay` holds `event` of `stored`; every relay by default. */
+  readonly heldBy?: (relay: string, event: Event) => boolean
   /** The relays with an open socket. */
   readonly connected?: ReadonlyArray<string>
   readonly accepts?: (event: Event) => boolean
@@ -113,7 +115,12 @@ const createFakeNostrDep = ({
         subscribeManyEose: (relays, filter, params) => {
           queried.push({ relays, filter })
           for (const event of stored) {
-            if (matchFilter(filter, event)) params.onevent?.(event)
+            if (
+              matchFilter(filter, event) &&
+              relays.some((relay) => heldBy(relay, event))
+            ) {
+              params.onevent?.(event)
+            }
           }
           params.onclose?.([])
           return { close: () => undefined }
@@ -171,6 +178,15 @@ const dmRelayList = (relays: ReadonlyArray<string>, createdAt: number) => ({
   ),
   sig: "",
 })
+
+/** An account whose DM relays Linky set up, held wherever clients look. */
+const linkyList = dmRelayList([linkyRelay], 2)
+const linkyInbox: DmInbox = {
+  relays: [linkyRelay],
+  state: "found",
+  list: linkyList,
+  lacking: [],
+}
 
 const send = async (nostr: NostrDep, inbox: DmInbox = linkyInbox) => {
   await using run = testCreateRun(runDeps(nostr))
@@ -259,10 +275,7 @@ describe("support chat", () => {
     const fake = createFakeNostrDep()
     await using run = testCreateRun(runDeps(fake.deps))
 
-    expect(await run(publishDmRelayList({ team }))).toEqual({
-      ok: true,
-      value: undefined,
-    })
+    const result = await run(publishDmRelayList({ team }))
     const [relayList] = fake.published
     expect(relayList?.relays).toEqual([supportRelay, profileRelay])
     expect(relayList?.event).toMatchObject({
@@ -270,6 +283,68 @@ describe("support chat", () => {
       pubkey: me,
       tags: [["relay", supportRelay]],
     })
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        state: "found",
+        relays: [supportRelay],
+        list: relayList?.event,
+        lacking: [],
+      },
+    })
+  })
+
+  test("publishes DM relays with a message for an account found to have none", async () => {
+    const fake = createFakeNostrDep()
+    await using run = testCreateRun(runDeps(fake.deps))
+
+    const result = await run(
+      ensureDmRelayList({ team, inbox: { relays: [], state: "missing" } })
+    )
+
+    expect(fake.published).toHaveLength(1)
+    expect(fake.published[0]?.relays).toEqual([supportRelay, profileRelay])
+    expect(fake.published[0]?.event).toMatchObject({
+      kind: 10050,
+      tags: [["relay", supportRelay]],
+    })
+    expect(result).toMatchObject({
+      ok: true,
+      value: { state: "found", relays: [supportRelay], lacking: [] },
+    })
+  })
+
+  test("copies the account's own DM relays unchanged to where clients look and they lack them", async () => {
+    const fake = createFakeNostrDep()
+    await using run = testCreateRun(runDeps(fake.deps))
+
+    expect(
+      await run(
+        ensureDmRelayList({
+          team,
+          inbox: { ...linkyInbox, lacking: [profileRelay] },
+        })
+      )
+    ).toEqual({ ok: true, value: linkyInbox })
+    expect(fake.published).toEqual([
+      { relays: [profileRelay], event: linkyList },
+    ])
+  })
+
+  test("publishes nothing for DM relays found everywhere or left unverified", async () => {
+    const fake = createFakeNostrDep()
+    await using run = testCreateRun(runDeps(fake.deps))
+
+    const unverified: DmInbox = { relays: [], state: "unverified" }
+    expect(await run(ensureDmRelayList({ team, inbox: linkyInbox }))).toEqual({
+      ok: true,
+      value: linkyInbox,
+    })
+    expect(await run(ensureDmRelayList({ team, inbox: unverified }))).toEqual({
+      ok: true,
+      value: unverified,
+    })
+    expect(fake.published).toEqual([])
   })
 
   test("reports DM relays no relay accepted, so the chat can warn", async () => {
@@ -309,22 +384,37 @@ describe("support chat", () => {
 
   test("reads the account's newest DM relays from the app's relays and the team's indexers and relays", async () => {
     const fake = createFakeNostrDep({
-      stored: [
-        dmRelayList(["wss://old.test"], 1),
-        dmRelayList([linkyRelay], 2),
-      ],
+      stored: [dmRelayList(["wss://old.test"], 1), linkyList],
     })
     await using run = testCreateRun(runDeps(fake.deps))
 
     expect(await run(loadDmInbox({ team }))).toEqual({
       ok: true,
-      value: { relays: [linkyRelay], state: "found" },
+      value: linkyInbox,
     })
     expect(fake.queried.map(({ relays }) => relays)).toEqual([
       [appRelay],
       [profileRelay],
       [supportRelay],
     ])
+  })
+
+  test("names the team's relays and indexers that answered without the account's newest DM relays", async () => {
+    const older = dmRelayList(["wss://old.test"], 1)
+    const fake = createFakeNostrDep({
+      stored: [older, linkyList],
+      // Linky's relays hold its list, the indexer only an older one.
+      heldBy: (relay, event) =>
+        relay === profileRelay ? event === older : relay === appRelay,
+      connected: [appRelay, profileRelay],
+    })
+    await using run = testCreateRun(runDeps(fake.deps))
+
+    // The support relay did not answer, so whether it lacks the list is unknown.
+    expect(await run(loadDmInbox({ team }))).toEqual({
+      ok: true,
+      value: { ...linkyInbox, lacking: [profileRelay] },
+    })
   })
 
   test("reports a missing DM relay list when the relays that answered, an indexer among them, hold none", async () => {
