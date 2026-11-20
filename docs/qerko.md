@@ -69,8 +69,8 @@ see `qerko/0004`.
 
 ### Running against the sandbox
 
-`VITE_PAYKY_QERKO_POS_ID` (web) and `EXPO_PUBLIC_PAYKY_QERKO_POS_ID` (native)
-set the `Pos-Id` header; the sandbox accepts any value. Pair with a test
+`VITE_PAYKY_QERKO_POS_ID` (web), `EXPO_PUBLIC_PAYKY_QERKO_POS_ID` (native) and
+`PAYKY_QERKO_POS_ID` (CLI) set the `Pos-Id` header; the sandbox accepts any value. Pair with a test
 company, choose "Sandbox" under "Additional options", and the terminal is the
 sandbox's.
 

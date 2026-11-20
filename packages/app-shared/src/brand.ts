@@ -36,6 +36,7 @@ export interface Brand {
    * hosts reach the one relay, so the apps' devices share a room.
    */
   readonly liveRelayHost: string
+  readonly selfPayOrigin: string
 }
 
 export type BrandId = "payky" | "finito"
@@ -49,6 +50,7 @@ export const paykyBrand = {
   websiteUrl: "https://payky.me/landing",
   donateLightningAddress: "donate@payky.me",
   liveRelayHost: "live-relay.payky.me",
+  selfPayOrigin: "https://t.payky.me",
 } as const satisfies Brand
 
 export const finitoBrand = {
@@ -74,12 +76,22 @@ export const finitoBrand = {
   // the API on app.finito.fit.
   donateLightningAddress: "donate@finito.fit",
   liveRelayHost: "live-relay.finito.fit",
+  selfPayOrigin: "https://t.finito.fit",
 } as const satisfies Brand
 
 export const brands = {
   payky: paykyBrand,
   finito: finitoBrand,
 } as const satisfies Record<BrandId, Brand>
+
+export const brandSelfPayOrigins: ReadonlyArray<string> = Object.values(
+  brands
+).map((brand) => brand.selfPayOrigin)
+
+export const brandOfSelfPayHost = (host: string): Brand =>
+  Object.values(brands).find(
+    (brand) => new URL(brand.selfPayOrigin).host === host
+  ) ?? paykyBrand
 
 /**
  * The name where no copy declines it: the launcher, a report header, the name

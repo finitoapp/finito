@@ -23,4 +23,4 @@ tags: [activity-bills]
     env:
       ROUTE: activity/bills/${output.billId}
       TEXT: ${output.t["billDetail.title"]}
-- assertVisible: ${output.t["paymentDetail.bill.coverage.overpaid.title"]}
+- assertVisible: '${output.re(output.tv("overpayment.title", { amount: "\u00245" }))}'

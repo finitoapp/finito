@@ -1,9 +1,14 @@
-import type { DisposableRun, TestRunDefaultDeps } from "@evolu/common"
+import type {
+  DisposableRun,
+  LockManagerDep,
+  TestRunDefaultDeps,
+} from "@evolu/common"
 import { sqliteTrue, testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 
 import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
 import { createQuery } from "../../evolu/schema.ts"
+import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
 import { createTestDateDep } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
@@ -158,7 +163,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createCashRegisterAccount(run)
     const paymentId = await run.orThrow(
@@ -215,7 +221,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createIbanAccount(run)
     const paymentId = await run.orThrow(
@@ -286,7 +293,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createIbanAccount(run)
     await run.orThrow(
@@ -345,7 +353,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createIbanAccount(run)
     await run.orThrow(
@@ -404,7 +413,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createCashRegisterAccount(run)
     await run.orThrow(
@@ -458,7 +468,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     // 1 CZK against a 199.50 CZK payment: without the amount check, the right
     // symbols alone would settle the payment — and close its bill — for a
@@ -486,7 +497,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     // The same number of minor units, but euros against a koruna payment.
     const { accountTransactionId } = await seedIbanPaymentAndTransfer(run, {
@@ -512,7 +524,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createIbanAccount(run)
     const createMatchingPayment = () =>
@@ -592,7 +605,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createSparkAccount(run)
     const paymentId = await run.orThrow(
@@ -667,7 +681,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createSparkAccount(run)
     const paymentId = await run.orThrow(
@@ -737,7 +752,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createIbanAccount(run)
 
@@ -825,7 +841,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createCashRegisterAccount(run)
 
@@ -891,7 +908,8 @@ describe("reconciliation claim actions", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createSparkAccount(run)
 
@@ -1108,7 +1126,8 @@ describe("reconciliation candidates", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createIbanAccount(run)
     const paymentId = await createMatchingIbanPayment(run, accountId)
@@ -1136,7 +1155,8 @@ describe("reconciliation candidates", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createIbanAccount(run)
     const paymentId = await createMatchingIbanPayment(run, accountId)
@@ -1157,7 +1177,8 @@ describe("reconciliation candidates", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createIbanAccount(run)
     const first = await createMatchingIbanPayment(run, accountId)
@@ -1180,7 +1201,8 @@ describe("reconciliation candidates", () => {
     const deps = {
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
-    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      lockManager: createInProcessLockManager(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep & LockManagerDep
     await using run = testCreateRun(deps)
     const accountId = await createIbanAccount(run)
     const paymentId = await createMatchingIbanPayment(run, accountId)

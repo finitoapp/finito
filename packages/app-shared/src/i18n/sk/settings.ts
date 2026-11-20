@@ -512,9 +512,9 @@ export const skSettings = {
     "Plugin teraz používa deterministický fiat bankový účet.",
   "settings.fioPlugin.form.title": "Základné nastavenia",
   "settings.fioPlugin.interval.description":
-    "Ako často má plugin kontrolovať nové transakcie.",
+    "Fio odpovie na jeden token najviac raz za 30 sekúnd. Plugin tokeny strieda postupne, takže kontroluje tak často, ako je tu nastavené, delené počtom tokenov.",
   "settings.fioPlugin.interval.invalid": "Zadajte celé číslo väčšie ako nula.",
-  "settings.fioPlugin.interval.label": "Sekúnd medzi kontrolami",
+  "settings.fioPlugin.interval.label": "Sekúnd medzi použitiami jedného tokenu",
   "settings.fioPlugin.lastSyncedDate.description":
     "Lokálna zarážka synchronizácie. Ak ešte neexistuje, použije sa včerajší dátum.",
   "settings.fioPlugin.lastSyncedDate.invalid": "Zadajte platný dátum.",
@@ -649,19 +649,23 @@ export const skSettings = {
   "catalog.items.form.discount.existing":
     "Táto položka je zľava: suma sa odpočíta od účtu. To, či je položka zľavou, sa dá nastaviť len pri jej pridaní.",
   "catalog.items.form.discount.label": "Zľava",
+  "catalog.items.form.inMenu.label": "V menu",
   "catalog.items.form.internalDescription.invalid":
     "Interný popis je príliš dlhý (max. 255 znakov).",
   "catalog.items.form.internalDescription.label": "Interný popis",
   "catalog.items.form.internalDescription.placeholder":
-    "Nepovinné – viditeľné iba pre personál",
+    "Nepovinné – viditeľné iba pre obsluhu",
   "catalog.items.form.internalName.hint":
-    "Zobrazí sa personálu namiesto verejného názvu. Zákazníci na účte stále vidia verejný názov a popis.",
+    "Zobrazí sa obsluhe namiesto verejného názvu. Zákazníci na účte stále vidia verejný názov a popis.",
   "catalog.items.form.internalName.invalid":
     "Interný názov je príliš dlhý (max. 255 znakov).",
   "catalog.items.form.internalName.label": "Interný názov",
   "catalog.items.form.internalName.placeholder":
     "Nepovinné – zobrazí sa personálu namiesto verejného názvu",
   "catalog.items.form.invalidId": "Neplatné ID položky.",
+  "catalog.items.form.menu.description":
+    "Hostia, ktorí objednávajú pri stole, vidia položky z menu s ich verejným názvom, popisom a cenou.",
+  "catalog.items.form.menu.title": "Menu",
   "catalog.items.form.name.invalid": "Zadajte názov.",
   "catalog.items.form.name.label": "Názov",
   "catalog.items.form.name.placeholder": "napr. Káva",
@@ -685,14 +689,19 @@ export const skSettings = {
   "catalog.items.form.sku.invalid": "SKU je príliš dlhé (max. 255 znakov).",
   "catalog.items.form.sku.label": "SKU",
   "catalog.items.form.sku.placeholder": "Nepovinné",
+  "catalog.items.form.soldOut.description":
+    "Hostia ju neuvidia, kým nebude znova k dispozícii. V menu zostane.",
+  "catalog.items.form.soldOut.label": "Vypredané",
   "catalog.items.form.taxRate.description":
     "Uplatní sa na účtoch a platbách po použití tejto položky. Sadzby správte v Nastaveniach › Daňové sadzby.",
   "catalog.items.form.taxRate.label": "Daňová sadzba",
   "catalog.items.form.taxRate.none": "Bez daňovej sadzby",
   "catalog.items.form.title.create": "Pridať položku",
   "catalog.items.form.title.edit": "Upraviť položku",
+  "catalog.items.inMenu": "V menu",
   "catalog.items.search": "Hľadať položky...",
   "catalog.items.search.clear.aria": "Vymazať hľadanie",
+  "catalog.items.soldOut": "Vypredané",
   "catalog.items.title": "Položky",
   "settings.language.locale.czech.title": "Česko",
   "settings.language.locale.description":
@@ -939,6 +948,21 @@ export const skSettings = {
   "settings.security.backup.start": "Zobraziť recovery phrase",
   "settings.security.backup.continue": "Mám zapísané — overiť",
   "settings.security.verify.skip": "Preskočiť overenie",
+  "settings.security.selfPayRelays.add": "Pridať relay",
+  "settings.security.selfPayRelays.default": "Predvolený",
+  "settings.security.selfPayRelays.description":
+    "Stoly na tieto Nostr relaye zverejňujú otvorené účty a hostia si ich odtiaľ čítajú.",
+  "settings.security.selfPayRelays.footer":
+    "Nálepka stola nesie relaye, z ktorých číta. Po ich zmene nálepky vytlačte znova: staršia nálepka číta len relaye, ktoré nesie.",
+  "settings.security.selfPayRelays.lastActive":
+    "Aspoň jeden relay musí zostať zapnutý, inak hostia svoj účet neuvidia.",
+  "settings.security.selfPayRelays.refused": "Odmietol posledné zverejnenie",
+  "settings.security.selfPayRelays.title": "Relaye pre QR kódy na stoloch",
+  "settings.security.selfPayRelays.toggle": "Zverejňovať cez {url}",
+  "settings.security.selfPayRelays.url.description":
+    "Povolené sú len zabezpečené WebSocket URL začínajúce na wss:.",
+  "settings.security.selfPayRelays.url.invalid": "Zadajte platnú wss URL.",
+  "settings.security.selfPayRelays.url.label": "URL relaye",
   "settings.security.transports.add": "Pridať transport",
   "settings.security.transports.demo":
     "Toto je demo účet: nikdy sa nesynchronizuje, takže jeho relaye zostávajú vypnuté.",
@@ -1087,7 +1111,7 @@ export const skSettings = {
     "Názov a nepovinný počet miest zobrazené pri priraďovaní stola k účtu.",
   "catalog.tables.form.card.title": "Detaily",
   "catalog.tables.form.code.description":
-    "Zatiaľ sa nepoužíva - rezervované pre budúci QR kód, ktorý bude tento stôl identifikovať.",
+    "Tlačí sa vedľa QR kódu stola, aby obsluha vedela, ku ktorému stolu nálepka patrí.",
   "catalog.tables.form.code.label": "Kód",
   "catalog.tables.form.invalidId": "Neplatné ID stola.",
   "catalog.tables.form.name.invalid": "Zadajte názov.",
@@ -1104,6 +1128,85 @@ export const skSettings = {
   "catalog.tables.search": "Hľadať stoly...",
   "catalog.tables.search.clear.aria": "Vymazať hľadanie",
   "catalog.tables.seatCount": "{value} miest",
+  "catalog.tables.selfPay.bankNote":
+    "Bankové prevody hostí sa párujú len vtedy, keď bankový účet synchronizuje aplikácia pre Android.",
+  "catalog.tables.selfPay.description":
+    "Hostia naskenujú QR kód stola a zaplatia alebo objednajú bez čakania na obsluhu. Zapnete ho v detaile stola.",
+  "catalog.tables.selfPay.enabled": "QR kód na tomto stole",
+  "catalog.tables.selfPay.enabled.description":
+    "Čo s ním hostia môžu robiť, nastavíte pre všetky stoly na obrazovke Stoly.",
+  "catalog.tables.selfPay.noPaymentMethod.bankLink": "Otvoriť bankový prevod",
+  "catalog.tables.selfPay.noPaymentMethod.bitcoinLink": "Otvoriť Bitcoin",
+  "catalog.tables.selfPay.noPaymentMethod.description":
+    "Nemôžu zaplatiť žiadnou platobnou metódou. Zapnite Bitcoin alebo synchronizáciu bankového účtu cez Fio či MONETA plugin.",
+  "catalog.tables.selfPay.noPaymentMethod.link": "Otvoriť platobné metódy",
+  "catalog.tables.selfPay.noPaymentMethod.spark":
+    "Hostia platia bitcoinom len cez peňaženku Spark. Nastavte Spark ako hlavnú bitcoinovú peňaženku, alebo synchronizujte bankový účet cez Fio alebo MONETA plugin.",
+  "catalog.tables.selfPay.noPaymentMethod.title":
+    "Hostia pri tomto stole zatiaľ nemôžu platiť",
+  "catalog.tables.selfPay.noRelayAccepted.description":
+    "Žiadny z relayov, cez ktoré sa stôl dostáva k hosťom, neprijal jeho poslednú zmenu.",
+  "catalog.tables.selfPay.noRelayAccepted.link": "Otvoriť relaye",
+  "catalog.tables.selfPay.noRelayAccepted.retry": "Skúsiť znova",
+  "catalog.tables.selfPay.noRelayAccepted.title":
+    "Hostia nevidia účet tohto stola",
+  "catalog.tables.selfPay.open": "Otvoriť ako hosť",
+  "catalog.tables.selfPay.print": "Vytlačiť nálepku",
+  "catalog.tables.selfPay.print.failed":
+    "Nálepku sa nepodarilo pripraviť. Skúste to znova.",
+  "catalog.tables.selfPay.qr": "QR kód na platenie pri stole {name}",
+  "catalog.tables.selfPay.regenerate": "Vytvoriť nový QR kód",
+  "catalog.tables.selfPay.regenerate.confirm.cancel": "Zrušiť",
+  "catalog.tables.selfPay.regenerate.confirm.confirm": "Vytvoriť nový",
+  "catalog.tables.selfPay.regenerate.confirm.description":
+    "Doteraz vytlačené nálepky prestanú zobrazovať účty tohto stola. Vytlačte novú a nahraďte ich.",
+  "catalog.tables.selfPay.regenerate.confirm.title":
+    "Vytvoriť nový QR kód pre {name}?",
+  "catalog.tables.selfPay.scanToPay": "Naskenujte a zaplaťte",
+  "catalog.tables.selfPay.title": "QR kód",
+  "catalog.tables.selfPayGuestName.description":
+    "Hosť, ktorý platí pri stole, ho uvidí ako príjemcu platby na stránke aj v QR kóde. Keď pole necháte prázdne, žiadne meno neuvidí.",
+  "catalog.tables.selfPayGuestName.error": "Zadajte najviac 255 znakov.",
+  "catalog.tables.selfPayGuestName.label": "Meno pre hostí",
+  "catalog.tables.selfPayGuestName.placeholder": "Kaviareň Pod Lipou",
+  "catalog.tables.selfPayOptions.lastOn":
+    "Jedna možnosť zostane zapnutá. Hostí pri stole zastavíte vypnutím jeho QR kódu.",
+  "catalog.tables.selfPayOptions.menu.empty.description":
+    "V menu nie je žiadna dostupná položka. Pridajte položky do menu v ich detaile alebo ich označte ako znova dostupné.",
+  "catalog.tables.selfPayOptions.menu.empty.link": "Otvoriť položky",
+  "catalog.tables.selfPayOptions.menu.empty.title": "Hostia si nemôžu objednať",
+  "catalog.tables.selfPayOptions.menu.leftOut":
+    "Položiek, ktoré sa do menu nezmestia: {count}. Hostia ich nevidia.",
+  "catalog.tables.selfPayOptions.menu.otherCurrency":
+    "Položiek s cenou mimo {currency}: {count}. Hostia ich nevidia.",
+  "catalog.tables.selfPayOptions.menu.visible":
+    "Položiek, ktoré si hostia môžu objednať: {count}",
+  "catalog.tables.selfPayOptions.noPaymentMethod.title":
+    "Hostia zatiaľ nemôžu platiť",
+  "catalog.tables.selfPayOptions.order": "Hostia objednávajú z menu",
+  "catalog.tables.selfPayOptions.order.description":
+    "Hostia si objednajú položky z menu a zaplatia ich. Zaplatené objednávky obsluha uvidí v sekcii Na výdaj.",
+  "catalog.tables.selfPayOptions.orderDevice.description":
+    "Zverejňuje menu a zapisuje zaplatené objednávky, preto ho nechajte online.",
+  "catalog.tables.selfPayOptions.orderDevice.label":
+    "Zariadenie, ktoré prijíma objednávky",
+  "catalog.tables.selfPayOptions.orderDevice.placeholder": "Vyberte zariadenie",
+  "catalog.tables.selfPayOptions.orderDevice.this": "{name} (toto zariadenie)",
+  "catalog.tables.selfPayOptions.payBill": "Hostia platia účet stola",
+  "catalog.tables.selfPayOptions.title": "QR kódy na stoloch",
+  "catalog.tables.selfPayOptions.withQrCode":
+    "Stolov s QR kódom: {count} z {total}",
+  "catalog.tables.sticker.check": "Skontrolovať nálepku",
+  "catalog.tables.sticker.current": "Táto nálepka patrí k stolu {name}.",
+  "catalog.tables.sticker.dismiss": "Zavrieť",
+  "catalog.tables.sticker.earlier":
+    "Toto je starší QR kód stola {name}. Už nezobrazuje účty stola, preto ho vymeňte.",
+  "catalog.tables.sticker.foreign":
+    "Táto nálepka nepatrí k žiadnemu z vašich stolov. Odstráňte ju.",
+  "catalog.tables.sticker.next": "Naskenovať ďalšiu nálepku",
+  "catalog.tables.sticker.notTableCode": "Toto nie je QR kód stola.",
+  "catalog.tables.sticker.relaysChanged":
+    "Táto nálepka patrí k stolu {name}, ale nesie iné relaye, než na ktoré stoly zverejňujú. Vytlačte ju znova.",
   "catalog.tables.title": "Stoly",
   "settings.taxRates.activate": "Znovu aktivovať {name}",
   "settings.taxRates.activate.confirm.cancel": "Zrušiť",
@@ -1202,7 +1305,6 @@ export const skSettings = {
   "settings.tips.nav.off": "Vypnuté",
   "settings.paymentAccounts.nav.none": "Žiadne",
   "settings.taxRates.nav.description": "Sadzby DPH pre vaše položky",
-  "access.action.acknowledgeExcess": "Potvrdiť preplatok",
   "access.action.addDiscount": "Pridať zľavu na účet",
   "access.action.moveDiscount": "Presunúť zľavu na iný účet",
   "access.action.aiAccess": "Zmeniť prístup AI k dátam",
@@ -1224,6 +1326,8 @@ export const skSettings = {
   "access.action.finishBill": "Dokončiť účet bez platby",
   "access.action.markCashPaid": "Potvrdiť prijatie hotovosti",
   "access.action.markIbanPaid": "Potvrdiť príchod prevodu",
+  "access.action.resolveOverpayment": "Vyriešiť preplatok",
+  "access.action.rejectOrder": "Odmietnuť objednávku",
   "access.action.removeAccount": "Odobrať účet z tohto zariadenia",
   "access.action.removeLines": "Odobrať položky z účtu",
   "access.action.switchAccount": "Prepnúť účet",
@@ -1277,7 +1381,7 @@ export const skSettings = {
   "access.permission.discard.description":
     "Zahodiť účet, odobrať z neho položky, zrušiť platbu",
   "access.permission.refund": "Vratky",
-  "access.permission.refund.description": "Vratky a potvrdenie preplatku",
+  "access.permission.refund.description": "Vratky a vyriešenie preplatku",
   "access.permission.sell": "Predaj",
   "access.permission.sell.description":
     "Domovská obrazovka, účty, rozdelenie účtu, platby a sprepitné",

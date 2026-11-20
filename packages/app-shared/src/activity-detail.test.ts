@@ -44,7 +44,6 @@ describe("derivePaymentDetailState", () => {
     })
     expect(state.status).toBe("pending")
     expect(state.hasCancellationCollision).toBe(false)
-    expect(state.hasExcessSettlementCollision).toBe(false)
     expect(state.paymentMethodKinds).toEqual([])
   })
 
@@ -66,24 +65,14 @@ describe("derivePaymentDetailState", () => {
     ).toBe(false)
   })
 
-  test("two distinct settlements beyond the amount are an excess, until acknowledged", () => {
-    const reconciliations = [claim("a", 100), claim("b", 100, "iban")]
-    const open = derivePaymentDetailState({
+  test("two distinct settlements beyond the amount are an excess", () => {
+    const state = derivePaymentDetailState({
       payment: payment(),
-      reconciliations,
+      reconciliations: [claim("a", 100), claim("b", 100, "iban")],
       now,
     })
-    expect(open.hasExcessSettlementCollision).toBe(true)
-    expect(open.excess).toBe(100)
-    expect(open.paymentMethodKinds).toEqual(["cashRegister", "iban"])
-
-    expect(
-      derivePaymentDetailState({
-        payment: payment({ excessAcknowledgedAt: 5 }),
-        reconciliations,
-        now,
-      }).hasExcessSettlementCollision
-    ).toBe(false)
+    expect(state.excess).toBe(100)
+    expect(state.paymentMethodKinds).toEqual(["cashRegister", "iban"])
   })
 
   test("one transaction claimed twice counts once", () => {
@@ -93,43 +82,54 @@ describe("derivePaymentDetailState", () => {
       now,
     })
     expect(state.excess).toBe(0)
-    expect(state.hasExcessSettlementCollision).toBe(false)
   })
 })
 
 describe("derivePaymentBillCoverageNotice", () => {
-  const base = { lineDiff: null, otherClaimedPaymentCount: 0 }
+  const base = {
+    billTotal: 100 as never,
+    isCanceled: false,
+    lineDiff: null,
+    otherClaimedPaymentCount: 0,
+    unresolvedOverpayment: 0,
+  }
 
   test("an unpaid bill is not warned about, a partly paid one is", () => {
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "underpaid",
         claimedSum: 0 as never,
       }).warning
     ).toBeNull()
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "underpaid",
         claimedSum: 40 as never,
       }).warning
-    ).toBe("underpaid")
+    ).toEqual({ type: "underpaid" })
   })
 
-  test("overpaid always warns and a paid bill never does", () => {
+  test("overpaid warns with what is unresolved, and a paid bill never does", () => {
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "overpaid",
-        claimedSum: 0 as never,
+        claimedSum: 130 as never,
+        unresolvedOverpayment: 30,
       }).warning
-    ).toBe("overpaid")
+    ).toEqual({ type: "overpaid", unresolved: 30 })
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "paid",
         claimedSum: 100 as never,
+      }).warning
+    ).toBeNull()
+  })
+
+  test("an overpaid bill resolved in full is not warned about", () => {
+    expect(
+      derivePaymentBillCoverageNotice({
+        ...base,
+        claimedSum: 130 as never,
       }).warning
     ).toBeNull()
   })
@@ -137,18 +137,19 @@ describe("derivePaymentBillCoverageNotice", () => {
   test("a changed bill line explains the mismatch before another payment does", () => {
     const diff = { added: [{}], removed: [], changed: [] } as never
     const notice = derivePaymentBillCoverageNotice({
-      coverage: "overpaid",
-      claimedSum: 100 as never,
+      billTotal: 100 as never,
+      isCanceled: false,
+      claimedSum: 130 as never,
       lineDiff: diff,
       otherClaimedPaymentCount: 1,
+      unresolvedOverpayment: 0,
     })
     expect(notice.reason).toBe("billLinesChanged")
     expect(notice.hasLineDiff).toBe(true)
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "overpaid",
-        claimedSum: 100 as never,
+        claimedSum: 130 as never,
         otherClaimedPaymentCount: 1,
       }).reason
     ).toBe("multiplePayments")
@@ -157,11 +158,33 @@ describe("derivePaymentBillCoverageNotice", () => {
   test("an empty diff explains nothing", () => {
     expect(
       derivePaymentBillCoverageNotice({
-        coverage: "overpaid",
-        claimedSum: 100 as never,
+        billTotal: 100 as never,
+        isCanceled: false,
+        claimedSum: 130 as never,
         lineDiff: { added: [], removed: [], changed: [] },
         otherClaimedPaymentCount: 0,
+        unresolvedOverpayment: 0,
       }).reason
+    ).toBeNull()
+  })
+
+  test("a canceled bill keeps no goods, so its money is overpaid, never underpaid", () => {
+    const notice = derivePaymentBillCoverageNotice({
+      ...base,
+      billTotal: 165 as never,
+      isCanceled: true,
+      claimedSum: 50 as never,
+      unresolvedOverpayment: 50,
+    })
+    expect(notice.warning).toEqual({ type: "overpaid", unresolved: 50 })
+    expect(notice.expectedAmount).toBe(0)
+    expect(
+      derivePaymentBillCoverageNotice({
+        ...base,
+        billTotal: 165 as never,
+        isCanceled: true,
+        claimedSum: 50 as never,
+      }).warning
     ).toBeNull()
   })
 })

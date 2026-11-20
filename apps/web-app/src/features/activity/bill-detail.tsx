@@ -6,6 +6,7 @@ import {
 import { useNow } from "@payky/app-shared/use-now"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import { BillId } from "@payky/core/modules/bill/bill-types"
+import { deriveBillOverpayment } from "@payky/core/modules/bill/bill-utils"
 import { allocateDiscount } from "@payky/core/modules/bill-line/bill-line-discount-utils"
 import {
   calculateTaxRecap,
@@ -26,7 +27,17 @@ import {
   type PaymentRefundSummary,
   summarizeRefundsByPayment,
 } from "@payky/core/modules/refund/refund-utils"
+import {
+  type FiatCurrency,
+  type Integer,
+  NonNegativeInteger,
+} from "@payky/core/modules/shared/schema"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
+import {
+  projectSelfPayViewLine,
+  sumSelfPayAllocationsByLineKey,
+} from "@payky/core/modules/table-self-pay/table-self-pay-projection-utils"
+import { selfPayAllocationsByBillIdQuery } from "@payky/core/modules/table-self-pay/table-self-pay-queries"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { Link } from "@tanstack/react-router"
 import { DetailRow } from "@/components/detail-row.tsx"
@@ -46,6 +57,7 @@ import { PaymentMethodIcons } from "@/features/activity/activity-row.tsx"
 import { BillCancellationCollisionPanel } from "@/features/activity/bill-cancellation-collision-panel.tsx"
 import { BillCoverageWarning } from "@/features/activity/bill-coverage-warning.tsx"
 import { billStatusBadgeClassName } from "@/features/activity/bill-status-display.ts"
+import { OverpaymentCard } from "@/features/activity/overpayment-card.tsx"
 import {
   PaymentDetailCopyRow,
   PaymentDetailTechnical,
@@ -61,6 +73,7 @@ import { RefundBadge } from "@/features/shared/refund-badge.tsx"
 import { TaxRecap } from "@/features/shared/tax-recap.tsx"
 import { useBillLineSummaries } from "@/features/shared/use-bill-line-summaries.ts"
 import { useBillStatus } from "@/features/shared/use-bill-status.ts"
+import { useOverpaymentInput } from "@/features/shared/use-overpayment-input.ts"
 import {
   useEvoluQuery,
   usePreloadEvoluQueries,
@@ -108,6 +121,10 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
   const { data: eetSales } = useEvoluQuery(eetSalesByBillIdQuery(billId))
   const { data: refunds } = useEvoluQuery(refundSummariesByBillIdQuery(billId))
   const refundsByPayment = summarizeRefundsByPayment(refunds)
+  const { data: allocations } = useEvoluQuery(
+    selfPayAllocationsByBillIdQuery(billId)
+  )
+  const overpaymentInput = useOverpaymentInput({ billId })
   const bill = bills[0]
 
   if (!bill || billStatus === undefined) {
@@ -115,11 +132,33 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
   }
 
   const table = tables.find((candidate) => candidate.id === bill.tableId)
+  const billLabel =
+    bill.label ?? t("bill.list.label", { number: bill.displayNumber })
   const totalAmount = deriveBillSummaryTotal(summaries)
   // VAT of the net lines, the bill's discount spread over its goods
   // (catalog/0003).
   const taxRecapRows = calculateTaxRecap(allocateDiscount(summaries), taxRates)
   const hasTaxRecap = hasTaxableLines(taxRecapRows)
+  const selfPayAllocated = sumSelfPayAllocationsByLineKey(allocations)
+  const isOverpaymentUnresolved =
+    overpaymentInput !== undefined &&
+    deriveBillOverpayment(overpaymentInput).unresolved > 0
+  const overpaymentCard = (
+    <OverpaymentCard
+      scope={{ billId }}
+      billLabel={billLabel}
+      currency={bill.currency}
+      payments={payments.map((payment) => ({
+        id: payment.id,
+        number: payment.serialNumber,
+        amount: payment.amount,
+        methods: payment.claimedTransactions.map(({ kind }) => kind),
+        createdAt: payment.createdAt,
+        canceledAt: payment.canceledAt,
+        confirmedPaidAt: payment.confirmedPaidAt,
+      }))}
+    />
+  )
 
   const closedOrCanceledLabel =
     billStatus.status === "closed" && bill.closedAt !== null
@@ -146,9 +185,7 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            {bill.label ?? t("bill.list.label", { number: bill.displayNumber })}
-          </CardTitle>
+          <CardTitle>{billLabel}</CardTitle>
           <CardDescription>
             {formatDateTime(new Date(bill.createdAt), locale)}
           </CardDescription>
@@ -177,6 +214,8 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
               </span>
             )}
           </div>
+
+          {isOverpaymentUnresolved ? overpaymentCard : null}
 
           {/*
            * Spelled out rather than "—": a counter sale with no table is a
@@ -224,6 +263,15 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
                         locale
                       )}
                     </p>
+                    <SelfPayLinePaid
+                      paid={
+                        projectSelfPayViewLine(summary, selfPayAllocated)
+                          .allocatedAmount
+                      }
+                      total={summary.totalAmount}
+                      currency={summary.currency}
+                      locale={locale}
+                    />
                   </div>
                   <p className="text-sm font-semibold">
                     {formatMoney(
@@ -250,17 +298,19 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
             </>
           ) : null}
 
-          {coverage === "paid" ? null : (
+          {coverage === "underpaid" && billStatus.status !== "canceled" ? (
             <>
               <Separator />
               <BillCoverageWarning
-                coverage={coverage}
+                coverage={{ type: "underpaid" }}
                 expectedAmount={totalAmount}
                 claimedSum={claimedSum}
                 currency={bill.currency}
               />
             </>
-          )}
+          ) : null}
+
+          {isOverpaymentUnresolved ? null : overpaymentCard}
         </CardContent>
       </Card>
 
@@ -308,6 +358,33 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
   )
 }
 
+function SelfPayLinePaid({
+  paid,
+  total,
+  currency,
+  locale,
+}: {
+  readonly paid: number
+  readonly total: Integer
+  readonly currency: FiatCurrency
+  readonly locale: string
+}) {
+  const { t } = useTranslation()
+  if (paid === 0) return null
+
+  return (
+    <p className="text-xs text-primary">
+      {t("billDetail.selfPay.linePaid", {
+        paid: formatMoney(
+          { value: NonNegativeInteger(paid), currency },
+          locale
+        ),
+        total: formatMoney({ value: total, currency }, locale),
+      })}
+    </p>
+  )
+}
+
 function BillDetailPaymentRow({
   payment,
   eetSale,
@@ -334,6 +411,10 @@ function BillDetailPaymentRow({
     confirmedPaidAt: payment.confirmedPaidAt,
     hasActiveClaim: claimCount > 0,
   })
+  const amount = formatMoney(
+    { value: payment.amount, currency: payment.currency },
+    locale
+  )
 
   return (
     <Link
@@ -347,10 +428,12 @@ function BillDetailPaymentRow({
       />
       <div className="flex flex-1 flex-col gap-0.5">
         <span className="text-sm font-medium">
-          {formatMoney(
-            { value: payment.amount, currency: payment.currency },
-            locale
-          )}
+          {payment.serialNumber === null
+            ? amount
+            : t("billDetail.payments.numberedAmount", {
+                number: payment.serialNumber,
+                amount,
+              })}
         </span>
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
           {formatDateTime(new Date(payment.createdAt), locale)}
@@ -367,6 +450,9 @@ function BillDetailPaymentRow({
           {t(paymentStatusLabelKey[status])}
         </Badge>
         <RefundBadge summary={refundSummary} />
+        {payment.selfPayId === null ? null : (
+          <Badge variant="outline">{t("billDetail.selfPay")}</Badge>
+        )}
         {eetSale === undefined ? null : <EetSaleStatusBadge sale={eetSale} />}
       </span>
     </Link>

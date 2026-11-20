@@ -1,4 +1,4 @@
-# web activity.spec.ts: "the activity list flags a payment's own duplicate settlement without also flagging its bill as overpaid".
+# web activity.spec.ts: "the activity list flags a duplicate settlement of a bill payment as its bill overpaid".
 appId: ${APP_ID}
 tags: [activity]
 ---
@@ -16,5 +16,7 @@ tags: [activity]
     env:
       ROUTE: activity
       TEXT: ${output.t["activity.title"]}
-- assertVisible: ${output.t["paymentDetail.excessCollision.title"]}
-- assertNotVisible: ${output.t["paymentHistory.billOverpaid"]}
+- extendedWaitUntil:
+    visible: ${output.t["paymentHistory.billOverpaid"]}
+    timeout: 15000
+- assertNotVisible: ${output.t["paymentDetail.excessCollision.title"]}

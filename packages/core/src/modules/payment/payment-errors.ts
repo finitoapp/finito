@@ -109,13 +109,6 @@ export type PaymentNotClaimedError = ReturnType<
   typeof createPaymentNotClaimedError
 >
 
-export const createPaymentNotOverpaidError = defineError("PaymentNotOverpaid")<{
-  readonly id: PaymentId
-}>()
-export type PaymentNotOverpaidError = ReturnType<
-  typeof createPaymentNotOverpaidError
->
-
 export const createAccountSparkNotFoundError = defineError(
   "AccountSparkNotFound"
 )<{

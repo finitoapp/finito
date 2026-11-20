@@ -1,16 +1,21 @@
+import { sqliteTrue } from "@evolu/common"
 import {
   tablesExistQuery,
   tablesPageQuery,
 } from "@payky/core/modules/table/table-queries"
+import QrCode from "lucide-react-native/icons/qr-code"
 import Table2 from "lucide-react-native/icons/table-2"
 import { Suspense, useCallback, useState } from "react"
+import { ScrollView } from "react-native"
 import { YStack } from "tamagui"
 import { ListSkeleton } from "../../../components/list-skeleton.tsx"
 import { SearchInput } from "../../../components/search-input.tsx"
+import { Badge } from "../../../components/ui/badge.tsx"
 import { useDebouncedValue } from "../../../hooks/use-debounced-value.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { CatalogEntityList, CatalogListShell } from "../catalog-list-parts.tsx"
+import { SelfPayOptionsCard } from "./self-pay-options-card.tsx"
 
 /** Tables, as web's `TablesPage`, under Settings (navigation/0003). */
 export function TablesPage() {
@@ -33,19 +38,22 @@ function TablesSettingsBody() {
   const hasAny = useEvoluQuery(tablesExistQuery).data.length > 0
 
   return (
-    <YStack flex={1} gap={12}>
-      {hasAny && (
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder={t("catalog.tables.search")}
-          clearAriaLabel={t("catalog.tables.search.clear.aria")}
-        />
-      )}
-      <Suspense fallback={<ListSkeleton />}>
-        <TablesList search={debouncedSearch} hasAny={hasAny} />
-      </Suspense>
-    </YStack>
+    <ScrollView keyboardShouldPersistTaps="handled">
+      <YStack gap={12}>
+        {hasAny && <SelfPayOptionsCard />}
+        {hasAny && (
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={t("catalog.tables.search")}
+            clearAriaLabel={t("catalog.tables.search.clear.aria")}
+          />
+        )}
+        <Suspense fallback={<ListSkeleton />}>
+          <TablesList search={debouncedSearch} hasAny={hasAny} />
+        </Suspense>
+      </YStack>
+    </ScrollView>
   )
 }
 
@@ -64,6 +72,7 @@ function TablesList({
 
   return (
     <CatalogEntityList
+      scrollEnabled={false}
       deps={[search]}
       createPageQuery={createPageQuery}
       icon={Table2}
@@ -74,6 +83,15 @@ function TablesList({
       renderRow={(table) => ({
         id: table.id,
         title: table.name,
+        badge:
+          table.selfPayEnabled === sqliteTrue ? (
+            <Badge
+              variant="secondary"
+              icon={QrCode}
+              label={t("catalog.tables.selfPay.title")}
+              testID="table-self-pay-badge"
+            />
+          ) : undefined,
         href: `/settings/tables/${table.id}`,
         trailing:
           table.seatCount === null

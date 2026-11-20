@@ -16,10 +16,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { isWeb, useTheme, View, XStack, YStack } from "tamagui"
 import appIcon from "../../assets/app-icon.png"
-import { currentPathname } from "../core/current-pathname.ts"
+import { currentPathname, usePathnameSelect } from "../core/current-pathname.ts"
 import { showMenuRoot } from "../core/menu-navigation.ts"
 import {
   type MenuTab,
+  menuPositionOf,
   menuTabOrder,
   menuTabTargets,
 } from "../core/menu-routes.ts"
@@ -190,6 +191,15 @@ export const MenuBar = memo(function MenuBar({
 export function MenuBarSpacer() {
   const wide = useWindowDimensions().width >= menuSidebarMinWidth
   return wide ? null : <View h={menuBarHeight} shrink={0} />
+}
+
+export function useMenuBarTab(): MenuTab | undefined {
+  const tab = usePathnameSelect((pathname) => {
+    const menu = menuPositionOf(pathname)
+    return menu?.root === true && menu.tab !== "terminal" ? menu.tab : undefined
+  })
+  const wide = useWindowDimensions().width >= menuSidebarMinWidth
+  return wide ? undefined : tab
 }
 
 /** Linky's rail entries: `$row` (64) high, `gap-2` apart, `px-1 py-2`. */

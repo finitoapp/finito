@@ -1,0 +1,49 @@
+# web settings-tables.spec.ts: "a self-pay table no payment method reaches
+# says so and links to the payment accounts". Web reads the link's href;
+# here the link is followed.
+appId: ${APP_ID}
+tags: [catalog]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Table 4
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/enable-table-self-pay.yaml
+    env:
+      TABLE: Table 4
+# The card says guests cannot pay yet, names what is missing and leads to
+# the payment accounts.
+- assertVisible: ${output.re(output.t["catalog.tables.selfPay.noPaymentMethod.title"])}
+- assertVisible: ${output.re(output.t["catalog.tables.selfPay.noPaymentMethod.description"])}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPay.noPaymentMethod.link"]}
+- extendedWaitUntil:
+    visible: ${output.t["settings.paymentAccounts.title"]}
+    timeout: 10000
+# Turning bank sync on clears the warning.
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: seedActiveFioPlugin
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.title"]}
+- tapOn: Table 4
+# The switch and the QR, which hold the warning between them, are both on
+# screen without it.
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: '${output.tv("catalog.tables.selfPay.qr", { name: "Table 4" })}'
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPay.enabled"]}
+- assertNotVisible: ${output.re(output.t["catalog.tables.selfPay.noPaymentMethod.title"])}

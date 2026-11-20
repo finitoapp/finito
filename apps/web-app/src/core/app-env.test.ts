@@ -6,6 +6,11 @@ describe("appEnv", () => {
   test("leaves the EET production endpoint unset without configuration", () => {
     expect(appEnv.VITE_PAYKY_EET_PRODUCTION_URL).toBeUndefined()
   })
+
+  test("publishes table self-pay to several relays by default", () => {
+    expect(appEnv.VITE_PAYKY_SELF_PAY_RELAYS.length).toBeGreaterThanOrEqual(3)
+    expect(appEnv.VITE_PAYKY_SELF_PAY_ORIGIN).toMatch(/^https:\/\//u)
+  })
 })
 
 describe("apiUrl", () => {

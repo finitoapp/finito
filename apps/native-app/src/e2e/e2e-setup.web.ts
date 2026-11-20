@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { nativeEnv } from "../core/native-env.ts"
+import { routeE2eSelfPayRelays } from "./e2e-self-pay-relays.ts"
 import {
   e2eSwitchioScenarios,
   e2eSwitchioWaitingCount,
@@ -7,6 +8,8 @@ import {
   releaseE2eSwitchio,
   setE2eSwitchioScenario,
 } from "./e2e-switchio-presets.ts"
+
+if (nativeEnv.EXPO_PUBLIC_PAYKY_E2E) routeE2eSelfPayRelays()
 
 /**
  * Two gaps between Maestro's web driver and React Native Web, closed in an

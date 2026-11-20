@@ -63,6 +63,12 @@ describe("_terminal route access (access/0003)", () => {
     expect(lockedFree).toEqual([])
   })
 
+  test("the orders to serve need sell, since accepting and serving sync", () => {
+    expect(routes.find(({ id }) => id === "/_terminal/orders")?.access).toBe(
+      "sell"
+    )
+  })
+
   test("no route has a loader, which would run before the gate", () => {
     expect(
       routes.filter(({ hasLoader }) => hasLoader).map(({ id }) => id)

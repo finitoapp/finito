@@ -1,5 +1,6 @@
 import { router, usePathname } from "expo-router"
 import FlaskConical from "lucide-react-native/icons/flask-conical"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Text, useTheme, XStack } from "tamagui"
 import { SafeAreaView } from "../../components/safe-area-view.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
@@ -12,7 +13,8 @@ import { useEetSettings } from "./use-eet-settings.ts"
  * Web's `EetSandboxBanner`, mounted above every terminal screen while EET
  * reports to the playground, so nobody takes test receipts for reported
  * sales. Web overlays it and pads the viewport by its height; native lays it
- * out above the navigator, whose screens' safe areas then start below it.
+ * out above the navigator and over the top inset its screens pad by, so they
+ * start right below it.
  */
 export function EetSandboxBanner() {
   const pathname = usePathname()
@@ -24,10 +26,16 @@ export function EetSandboxBanner() {
 function SandboxBanner() {
   const { t } = useTranslation()
   const theme = useTheme()
+  const insets = useSafeAreaInsets()
   return (
     <SafeAreaView
       edges={["top", "left", "right"]}
-      style={{ backgroundColor: theme.background.val, paddingHorizontal: 12 }}
+      style={{
+        backgroundColor: theme.background.val,
+        paddingHorizontal: 12,
+        marginBottom: -insets.top,
+        zIndex: 1,
+      }}
     >
       <XStack
         testID="eet-sandbox-banner"

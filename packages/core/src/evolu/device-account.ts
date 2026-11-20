@@ -186,15 +186,17 @@ export const resolveTransportUrl = (
 }
 
 /**
- * The transports a new account starts with: Linky's plain relay and the live
- * relay under the app's own host. Each app names its host (brand/0006); every
- * host reaches the one live relay, so devices of both apps meet in a room.
+ * The transports a new account starts with: Linky's plain relay, the live
+ * relay under the app's own host, and agora's (account/0014). Each app names
+ * its host (brand/0006); every host reaches the one live relay, so devices of
+ * both apps meet in a room.
  */
 export const createDefaultEvoluTransportUrls = (
   liveRelayHost: string
-): readonly [WssUrl, WssUrl] => [
+): readonly [WssUrl, WssUrl, WssUrl] => [
   WssUrl("wss://evolu.linky.fit"),
   WssUrl(`wss://${liveRelayHost}/${appOwnerIdPlaceholder}`),
+  WssUrl("wss://evolu.agora.gripe"),
 ]
 
 const createAccountEvoluTransportId = ({

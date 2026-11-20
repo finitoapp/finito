@@ -15,6 +15,7 @@ import { useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize } from "../../../theme/tokens.ts"
 import { TransportAddForm } from "../../shared/evolu-transports/transport-add-form.tsx"
 import { TransportToggleList } from "../../shared/evolu-transports/transport-toggle-list.tsx"
+import { SelfPayRelayCard } from "./self-pay-relay-card.tsx"
 
 /** Settings → Backends: the Evolu servers the active account syncs through, as web's. */
 export function BackendsSettingsPage() {
@@ -61,6 +62,7 @@ export function BackendsSettingsPage() {
           </Text>
         </CardFooter>
       </Card>
+      <SelfPayRelayCard />
     </Screen>
   )
 }

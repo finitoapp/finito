@@ -4,7 +4,10 @@ import {
   isQerkoKeyRejected,
   qerkoStepKeys,
 } from "@payky/app-shared/qerko-terminal-flow"
-import { refundMethodLabelKey } from "@payky/app-shared/refund-form"
+import {
+  refundMethodLabelKey,
+  returnedOverpaymentLabel,
+} from "@payky/app-shared/refund-form"
 import { eetReversalsByPaymentIdQuery } from "@payky/core/modules/eet/eet-queries"
 import {
   dismissQerkoTerminalRefundAttempt,
@@ -22,8 +25,10 @@ import {
 import type { RefundId } from "@payky/core/modules/refund/refund-types"
 import {
   isTipRefund,
+  returnedOverpaymentOf,
   sumGoodsRefundAmounts,
   sumRefundAmounts,
+  sumReturnedOverpayment,
 } from "@payky/core/modules/refund/refund-utils"
 import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { useQuery } from "@tanstack/react-query"
@@ -152,6 +157,7 @@ export function PaymentRefunds({
             summary={{
               refundedAmount: sumGoodsRefundAmounts(refunds),
               returnedAmount: sumRefundAmounts(refunds),
+              returnedOverpaymentAmount: sumReturnedOverpayment(refunds),
               refundableAmount: availability.refundableAmount,
               currency: payment.currency,
             }}
@@ -197,7 +203,16 @@ function RefundRow({
     { value: refund.amount, currency: refund.currency },
     locale
   )
-  const details = `${isTipRefund(refund) ? `${t("paymentDetail.refunds.tip")} · ` : ""}${t(refundMethodLabelKey[refund.method])} · ${formatDateTime(new Date(refund.refundedAt), locale)}`
+  const returned =
+    returnedOverpaymentOf(refund) > 0
+      ? `${returnedOverpaymentLabel({
+          refund,
+          t,
+          format: (value) =>
+            formatMoney({ value, currency: refund.currency }, locale),
+        })} · `
+      : ""
+  const details = `${isTipRefund(refund) ? `${t("paymentDetail.refunds.tip")} · ` : ""}${returned}${t(refundMethodLabelKey[refund.method])} · ${formatDateTime(new Date(refund.refundedAt), locale)}`
   return (
     <YStack testID="payment-detail-refund" mx={-12}>
       <VerticalNavRow

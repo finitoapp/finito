@@ -1,5 +1,8 @@
 import { sqliteFalse, sqliteTrue } from "@evolu/common"
-import { splitTransportUrl } from "@payky/app-shared/evolu-transports"
+import {
+  orderDefaultTransportsFirst,
+  splitTransportUrl,
+} from "@payky/app-shared/evolu-transports"
 import {
   accountTransportsQuery,
   setAccountEvoluTransportActive,
@@ -16,6 +19,7 @@ import {
   SettingsTileList,
 } from "../../../components/settings-tile.tsx"
 import { Switch } from "../../../components/ui/switch.tsx"
+import { appDefaultTransports } from "../../../core/app-brand.ts"
 import { useDeviceEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
@@ -43,6 +47,10 @@ export function TransportToggleList({
   const { data: transports } = useDeviceEvoluQuery(
     accountTransportsQuery(accountId)
   )
+  const orderedTransports = orderDefaultTransportsFirst(
+    transports,
+    appDefaultTransports
+  )
   const [pendingId, setPendingId] = useState<string | null>(null)
 
   if (transports.length === 0) {
@@ -59,7 +67,7 @@ export function TransportToggleList({
 
   return (
     <SettingsTileList>
-      {transports.map((transport) => {
+      {orderedTransports.map((transport) => {
         const active = transport.isActive === sqliteTrue
         return (
           <SettingsTile

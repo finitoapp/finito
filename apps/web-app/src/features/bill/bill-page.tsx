@@ -50,6 +50,13 @@ import {
 } from "@payky/core/modules/shared/schema"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import type { TableId } from "@payky/core/modules/table/table-types"
+import {
+  projectSelfPayViewLine,
+  sumSelfPayAllocationsByLineKey,
+} from "@payky/core/modules/table-self-pay/table-self-pay-projection-utils"
+import { selfPayAllocationsByBillIdQuery } from "@payky/core/modules/table-self-pay/table-self-pay-queries"
+import { remainingOnLine } from "@payky/core/modules/table-self-pay/table-self-pay-share-utils"
+import type { SelfPayViewLine } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { isSameDay } from "date-fns"
@@ -58,6 +65,7 @@ import {
   AlertTriangleIcon,
   ArrowLeftIcon,
   ChevronDown,
+  CircleCheckIcon,
   Eraser,
   Minus,
   Plus,
@@ -91,7 +99,7 @@ import {
   AlertTitle,
 } from "@/components/reui/alert.tsx"
 import { SearchInput } from "@/components/search-input.tsx"
-import { Button } from "@/components/ui/button.tsx"
+import { Button, buttonVariants } from "@/components/ui/button.tsx"
 import { Card, CardContent } from "@/components/ui/card.tsx"
 import {
   Collapsible,
@@ -111,6 +119,8 @@ import { useBillScanHandler } from "@/features/bill/use-bill-scan-handler.tsx"
 import { useCartBill } from "@/features/bill/use-cart-bill.ts"
 import { useChangePulse } from "@/features/bill/use-change-pulse.ts"
 import { useFinishBill } from "@/features/bill/use-finish-bill.ts"
+import { useGuestMoneyArrivals } from "@/features/bill/use-guest-money-arrivals.ts"
+import { useGuestPaidQuestion } from "@/features/bill/use-guest-paid-question.ts"
 import { usePendingPayments } from "@/features/bill/use-pending-payments.ts"
 import { billStateQueries } from "@/features/shared/bill-state-queries.ts"
 import { CategoryFilterBar } from "@/features/shared/category-filter-bar.tsx"
@@ -217,6 +227,11 @@ export function BillPage({
   const summaries = useBillLineSummaries(billId)
   const pendingPaymentIds = usePendingPayments(billId)
   const billStatus = useBillStatus(billId)
+  const { guestsClosedBill } = useGuestMoneyArrivals({
+    billId,
+    billStatus,
+    currency: bill?.currency ?? fallbackCurrency,
+  })
   // A cancellation collision stays: confirming the bill despite it is `sell`.
   const closedOnOpen = useRedirectIfClosedOnOpen(
     billId,
@@ -252,6 +267,8 @@ export function BillPage({
   } else if (finishBill.closing && billStatus?.status === "closed") {
     // Finished here: home is on its way, so no "bill closed" message first.
     content = null
+  } else if (bill !== undefined && guestsClosedBill) {
+    content = <GuestsPaidBillMessage billId={bill.id} />
   } else if (bill !== undefined && billStatus?.status !== "open") {
     content = billStatus?.hasCancellationCollision ? (
       <BillCancellationCollisionMessage
@@ -273,6 +290,11 @@ export function BillPage({
         billExists={bill !== undefined}
         currency={bill?.currency ?? fallbackCurrency}
         summaries={summaries}
+        claimedSum={billStatus?.claimedSum ?? NonNegativeInteger(0)}
+        amountDue={
+          billStatus?.amountDue ??
+          NonNegativeInteger(Math.max(0, deriveBillSummaryTotal(summaries)))
+        }
         // `pendingTableId` only seeds the bill row that's about to be
         // created; once it exists its own `tableId` is the source of truth,
         // so a table cleared on the bill isn't overwritten by the stale seed.
@@ -392,6 +414,26 @@ function BillPageLayout({
 function BillMessage({ message }: { readonly message: string }) {
   return (
     <p className="mt-16 px-6 text-center text-muted-foreground">{message}</p>
+  )
+}
+
+function GuestsPaidBillMessage({ billId }: { readonly billId: BillId }) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="mt-16 flex flex-col items-center gap-4 px-6">
+      <Alert variant="success">
+        <CircleCheckIcon />
+        <AlertTitle>{t("bill.guestMoney.closed")}</AlertTitle>
+      </Alert>
+      <Link
+        to="/activity/bills/$billId"
+        params={{ billId }}
+        className={cn(buttonVariants({ variant: "outline" }), "h-12")}
+      >
+        {t("bill.guestMoney.openDetail")}
+      </Link>
+    </div>
   )
 }
 
@@ -519,6 +561,8 @@ function BillCartView({
   billExists,
   currency,
   summaries,
+  claimedSum,
+  amountDue,
   tableId,
   cart,
   search,
@@ -542,6 +586,8 @@ function BillCartView({
   readonly billExists: boolean
   readonly currency: FiatCurrencyType
   readonly summaries: ReadonlyArray<BillLineSummary>
+  readonly claimedSum: NonNegativeInteger
+  readonly amountDue: NonNegativeInteger
   readonly tableId: TableId | null
   readonly initialScanCode: string | undefined
   /** `BillPage`'s `useFinishBill`, for Finish in Charge's place. */
@@ -559,6 +605,7 @@ function BillCartView({
   const confirm = useConfirmDialog()
   const console = useConsole()
   const createTerminalPayment = useCreateTerminalPayment()
+  const askGuestPaid = useGuestPaidQuestion(currency)
   const { data: settingsData } = useEvoluQuery(settingsQuery)
   const [settings] = settingsData
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
@@ -568,6 +615,10 @@ function BillCartView({
     enabledPaymentMethodAccountsQuery
   )
   const [qerkoPaymentPlugin] = useEvoluQuery(qerkoPluginQuery("standard")).data
+  const { data: selfPayAllocations } = useEvoluQuery(
+    selfPayAllocationsByBillIdQuery(billId)
+  )
+  const selfPayAllocated = sumSelfPayAllocationsByLineKey(selfPayAllocations)
   // The `*Pending` state drives `disabled`, which only takes effect on the
   // next render, so two fast taps on a low-end terminal both enter the
   // handler. `createPayment` deliberately accepts a bill that already has a
@@ -750,12 +801,10 @@ function BillCartView({
   })
   const checkoutHintKey = billCheckoutHintKeys[checkout]
   const finishing = checkout === "finish"
+  const amountDuePulseControls = useChangePulse(amountDue)
 
   const handleCharge = async () => {
     if (checkout !== "charge" || chargePendingRef.current) return
-    // Charge is offered only for goods above zero (`deriveBillCheckout`), so
-    // the bill's total is never negative here (payment/0015).
-    const amount = NonNegativeInteger(totalAmount)
 
     chargePendingRef.current = true
     setChargePending(true)
@@ -763,13 +812,13 @@ function BillCartView({
       if (settings?.tipsEnabled === sqliteTrue) {
         await navigate({
           to: "/payment/tip",
-          search: { amount, currency, billId },
+          search: { amount: amountDue, currency, billId },
         })
         return
       }
 
       await createTerminalPayment({
-        amount,
+        amount: amountDue,
         currency,
         tipAmount: NonNegativeInteger(0),
         billId,
@@ -803,7 +852,12 @@ function BillCartView({
 
     const confirmed = await confirm({
       title: t("bill.discard.confirm.title"),
-      description: t("bill.discard.confirm.description"),
+      description:
+        claimedSum > 0
+          ? t("bill.discard.confirm.paid.description", {
+              amount: formatMoney({ value: claimedSum, currency }, locale),
+            })
+          : t("bill.discard.confirm.description"),
       confirmLabel: t("bill.discard.confirm.confirm"),
       cancelLabel: t("bill.discard.confirm.cancel"),
       variant: "destructive",
@@ -841,6 +895,21 @@ function BillCartView({
       ) {
         return
       }
+      const asked = await askGuestPaid(
+        billId,
+        input.items.map((item) => ({
+          billId,
+          deviceId: null,
+          catalogItemId: item.catalogItemId,
+          itemId: item.itemId,
+          type: item.type,
+          kind: "remove",
+          quantity: item.quantity,
+          totalAmount: item.totalAmount,
+        })),
+        "split"
+      )
+      if (!asked) return
       await using run = appRun()
 
       if (input.destination === "new") {
@@ -1029,6 +1098,7 @@ function BillCartView({
                         <ItemBrick
                           catalogItem={catalogItem}
                           summaries={summaries}
+                          selfPayAllocated={selfPayAllocated}
                           locale={locale}
                           onAdd={() => void cart.addOne(catalogItem)}
                           onAddQuantity={(quantity) =>
@@ -1116,8 +1186,13 @@ function BillCartView({
                     {t("bill.itemsCount", { value: itemCount })}
                   </div>
                   <div className="flex items-center gap-2 text-base font-semibold">
-                    <motion.span animate={totalAmountPulseControls}>
-                      {formatMoney({ value: totalAmount, currency }, locale)}
+                    {claimedSum > 0 && (
+                      <span className="font-normal">
+                        {t("bill.summary.leftToPay")}
+                      </span>
+                    )}
+                    <motion.span animate={amountDuePulseControls}>
+                      {formatMoney({ value: amountDue, currency }, locale)}
                     </motion.span>
                     <ChevronDown
                       className={cn(
@@ -1150,6 +1225,10 @@ function BillCartView({
                         <SummaryRow
                           key={summary.id}
                           summary={summary}
+                          selfPayLine={projectSelfPayViewLine(
+                            summary,
+                            selfPayAllocated
+                          )}
                           locale={locale}
                           disabled={cart.pending}
                           catalogItem={
@@ -1179,6 +1258,13 @@ function BillCartView({
                       ))}
                     </div>
                   </div>
+                  <BillAlreadyPaid
+                    className="lg:hidden"
+                    claimedSum={claimedSum}
+                    amountDue={amountDue}
+                    currency={currency}
+                    locale={locale}
+                  />
                   <div className="flex items-center justify-between py-2 lg:hidden">
                     <div className={"gap-1 flex"}>
                       <Button
@@ -1232,6 +1318,13 @@ function BillCartView({
                 {formatMoney({ value: totalAmount, currency }, locale)}
               </motion.span>
             </div>
+            <BillAlreadyPaid
+              className="hidden pt-2 lg:flex"
+              claimedSum={claimedSum}
+              amountDue={amountDue}
+              currency={currency}
+              locale={locale}
+            />
             <div className="flex items-center gap-2 pt-4 lg:flex-wrap">
               <Button
                 variant="outline"
@@ -1298,7 +1391,7 @@ function BillCartView({
                     {t("home.pay")}
                     <span className="hidden lg:inline">
                       {" "}
-                      {formatMoney({ value: totalAmount, currency }, locale)}
+                      {formatMoney({ value: amountDue, currency }, locale)}
                     </span>
                   </span>
                 )}
@@ -1338,6 +1431,7 @@ function BillEmptyCatalog() {
 
 function SummaryRow({
   summary,
+  selfPayLine,
   locale,
   disabled,
   catalogItem,
@@ -1346,6 +1440,7 @@ function SummaryRow({
   onRemove,
 }: {
   readonly summary: BillLineSummary
+  readonly selfPayLine: SelfPayViewLine
   readonly locale: string
   readonly disabled: boolean
   /** The line's catalog item, when it still exists to add another of. */
@@ -1374,6 +1469,11 @@ function SummaryRow({
             )}
           </p>
         )}
+        <SelfPayLineStatus
+          line={selfPayLine}
+          currency={summary.currency}
+          locale={locale}
+        />
       </div>
       {/*
        * The item grid's "−"/"+" cluster in small. No `disabled`, like
@@ -1440,9 +1540,74 @@ function SummaryRow({
   )
 }
 
+function BillAlreadyPaid({
+  className,
+  claimedSum,
+  amountDue,
+  currency,
+  locale,
+}: {
+  readonly className: string
+  readonly claimedSum: NonNegativeInteger
+  readonly amountDue: NonNegativeInteger
+  readonly currency: FiatCurrencyType
+  readonly locale: string
+}) {
+  const { t } = useTranslation()
+  if (claimedSum === 0) return null
+
+  return (
+    <dl className={cn("flex flex-col gap-1 tabular-nums", className)}>
+      <div className="flex items-baseline justify-between text-muted-foreground">
+        <dt>{t("bill.summary.alreadyPaid")}</dt>
+        <dd>{formatMoney({ value: claimedSum, currency }, locale)}</dd>
+      </div>
+      <div className="flex items-baseline justify-between font-semibold">
+        <dt>{t("bill.summary.leftToPay")}</dt>
+        <dd>{formatMoney({ value: amountDue, currency }, locale)}</dd>
+      </div>
+    </dl>
+  )
+}
+
+function SelfPayLineStatus({
+  line,
+  currency,
+  locale,
+}: {
+  readonly line: SelfPayViewLine
+  readonly currency: FiatCurrencyType
+  readonly locale: string
+}) {
+  const { t } = useTranslation()
+  if (line.allocatedAmount === 0) return null
+  const remaining = remainingOnLine(line)
+
+  return (
+    <p
+      data-testid="bill-summary-self-pay"
+      className="text-xs text-primary tabular-nums"
+    >
+      {remaining === 0
+        ? t("bill.summary.selfPay.paid")
+        : t("bill.summary.selfPay.partlyPaid", {
+            paid: formatMoney(
+              { value: NonNegativeInteger(line.allocatedAmount), currency },
+              locale
+            ),
+            remaining: formatMoney(
+              { value: NonNegativeInteger(remaining), currency },
+              locale
+            ),
+          })}
+    </p>
+  )
+}
+
 function ItemBrick({
   catalogItem,
   summaries,
+  selfPayAllocated,
   locale,
   onAdd,
   onAddQuantity,
@@ -1450,6 +1615,7 @@ function ItemBrick({
 }: {
   readonly catalogItem: CatalogItemRow
   readonly summaries: ReadonlyArray<BillLineSummary>
+  readonly selfPayAllocated: ReadonlyMap<string, number>
   readonly locale: string
   readonly onAdd: () => void
   readonly onAddQuantity: (quantity: PositiveNumber) => void
@@ -1468,6 +1634,13 @@ function ItemBrick({
   const latestSummary = useMemo(
     () => getLatestCatalogItemSummary(matchingSummaries, catalogItem.id),
     [catalogItem.id, matchingSummaries]
+  )
+  const guestPaid = NonNegativeInteger(
+    matchingSummaries.reduce(
+      (sum, summary) =>
+        sum + projectSelfPayViewLine(summary, selfPayAllocated).allocatedAmount,
+      0
+    )
   )
 
   const [quantityDialogOpen, setQuantityDialogOpen] = useState(false)
@@ -1505,7 +1678,19 @@ function ItemBrick({
        * drops it.
        */}
       <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 pt-0.5 font-medium lg:text-base">{name}</p>
+        <div className="min-w-0 pt-0.5">
+          <p className="font-medium lg:text-base">{name}</p>
+          {guestPaid > 0 && (
+            <p className="text-xs font-medium tabular-nums">
+              {t("bill.brick.guestPaid", {
+                amount: formatMoney(
+                  { value: guestPaid, currency: catalogItem.currency },
+                  locale
+                ),
+              })}
+            </p>
+          )}
+        </div>
         <Button
           type="button"
           size="sm"

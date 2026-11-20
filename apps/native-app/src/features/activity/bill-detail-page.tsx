@@ -7,6 +7,7 @@ import { formatDateTime } from "@payky/app-shared/format-date"
 import { useNow } from "@payky/app-shared/use-now"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import { BillId } from "@payky/core/modules/bill/bill-types"
+import { deriveBillOverpayment } from "@payky/core/modules/bill/bill-utils"
 import { allocateDiscount } from "@payky/core/modules/bill-line/bill-line-discount-utils"
 import {
   calculateTaxRecap,
@@ -25,6 +26,8 @@ import {
   summarizeRefundsByPayment,
 } from "@payky/core/modules/refund/refund-utils"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
+import { sumSelfPayAllocationsByLineKey } from "@payky/core/modules/table-self-pay/table-self-pay-projection-utils"
+import { selfPayAllocationsByBillIdQuery } from "@payky/core/modules/table-self-pay/table-self-pay-queries"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { router, useLocalSearchParams } from "expo-router"
 import { Suspense, useMemo } from "react"
@@ -34,6 +37,7 @@ import { AmountFigure } from "../../components/amount-figure.tsx"
 import { CollisionAlert } from "../../components/collision-alert.tsx"
 import { DetailRow } from "../../components/detail-row.tsx"
 import { NotFoundCard } from "../../components/not-found-card.tsx"
+import { Badge } from "../../components/ui/badge.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import {
   Card,
@@ -60,6 +64,7 @@ import {
   useBillLineSummaries,
   useBillStatus,
 } from "../shared/use-bill-state.ts"
+import { useOverpaymentInput } from "../shared/use-overpayment-input.ts"
 import { usePreloadBill } from "../shared/use-preload-bill.ts"
 import { PaymentMethodIcons } from "./activity-parts.tsx"
 import { BillStatusBadge } from "./bill-status-display.tsx"
@@ -70,6 +75,7 @@ import {
   OptionalRow,
   Technical,
 } from "./detail-parts.tsx"
+import { OverpaymentCard } from "./overpayment-card.tsx"
 import { PaymentDetailSkeleton } from "./payment-detail-page.tsx"
 import {
   PaymentStatusBadge,
@@ -129,12 +135,18 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
   const refunds = useEvoluQuery(refundSummariesByBillIdQuery(billId)).data
   const refundsByPayment = summarizeRefundsByPayment(refunds)
   const eetSales = useEvoluQuery(eetSalesByBillIdQuery(billId)).data
+  const selfPayAllocated = sumSelfPayAllocationsByLineKey(
+    useEvoluQuery(selfPayAllocationsByBillIdQuery(billId)).data
+  )
+  const overpaymentInput = useOverpaymentInput({ billId })
 
   // A deleted or never-synced id: the same page, not an error.
   if (bill === undefined || billStatus === undefined)
     return <NotFoundCard messageKey="billDetail.notFound" />
 
   const table = tables.find((candidate) => candidate.id === bill.tableId)
+  const billLabel =
+    bill.label ?? t("bill.list.label", { number: bill.displayNumber })
   const totalAmount = deriveBillSummaryTotal(summaries)
   const headline = formatMoneyParts(
     { value: totalAmount, currency: bill.currency },
@@ -143,6 +155,25 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
   // VAT of the net lines, the bill's discount spread over its goods
   // (catalog/0003).
   const taxRecapRows = calculateTaxRecap(allocateDiscount(summaries), taxRates)
+  const isOverpaymentUnresolved =
+    overpaymentInput !== undefined &&
+    deriveBillOverpayment(overpaymentInput).unresolved > 0
+  const overpaymentCard = (
+    <OverpaymentCard
+      scope={{ billId }}
+      billLabel={billLabel}
+      currency={bill.currency}
+      payments={payments.map((payment) => ({
+        id: payment.id,
+        number: payment.serialNumber,
+        amount: payment.amount,
+        methods: payment.claimedTransactions.map(({ kind }) => kind),
+        createdAt: payment.createdAt,
+        canceledAt: payment.canceledAt,
+        confirmedPaidAt: payment.confirmedPaidAt,
+      }))}
+    />
+  )
   const closedOrCanceled =
     billStatus.status === "closed" && bill.closedAt !== null
       ? t("billDetail.closedAtValue", {
@@ -169,9 +200,7 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            {bill.label ?? t("bill.list.label", { number: bill.displayNumber })}
-          </CardTitle>
+          <CardTitle>{billLabel}</CardTitle>
           <CardDescription>
             {formatDateTime(new Date(bill.createdAt), locale)}
           </CardDescription>
@@ -202,6 +231,8 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
             )}
           </YStack>
 
+          {isOverpaymentUnresolved ? overpaymentCard : null}
+
           {/* Spelled out rather than "—": a counter sale with no table is a fact; "—" is a table row that is gone. */}
           <DetailRow label={t("billDetail.table")}>
             <Text
@@ -230,6 +261,7 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
           <BillLines
             summaries={summaries}
             emptyMessage={t("billDetail.items.empty")}
+            selfPayAllocated={selfPayAllocated}
           />
           {hasTaxableLines(taxRecapRows) ? (
             <>
@@ -237,17 +269,19 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
               <TaxRecap rows={taxRecapRows} currency={bill.currency} />
             </>
           ) : null}
-          {coverage === "paid" ? null : (
+          {coverage === "underpaid" && billStatus.status !== "canceled" ? (
             <>
               <Separator />
               <BillCoverageWarning
-                coverage={coverage}
+                coverage={{ type: "underpaid" }}
                 expectedAmount={totalAmount}
                 claimedSum={claimedSum}
                 currency={bill.currency}
               />
             </>
-          )}
+          ) : null}
+
+          {isOverpaymentUnresolved ? null : overpaymentCard}
         </CardContent>
       </Card>
 
@@ -328,11 +362,18 @@ function BillPaymentRowView({
     { value: payment.amount, currency: payment.currency },
     locale
   )
+  const title =
+    payment.serialNumber === null
+      ? amount
+      : t("billDetail.payments.numberedAmount", {
+          number: payment.serialNumber,
+          amount,
+        })
 
   return (
     <Pressable
       role="button"
-      aria-label={`${amount}, ${t(paymentStatusLabelKey[status])}`}
+      aria-label={`${title}, ${t(paymentStatusLabelKey[status])}`}
       onPress={() =>
         router.push({
           pathname: "/activity/[paymentId]",
@@ -351,7 +392,7 @@ function BillPaymentRowView({
             lineHeight={fontSize.sm}
             fontWeight={fontWeight.medium}
           >
-            {amount}
+            {title}
           </Text>
           <XStack items="center" gap={8}>
             <Text
@@ -372,6 +413,9 @@ function BillPaymentRowView({
             label={t(paymentStatusLabelKey[status])}
           />
           <RefundBadge summary={refundSummary} />
+          {payment.selfPayId === null ? null : (
+            <Badge variant="outline" label={t("billDetail.selfPay")} />
+          )}
           {eetSale === undefined ? null : <EetSaleStatusLabel sale={eetSale} />}
         </YStack>
       </XStack>

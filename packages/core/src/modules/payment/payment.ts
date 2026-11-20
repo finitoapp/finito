@@ -21,6 +21,7 @@ import {
   VariableSymbolSchema,
 } from "../shared/schema.ts"
 import { TableId } from "../table/table-types.ts"
+import { SelfPayPointerSchema } from "../table-self-pay/table-self-pay-reference-utils.ts"
 import { PaymentId, QerkoPaymentAttemptId } from "./payment-types.ts"
 
 export const payment = {
@@ -34,8 +35,9 @@ export const payment = {
   canceledAt: TimestampMsSchema.nullable(),
   confirmedPaidAt: TimestampMsSchema.nullable(),
   /**
-   * Set once, never cleared, by `acknowledgePaymentExcessSettlement`.
-   * Staff's explicit resolution of the duplicate-settlement collision: two
+   * Set once, never cleared, by app versions before overpayment
+   * resolutions, which now read it as keeping the extra money claimed
+   * before its first write. It resolved the duplicate-settlement collision: two
    * offline devices can each independently claim the same payment through a
    * different method (e.g. one settles it in cash while another
    * reconciles an incoming bank transfer for the same amount) — both
@@ -290,6 +292,11 @@ export const qerkoPaymentAttempt = {
   tipNetAmount: NonNegativeIntegerSchema.nullable(),
 } as const
 
+export const paymentSelfPay = {
+  id: PaymentId,
+  pointer: SelfPayPointerSchema.nullable(),
+} as const
+
 export const paymentIndexes = ((create) => [
   create("payment_billId").on("payment").column("billId"),
   create("payment_tableId").on("payment").column("tableId"),
@@ -362,3 +369,4 @@ export type PaymentCashuRow = InferTable<typeof paymentCashu>
 export type PaymentLightningAddressRow = InferTable<
   typeof paymentLightningAddress
 >
+export type PaymentSelfPayRow = InferTable<typeof paymentSelfPay>

@@ -35,7 +35,7 @@ tags: [tables-overview]
     env:
       LABEL: '${output.tv("bill.brick.add.aria", { name: "Coffee" })}'
 - extendedWaitUntil:
-    visible: '${output.tv("bill.list.label", { number: 1 })}'
+    visible: '.*${output.re(output.tv("bill.list.label", { number: 1 }))}.*'
     timeout: 10000
 - assertVisible: Table A
 # Back home, the table is occupied by that one bill.
@@ -66,4 +66,4 @@ tags: [tables-overview]
 - extendedWaitUntil:
     visible: '${output.tv("bill.itemsCount", { value: 1 })}'
     timeout: 10000
-- assertVisible: '${output.tv("bill.list.label", { number: 1 })}'
+- assertVisible: '.*${output.re(output.tv("bill.list.label", { number: 1 }))}.*'
