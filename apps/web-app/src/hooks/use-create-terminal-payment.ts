@@ -23,6 +23,11 @@ import { isCardTerminalLinked } from "@/platform/switchio.ts"
  * A payment without a bill charges what home's keypad holds (directly or
  * through the tip screen), so creating one clears that amount for the next
  * customer; until then it survives leaving home.
+ *
+ * `fromTipScreen` replaces the tip screen in history instead of stacking
+ * the payment on it: back from the payment must not land on a tip screen,
+ * where one tap creates a second payment beside the pending one. The bill,
+ * home's keypad, show a pending payment instead of charging again.
  */
 export function useCreateTerminalPayment() {
   const runToast = useRunToast()
@@ -36,11 +41,13 @@ export function useCreateTerminalPayment() {
       currency,
       tipAmount,
       billId = null,
+      fromTipScreen = false,
     }: {
       readonly amount: NonNegativeInteger
       readonly currency: FiatCurrency
       readonly tipAmount: NonNegativeInteger
       readonly billId?: BillId | null
+      readonly fromTipScreen?: boolean
     }): Promise<void> => {
       const { device } = await jotaiStore.get(accountAtom)
 
@@ -69,6 +76,7 @@ export function useCreateTerminalPayment() {
           params: {
             paymentId: result.value,
           },
+          replace: fromTipScreen,
         })
       })
     },
