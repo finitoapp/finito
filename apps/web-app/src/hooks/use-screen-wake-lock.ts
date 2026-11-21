@@ -20,8 +20,15 @@ export function useScreenWakeLock(enabled: boolean): {
     if (!enabled) return
 
     void request()
+    // The browser releases the lock whenever the page is hidden (the screen
+    // off, another app on top), and it is not taken back on its own.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void request()
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange)
 
     return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange)
       void release().catch(() => undefined)
     }
   }, [enabled, release, request])
