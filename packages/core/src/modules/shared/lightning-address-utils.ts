@@ -42,6 +42,12 @@ export const lnurlToLightningAddress = (lnurl: string): string | null => {
   ) {
     return null
   }
-  const address = `${decodeURIComponent(name)}@${url.hostname}`.toLowerCase()
+  let decodedName: string
+  try {
+    decodedName = decodeURIComponent(name)
+  } catch {
+    return null // a malformed `%` escape
+  }
+  const address = `${decodedName}@${url.hostname}`.toLowerCase()
   return LIGHTNING_ADDRESS.test(address) ? address : null
 }
