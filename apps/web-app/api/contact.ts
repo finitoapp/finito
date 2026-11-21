@@ -12,8 +12,12 @@ import { SimplePool } from "nostr-tools/pool"
 import { type Event, generateSecretKey } from "nostr-tools/pure"
 import { z } from "zod"
 import { loadServerBrandName } from "../src/server/server-brand.js"
+import {
+  loadServerEnv,
+  throwInvalidServerEnv,
+} from "../src/server/server-env.js"
 import { jsonApi } from "./_http.js"
-import { currentTeam, NpubListSchema } from "./support-team.js"
+import { loadSupportTeam, NpubListSchema } from "./support-team.js"
 
 /**
  * The landing page's contact form (support/0003): the message goes to the
@@ -25,16 +29,21 @@ import { currentTeam, NpubListSchema } from "./support-team.js"
 
 const RELAY_MAX_WAIT_MS = 6_000
 
-const env = createEnv({
-  server: {
-    // Who the form writes to; a test npub while the form is tried out.
-    PAYKY_CONTACT_NPUBS: NpubListSchema.default([
-      "npub1rfqkezd7zzrxlk8hfg7vmnfed6yyt0muj2qwg36xmt2c9y9vatgsp6eupe",
-    ]),
-  },
-  runtimeEnv: process.env,
-  emptyStringAsUndefined: true,
-})
+/** Who the form writes to, read per request; `null` when misconfigured. */
+const loadContactRecipients = (): ReadonlyArray<string> | null =>
+  loadServerEnv(() =>
+    createEnv({
+      server: {
+        // A test npub while the form is tried out.
+        PAYKY_CONTACT_NPUBS: NpubListSchema.default([
+          "npub1rfqkezd7zzrxlk8hfg7vmnfed6yyt0muj2qwg36xmt2c9y9vatgsp6eupe",
+        ]),
+      },
+      runtimeEnv: process.env,
+      emptyStringAsUndefined: true,
+      onValidationError: throwInvalidServerEnv,
+    })
+  )?.PAYKY_CONTACT_NPUBS ?? null
 
 export type PublishResults = ReadonlyArray<PromiseSettledResult<string>>
 
@@ -76,15 +85,15 @@ const publishToRelays: Publish = async (relays, event) => {
 export const handleContactRequest = async (
   request: Request,
   {
-    recipients = env.PAYKY_CONTACT_NPUBS,
-    relays = currentTeam.relays,
+    recipients = loadContactRecipients(),
+    relays = loadSupportTeam()?.relays ?? null,
     publish = publishToRelays,
     now = () => Date.now(),
   }: {
-    /** Npubs every message goes to. */
-    readonly recipients?: ReadonlyArray<string>
+    /** Npubs every message goes to; `null` when misconfigured. */
+    readonly recipients?: ReadonlyArray<string> | null
     /** Where every copy goes; the support team's relays by default. */
-    readonly relays?: ReadonlyArray<string>
+    readonly relays?: ReadonlyArray<string> | null
     readonly publish?: Publish
     readonly now?: () => number
   } = {}
@@ -112,8 +121,15 @@ export const handleContactRequest = async (
     return jsonResponse({ status: "OK" })
   }
 
-  const pubkeys = recipients.map(npubToHex)
-  if (!pubkeys.every((pubkey) => pubkey !== null)) {
+  if (relays === null) {
+    return jsonResponse(
+      { status: "ERROR", reason: "The support team is misconfigured." },
+      { status: 500 }
+    )
+  }
+
+  const pubkeys = recipients?.map(npubToHex) ?? []
+  if (recipients === null || !pubkeys.every((pubkey) => pubkey !== null)) {
     return jsonResponse(
       { status: "ERROR", reason: "The contact recipients are misconfigured." },
       { status: 500 }

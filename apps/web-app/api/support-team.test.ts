@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { afterEach, describe, expect, test, vi } from "vitest"
 
 import {
   handleSupportTeamRequest,
@@ -16,6 +16,10 @@ const request = (method: string) =>
   new Request("https://payky.me/api/support-team", { method })
 
 describe("handleSupportTeamRequest", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   test("serves the team with its former line-ups and relays, cached for five minutes", async () => {
     const response = handleSupportTeamRequest(request("GET"), team)
 
@@ -48,5 +52,22 @@ describe("handleSupportTeamRequest", () => {
   test("answers a CORS preflight and refuses other methods", () => {
     expect(handleSupportTeamRequest(request("OPTIONS"), team).status).toBe(200)
     expect(handleSupportTeamRequest(request("POST"), team).status).toBe(405)
+  })
+
+  test("reads the env per request, skipping an empty relay entry", async () => {
+    vi.stubEnv("PAYKY_SUPPORT_RELAYS", "wss://a.test, wss://b.test,")
+
+    const body = await handleSupportTeamRequest(request("GET")).json()
+
+    expect(body.relays).toEqual(["wss://a.test", "wss://b.test"])
+  })
+
+  test("answers a misconfigured team as an error, with CORS", () => {
+    vi.stubEnv("PAYKY_SUPPORT_RELAYS", "https://not-a-relay.test")
+
+    const response = handleSupportTeamRequest(request("GET"))
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get("access-control-allow-origin")).toBe("*")
   })
 })

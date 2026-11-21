@@ -1,6 +1,10 @@
 import { npubToHex } from "@payky/core/integrations/nostr/npub"
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
+import {
+  loadServerEnv,
+  throwInvalidServerEnv,
+} from "../src/server/server-env.js"
 import { jsonApi } from "./_http.js"
 
 /**
@@ -33,7 +37,12 @@ const isNpub = (value: string): boolean => npubToHex(value) !== null
 
 const RelayListSchema = z
   .string()
-  .transform((value) => value.split(",").map((url) => url.trim()))
+  .transform((value) =>
+    value
+      .split(",")
+      .map((url) => url.trim())
+      .filter((url) => url !== "")
+  )
   .pipe(z.array(z.url({ protocol: /^wss?$/u })).min(1))
 
 export const NpubListSchema = z
@@ -46,47 +55,59 @@ export const NpubListSchema = z
   )
   .pipe(z.array(z.string().refine(isNpub, "Not an npub.")).min(1))
 
-const env = createEnv({
-  server: {
-    PAYKY_SUPPORT_NPUBS: NpubListSchema.default([
-      "npub1ysdhhw8wx4ew4490mrfpd2gyv3w08rqudqp5pjasgn2kxduahuhstrqnll",
-      "npub1lhxycw3zsyyhz47khqcsw65f4m94p0fuvrs6lxvcqrwv5w0xxs8saaejq0",
+const supportTeamEnvShape = {
+  PAYKY_SUPPORT_NPUBS: NpubListSchema.default([
+    "npub1ysdhhw8wx4ew4490mrfpd2gyv3w08rqudqp5pjasgn2kxduahuhstrqnll",
+    "npub1lhxycw3zsyyhz47khqcsw65f4m94p0fuvrs6lxvcqrwv5w0xxs8saaejq0",
+  ]),
+  // Teams separated by ";", members by ",", oldest first. When the team
+  // changes, its line-up until then is appended here.
+  PAYKY_SUPPORT_FORMER_TEAMS: z
+    .string()
+    .transform((value) =>
+      value
+        .split(";")
+        .map((team) => team.trim())
+        .filter((team) => team !== "")
+    )
+    .pipe(z.array(NpubListSchema))
+    .default([
+      ["npub1ysdhhw8wx4ew4490mrfpd2gyv3w08rqudqp5pjasgn2kxduahuhstrqnll"],
     ]),
-    // Teams separated by ";", members by ",", oldest first. When the team
-    // changes, its line-up until then is appended here.
-    PAYKY_SUPPORT_FORMER_TEAMS: z
-      .string()
-      .transform((value) =>
-        value
-          .split(";")
-          .map((team) => team.trim())
-          .filter((team) => team !== "")
-      )
-      .pipe(z.array(NpubListSchema))
-      .default([
-        ["npub1ysdhhw8wx4ew4490mrfpd2gyv3w08rqudqp5pjasgn2kxduahuhstrqnll"],
-      ]),
-    PAYKY_SUPPORT_RELAYS: RelayListSchema.default([
-      "wss://relay.damus.io",
-      "wss://nos.lol",
-      "wss://relay.0xchat.com",
-      "wss://nostr.linky.fit",
-    ]),
-    PAYKY_SUPPORT_INDEXER_RELAYS: RelayListSchema.default([
-      "wss://purplepag.es",
-      "wss://profiles.nostr1.com",
-    ]),
-  },
-  runtimeEnv: process.env,
-  emptyStringAsUndefined: true,
-})
+  PAYKY_SUPPORT_RELAYS: RelayListSchema.default([
+    "wss://relay.damus.io",
+    "wss://nos.lol",
+    "wss://relay.0xchat.com",
+    "wss://nostr.linky.fit",
+  ]),
+  PAYKY_SUPPORT_INDEXER_RELAYS: RelayListSchema.default([
+    "wss://purplepag.es",
+    "wss://profiles.nostr1.com",
+  ]),
+}
 
-/** The team as configured for this deploy; `api/contact.ts` writes to it too. */
-export const currentTeam: SupportTeamResponse = {
-  pubkeys: env.PAYKY_SUPPORT_NPUBS,
-  formerTeams: env.PAYKY_SUPPORT_FORMER_TEAMS,
-  relays: env.PAYKY_SUPPORT_RELAYS,
-  indexerRelays: env.PAYKY_SUPPORT_INDEXER_RELAYS,
+/**
+ * The team as configured for this deploy, read per request (`loadServerEnv`)
+ * so a bad value answers as misconfigured instead of failing the cold start;
+ * `api/contact.ts` writes to it too.
+ */
+export const loadSupportTeam = (): SupportTeamResponse | null => {
+  const env = loadServerEnv(() =>
+    createEnv({
+      server: supportTeamEnvShape,
+      runtimeEnv: process.env,
+      emptyStringAsUndefined: true,
+      onValidationError: throwInvalidServerEnv,
+    })
+  )
+  return env === null
+    ? null
+    : {
+        pubkeys: env.PAYKY_SUPPORT_NPUBS,
+        formerTeams: env.PAYKY_SUPPORT_FORMER_TEAMS,
+        relays: env.PAYKY_SUPPORT_RELAYS,
+        indexerRelays: env.PAYKY_SUPPORT_INDEXER_RELAYS,
+      }
 }
 
 // A deploy reaches every app within five minutes.
@@ -99,7 +120,7 @@ const { jsonResponse, preflightResponse } = jsonApi<
 
 export const handleSupportTeamRequest = (
   request: Request,
-  team: SupportTeamResponse = currentTeam
+  team: SupportTeamResponse | null = loadSupportTeam()
 ): Response => {
   if (request.method === "OPTIONS") return preflightResponse()
 
@@ -107,6 +128,13 @@ export const handleSupportTeamRequest = (
     return jsonResponse(
       { status: "ERROR", reason: "Method not allowed." },
       { status: 405 }
+    )
+  }
+
+  if (team === null) {
+    return jsonResponse(
+      { status: "ERROR", reason: "The support team is misconfigured." },
+      { status: 500 }
     )
   }
 
