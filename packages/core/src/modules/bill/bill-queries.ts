@@ -130,10 +130,18 @@ export const openBillsQuery = createQuery((db) =>
         eb
           .selectFrom("reconciliationClaim")
           .innerJoin("payment", "payment.id", "reconciliationClaim.paymentId")
+          // Only a claim whose transaction is there, as
+          // `claimedTransactionsByBillIdQuery` reads it (`claimedPaymentIdSet`).
+          .innerJoin(
+            "accountTransaction",
+            "accountTransaction.id",
+            "reconciliationClaim.accountTransactionId"
+          )
           .select(["reconciliationClaim.paymentId"])
           .whereRef("payment.billId", "=", "bill.id")
           .where("payment.isDeleted", "is not", sqliteTrue)
           .where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
+          .where("accountTransaction.isDeleted", "is not", sqliteTrue)
           .where("reconciliationClaim.paymentId", "is not", null)
           .$narrowType<{ paymentId: KyselyNotNull }>()
       ).as("claims"),

@@ -53,7 +53,7 @@ import {
   splitBillIntoNewBill,
 } from "./bill-actions.ts"
 import { loadBill, loadBillCoverage, loadBillStatus } from "./bill-guards.ts"
-import { billByIdQuery } from "./bill-queries.ts"
+import { billByIdQuery, openBillsQuery } from "./bill-queries.ts"
 import { type BillId, createRandomBillId } from "./bill-types.ts"
 
 const billLinesByBillIdQuery = (billId: BillId) =>
@@ -2345,6 +2345,31 @@ describe("cart writes on a partly paid bill", () => {
 
     return { billId, dessert }
   }
+
+  test("the floor view counts only a claim whose transaction is there", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { billId } = await createPartlyPaidBill(deps, 1_000)
+    const claimsOnTheFloor = async () =>
+      (await evolu.loadQuery(openBillsQuery)).find((bill) => bill.id === billId)
+        ?.claims
+
+    await expect.poll(claimsOnTheFloor).toHaveLength(1)
+
+    const [transaction] = await evolu.loadQuery(
+      createQuery((db) => db.selectFrom("accountTransaction").select(["id"]))
+    )
+    if (transaction === undefined) throw new Error("no account transaction")
+    await run.ok(deleteAccountTransaction(transaction.id))
+
+    // As the bill's own screen reads it: the payment is unresolved again.
+    await expect.poll(claimsOnTheFloor).toEqual([])
+  }, 15_000)
 
   test("taking off the line a partly paid bill was waiting on closes it and takes it off the floor view", async () => {
     await using testEvolu = await createEvoluTest()
