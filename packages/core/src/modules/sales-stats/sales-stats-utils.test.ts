@@ -88,6 +88,18 @@ describe("statsPeriodRanges", () => {
     })
   })
 
+  test("month to date charts the whole day the comparison ends in when the previous month is shorter", () => {
+    const ranges = statsPeriodRanges(
+      { kind: "monthToDate" },
+      new Date("2027-03-29T12:00:00.000Z")
+    )
+    expect(ranges.comparison.toIso).toBe("2027-02-28T13:00:00.000Z")
+    expect(ranges.comparisonWhole).toEqual({
+      fromIso: "2027-01-31T23:00:00.000Z",
+      toIso: "2027-02-28T23:00:00.000Z",
+    })
+  })
+
   test("custom dates are both inclusive, against the equally long span before", () => {
     expect(
       statsPeriodRanges(
