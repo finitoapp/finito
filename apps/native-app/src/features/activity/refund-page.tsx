@@ -61,6 +61,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 import { ActivityIndicator } from "react-native"
@@ -487,9 +488,13 @@ function RefundForm({
   }
 
   const busy = pending || step.kind !== "idle"
+  // Two taps can land before React re-renders `busy`.
+  const confirmingRef = useRef(false)
   const confirm = async () => {
     if (busy || choice === null || method === null || refundAmount === null)
       return
+    if (confirmingRef.current) return
+    confirmingRef.current = true
     const what: RefundWhat =
       choice === "whole"
         ? { whole: true }
@@ -503,14 +508,22 @@ function RefundForm({
                   quantity,
                 })),
               }
-    if (method === "cardSwitchio") {
-      await runSwitchio({ paymentId: payment.id, deviceId: device.id, ...what })
-    } else if (method === "qerkoTerminal") {
-      await runQerkoTerminal(what)
-    } else if (method === "qerkoPayment") {
-      await runQerkoPayment()
-    } else {
-      await runRecorded(method, what)
+    try {
+      if (method === "cardSwitchio") {
+        await runSwitchio({
+          paymentId: payment.id,
+          deviceId: device.id,
+          ...what,
+        })
+      } else if (method === "qerkoTerminal") {
+        await runQerkoTerminal(what)
+      } else if (method === "qerkoPayment") {
+        await runQerkoPayment()
+      } else {
+        await runRecorded(method, what)
+      }
+    } finally {
+      confirmingRef.current = false
     }
   }
 
