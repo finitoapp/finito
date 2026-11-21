@@ -1,5 +1,5 @@
 import { ok, type Task } from "@evolu/common"
-
+import { toWalletProofs } from "../../cashu/cashu-melt.ts"
 import {
   type CashuSendCost,
   type CashuSendError,
@@ -9,7 +9,13 @@ import {
   sendCashu,
 } from "../../cashu/cashu-send.ts"
 import type { CashuTopupDeps } from "../../cashu/cashu-topup.ts"
-import type { DateDep, EvoluOwnerDep, MasterKeyDep } from "../../deps.ts"
+import { checkProofStates, loadCashuWallet } from "../../cashu/cashu-wallet.ts"
+import type {
+  DateDep,
+  DeviceIdDep,
+  EvoluOwnerDep,
+  MasterKeyDep,
+} from "../../deps.ts"
 import type { ResolvedLinkyContact } from "../../integrations/linky/linky-contact.ts"
 import {
   type CashuTokenNotDeliveredError,
@@ -21,7 +27,8 @@ import {
   computeAccountTransactionRows,
   upsertAccountTransactionRows,
 } from "../account-transaction/account-transaction-actions.ts"
-import type { MintUrl } from "../cashu/cashu-types.ts"
+import type { AccountTransactionId } from "../account-transaction/account-transaction-types.ts"
+import type { CashuOperationId, MintUrl } from "../cashu/cashu-types.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
@@ -32,10 +39,12 @@ import {
   Integer,
   type NonEmptyString255,
   NonEmptyStringSchema,
+  NonNegativeInteger,
   PositiveInteger,
   TimestampMsSchema,
 } from "../shared/schema.ts"
 import { markWithdrawalFailed } from "./withdraw-actions.ts"
+import { pendingCashuSendWithdrawalsQuery } from "./withdraw-queries.ts"
 import type { WithdrawalId } from "./withdraw-types.ts"
 
 /**
@@ -125,7 +134,6 @@ export const executeCashuSendWithdrawal =
     const withdrawalId = createRowId<"Withdrawal">()
     const accountTransactionId = createRowId<"AccountTransaction">()
     const owner = run.deps.evoluOwner
-    const now = () => TimestampMsSchema.decode(run.deps.date.now().getTime())
 
     await runMutationWithCompletion((options) => {
       const mutationOptions = { ...options, owner }
@@ -173,7 +181,11 @@ export const executeCashuSendWithdrawal =
     await runMutationWithCompletion((options) =>
       run.deps.evolu.update(
         "withdrawalCashuSend",
-        { id: withdrawalId, sendOperationId: operationId },
+        {
+          id: withdrawalId,
+          sendOperationId: operationId,
+          feeSats: NonNegativeInteger(feePaid),
+        },
         { ...options, owner }
       )
     )
@@ -190,29 +202,154 @@ export const executeCashuSendWithdrawal =
     }
 
     const totalSpent = amount + feePaid
+    await run(
+      bookCashuSend({
+        accountId,
+        accountTransactionId,
+        deviceId,
+        mint: quote.mint,
+        operationId,
+        totalSpent,
+      })
+    )
+    return ok({ withdrawalId, totalSpent })
+  }
+
+/**
+ * The movement of a send whose token left: the sats and the swap's fee, as
+ * one `auto` transaction under the withdrawal's own id.
+ */
+const bookCashuSend =
+  ({
+    accountId,
+    accountTransactionId,
+    deviceId,
+    mint,
+    operationId,
+    totalSpent,
+  }: {
+    readonly accountId: AccountId
+    readonly accountTransactionId: AccountTransactionId
+    readonly deviceId: DeviceId | null
+    readonly mint: MintUrl
+    readonly operationId: CashuOperationId
+    readonly totalSpent: number
+  }): Task<void, never, EvoluDep & EvoluOwnerDep & DateDep> =>
+  async (run) => {
     const computed = computeAccountTransactionRows(
       {
         id: accountTransactionId,
         accountId,
         amount: Integer(-totalSpent),
         currency: "BTC",
-        occurredAt: now(),
+        occurredAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
         note: null,
         internalTransferGroupId: null,
         source: { deviceId, source: "auto" },
-        cashu: {
-          cashuOperationId: operationId,
-          quoteId: null,
-          mintUrl: quote.mint,
-        },
+        cashu: { cashuOperationId: operationId, quoteId: null, mintUrl: mint },
       },
       run.deps.date.now()
     )
     await runMutationWithCompletion((options) =>
       upsertAccountTransactionRows(run.deps.evolu, computed, {
         ...options,
-        owner,
+        owner: run.deps.evoluOwner,
       })
     )
-    return ok({ withdrawalId, totalSpent })
+    return ok()
+  }
+
+/**
+ * Long enough that no send is still running: one takes seconds.
+ * ponytail: a fixed wait, not a per-send lease; a send outliving it on a
+ * stalled device would be settled under it, by the same rules.
+ */
+export const CASHU_SEND_SETTLE_AFTER_MS = 10 * 60_000
+
+/**
+ * Settles the Linky contact withdrawals a crash left pending (withdraw/0016),
+ * from what the shared wallet and the mint say, never by guessing:
+ *
+ * - no send linked, on the device that made it: nothing that it knows of
+ *   left, so it fails;
+ * - the send taken back (`returned`: this device's failed delivery, or the
+ *   merchant in Linky): the sats are the wallet's again, so it fails;
+ * - the send redeemed (its handed-out proofs spent at the mint, or Linky
+ *   closed it `done`): the token left, so it is booked;
+ * - otherwise it stays pending until one of those happens. The token may be
+ *   with the recipient, so the proofs are never returned on their own
+ *   (withdraw/0015).
+ */
+export const settlePendingCashuSends: Task<
+  void,
+  never,
+  CashuTopupDeps & EvoluDep & EvoluOwnerDep & DateDep & DeviceIdDep
+> = async (run) => {
+  const store = run.deps.cashuShardStore
+  const nowMs = run.deps.date.now().getTime()
+  const pending = await run.deps.evolu.loadQuery(
+    pendingCashuSendWithdrawalsQuery
+  )
+  for (const withdrawal of pending) {
+    if (
+      nowMs - new Date(withdrawal.createdAt).getTime() <
+      CASHU_SEND_SETTLE_AFTER_MS
+    )
+      continue
+    const fail = () =>
+      run.ok(
+        markWithdrawalFailed({
+          withdrawalId: withdrawal.id,
+          reason: "rejected",
+        })
+      )
+    if (withdrawal.sendOperationId === null) {
+      // Another device's link may still be syncing.
+      if (withdrawal.deviceId === run.deps.deviceId) await fail()
+      continue
+    }
+    const operation = await store.loadOperation(withdrawal.sendOperationId)
+    if (operation === null || operation.kind !== "send") continue
+    if (operation.status === "returned") {
+      await fail()
+      continue
+    }
+    if (
+      operation.status !== "done" &&
+      !(await run.ok(isCashuSendRedeemed(operation.id, operation.mint)))
+    )
+      continue
+    await run(
+      bookCashuSend({
+        accountId: withdrawal.accountId,
+        accountTransactionId: withdrawal.accountTransactionId,
+        deviceId: withdrawal.deviceId,
+        mint: withdrawal.mintUrl,
+        operationId: operation.id,
+        // ponytail: a send from before `feeSats` books without its fee.
+        totalSpent: operation.amount + (withdrawal.feeSats ?? 0),
+      })
+    )
+  }
+  return ok()
+}
+
+/** Whether every proof a send handed out is spent at its mint. */
+const isCashuSendRedeemed =
+  (
+    operationId: CashuOperationId,
+    mint: MintUrl
+  ): Task<boolean, never, CashuTopupDeps> =>
+  async (run) => {
+    const handedOut = (await run.deps.cashuShardStore.loadProofs()).filter(
+      (proof) => proof.operationId === operationId
+    )
+    if (handedOut.length === 0) return ok(false)
+    const loaded = await run(loadCashuWallet(mint))
+    if (!loaded.ok) return ok(false)
+    const states = await checkProofStates(
+      loaded.value,
+      toWalletProofs(handedOut)
+    )
+    return ok(states.ok && states.value.every((state) => state === "spent"))
   }

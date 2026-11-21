@@ -2,10 +2,13 @@ import { testCreateRun } from "@evolu/common"
 import type { Event } from "nostr-tools/pure"
 import { generateSecretKey, getPublicKey } from "nostr-tools/pure"
 import { describe, expect, test } from "vitest"
+import { returnCashuSend, sendCashu } from "../../cashu/cashu-send.ts"
 import {
   claimCashuTopup,
   createCashuTopupQuote,
 } from "../../cashu/cashu-topup.ts"
+import { createCashuWalletDep } from "../../cashu/cashu-wallet.ts"
+import type { DeviceAccountId } from "../../evolu/device-client.ts"
 import type { NostrDep } from "../../integrations/nostr/nostr-client.ts"
 import {
   createCashuTest,
@@ -15,12 +18,23 @@ import {
 import { saveCashuAccount } from "../account/account-actions.ts"
 import type { AccountId } from "../account/account-types.ts"
 import { sumAvailableByMint } from "../cashu/cashu-queries.ts"
-import { CashuAmount } from "../cashu/cashu-types.ts"
-import { PositiveInteger } from "../shared/schema.ts"
+import { CashuAmount, type CashuOperationId } from "../cashu/cashu-types.ts"
 import {
+  createRowId,
+  runMutationWithCompletion,
+} from "../shared/evolu-utils.ts"
+import { CashuWalletSeed } from "../shared/key-derivation.ts"
+import {
+  NonEmptyStringSchema,
+  NonNegativeInteger,
+  PositiveInteger,
+} from "../shared/schema.ts"
+import {
+  CASHU_SEND_SETTLE_AFTER_MS,
   type CashuSendRecipient,
   executeCashuSendWithdrawal,
   quoteCashuSend,
+  settlePendingCashuSends,
 } from "./withdraw-cashu-send-actions.ts"
 import {
   toWithdrawalView,
@@ -218,5 +232,158 @@ describe("Linky contact withdrawal (withdraw/0015)", () => {
           state: expect.objectContaining({ status: "pending" }),
         }),
       ])
+  })
+})
+
+describe("settling a Linky contact withdrawal a crash left pending (withdraw/0016)", () => {
+  const thisDevice = createRowId<"Device">()
+
+  /** What a crash after the withdrawal was recorded leaves behind. */
+  const strand = async (
+    deps: Setup["deps"],
+    accountId: AccountId,
+    {
+      sendOperationId = null,
+      feeSats = null,
+      deviceId = thisDevice,
+    }: {
+      readonly sendOperationId?: CashuOperationId | null
+      readonly feeSats?: number | null
+      readonly deviceId?: typeof thisDevice
+    } = {}
+  ) => {
+    const withdrawalId = createRowId<"Withdrawal">()
+    await runMutationWithCompletion((options) => {
+      const mutationOptions = { ...options, owner: deps.evoluOwner }
+      deps.evolu.upsert(
+        "withdrawal",
+        {
+          id: withdrawalId,
+          accountId,
+          deviceId,
+          amountSats: PositiveInteger(250),
+          accountTransactionId: createRowId<"AccountTransaction">(),
+          failedAt: null,
+          failureReason: null,
+          comment: null,
+        },
+        mutationOptions
+      )
+      deps.evolu.upsert(
+        "withdrawalCashuSend",
+        {
+          id: withdrawalId,
+          mintUrl: testMintUrl,
+          sendOperationId,
+          feeSats: feeSats === null ? null : NonNegativeInteger(feeSats),
+          recipientPubkey: NonEmptyStringSchema.decode(pubkey),
+          recipientAddress: null,
+        },
+        mutationOptions
+      )
+    })
+    return withdrawalId
+  }
+
+  /** Runs the settling as the Cashu job does, `afterMs` from now. */
+  const settle = async (deps: Setup["deps"], afterMs: number) => {
+    await using run = testCreateRun({
+      ...deps,
+      deviceId: thisDevice,
+      date: { now: () => new Date(Date.now() + afterMs) },
+    })
+    await run.ok(settlePendingCashuSends)
+  }
+
+  const later = CASHU_SEND_SETTLE_AFTER_MS + 60_000
+
+  const stateOf = async (deps: Setup["deps"], accountId: AccountId) => {
+    const [withdrawal] = await loadWithdrawals(deps, accountId)
+    return withdrawal?.state
+  }
+
+  const send = async (deps: Setup["deps"]) => {
+    await using run = testCreateRun(deps)
+    return await run.orThrow(sendCashu({ mint: testMintUrl, amount: 250 }))
+  }
+
+  test("fails one with no send linked, on its own device once no send can still run", async () => {
+    const { t, deps, accountId } = await setup()
+    await using _ = t
+    await strand(deps, accountId)
+
+    await settle(deps, 60_000)
+    expect(await stateOf(deps, accountId)).toMatchObject({ status: "pending" })
+
+    await settle(deps, later)
+    await expect
+      .poll(() => stateOf(deps, accountId))
+      .toMatchObject({ status: "failed", reason: "rejected" })
+  })
+
+  test("leaves another device's unlinked one to that device", async () => {
+    const { t, deps, accountId } = await setup()
+    await using _ = t
+    await strand(deps, accountId, { deviceId: createRowId<"Device">() })
+
+    await settle(deps, later)
+
+    expect(await stateOf(deps, accountId)).toMatchObject({ status: "pending" })
+  })
+
+  test("fails one whose send was taken back", async () => {
+    const { t, deps, accountId } = await setup()
+    await using _ = t
+    const sent = await send(deps)
+    {
+      await using run = testCreateRun(deps)
+      await run.orThrow(returnCashuSend(sent.operationId))
+    }
+    await strand(deps, accountId, { sendOperationId: sent.operationId })
+
+    await settle(deps, later)
+
+    await expect
+      .poll(() => stateOf(deps, accountId))
+      .toMatchObject({ status: "failed", reason: "rejected" })
+  })
+
+  test("books one whose token the recipient redeemed, with its fee", async () => {
+    const { t, deps, accountId } = await setup()
+    await using _ = t
+    const sent = await send(deps)
+    await strand(deps, accountId, {
+      sendOperationId: sent.operationId,
+      feeSats: 2,
+    })
+    const recipientWallet = createCashuWalletDep({
+      seed: CashuWalletSeed(new Uint8Array(64).fill(9)),
+      deviceAccountId: "recipient" as DeviceAccountId,
+      fetch: deps.fetch,
+    })
+    const wallet = await recipientWallet.cashuWallet.load(testMintUrl)
+    await wallet.receive(sent.tokenText)
+
+    await settle(deps, later)
+
+    await expect
+      .poll(() => stateOf(deps, accountId))
+      .toMatchObject({ status: "done", debitedSats: 252, feeSats: 2 })
+  })
+
+  test("keeps one whose token nobody redeemed pending, its proofs untouched", async () => {
+    const { t, deps, accountId } = await setup()
+    await using _ = t
+    const sent = await send(deps)
+    await strand(deps, accountId, { sendOperationId: sent.operationId })
+
+    await settle(deps, later)
+
+    expect(await stateOf(deps, accountId)).toMatchObject({ status: "pending" })
+    const handedOut = (await deps.cashuShardStore.loadProofs()).filter(
+      (proof) => proof.operationId === sent.operationId
+    )
+    expect(handedOut.length).toBeGreaterThan(0)
+    expect(handedOut.every((proof) => proof.state === "handedOut")).toBe(true)
   })
 })

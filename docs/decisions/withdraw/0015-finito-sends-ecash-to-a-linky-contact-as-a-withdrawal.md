@@ -65,7 +65,8 @@ a Lightning destination, and sends a token when it gets one.
 - `cashu-send.ts` writes a `send` operation and `handedOut` proofs in
   Linky's shape; Linky sees the send in its token list and can take it
   back itself. Finito never resumes or returns a send on its own after the
-  message is out.
+  message is out; one a crash cut off is settled from the wallet without
+  returning it (withdraw/0016).
 - A relay that accepts the recipient's copy but loses it loses the token:
   Linky's own outbox has the same exposure, and the relays are Linky's.
 - The web app's withdrawal screens show a `cashuSend` withdrawal (kind,

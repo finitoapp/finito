@@ -91,6 +91,12 @@ export const withdrawalCashuSend = {
   id: WithdrawalId,
   mintUrl: MintUrlSchema,
   sendOperationId: CashuOperationId.nullable(),
+  /**
+   * The swap's input fee, written with `sendOperationId`, so a send whose
+   * booking a crash cut off is booked with it later (withdraw/0016). Null on
+   * a send made before it existed.
+   */
+  feeSats: NonNegativeIntegerSchema.nullable(),
   recipientPubkey: NonEmptyStringSchema,
   recipientAddress: NonEmptyStringSchema.nullable(),
 } as const
