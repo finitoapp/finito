@@ -13,6 +13,7 @@ import type { CashuOperationCopy } from "../../modules/cashu/cashu-queries.ts"
 import type { CashuOperationId } from "../../modules/cashu/cashu-types.ts"
 import { cashuPaymentQuotesQuery } from "../../modules/payment/payment-queries.ts"
 import { settleCashuWithdrawal } from "../../modules/withdraw/withdraw-cashu-actions.ts"
+import { settlePendingCashuSends } from "../../modules/withdraw/withdraw-cashu-send-actions.ts"
 import type {
   CashuBackgroundJob,
   CashuBackgroundJobContext,
@@ -158,6 +159,8 @@ export const startCashuAccountSyncJob: CashuBackgroundJob = (taskRun) => {
 
   const book = async (): Promise<void> => {
     if (!(await isEnabled())) return
+    // Linky contact withdrawals a crash left pending (withdraw/0016).
+    await run(settlePendingCashuSends)
     const result = await run(bookCashuOperations)
     if (result.ok && result.value.booked > 0)
       run.deps.console.info("Booked Cashu operations.", result.value)

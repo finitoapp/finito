@@ -325,6 +325,46 @@ export const pendingLightningWithdrawalsQuery = (accountId: AccountId) =>
       }>()
   )
 
+/**
+ * Linky contact withdrawals still without an outcome: no account
+ * transaction (deleted or not) and no `failedAt`. The Cashu job settles
+ * those a crash left behind (withdraw/0016).
+ */
+export const pendingCashuSendWithdrawalsQuery = createQuery((db) =>
+  db
+    .selectFrom("withdrawal")
+    .innerJoin("withdrawalCashuSend", "withdrawalCashuSend.id", "withdrawal.id")
+    .leftJoin(
+      "accountTransaction",
+      "accountTransaction.id",
+      "withdrawal.accountTransactionId"
+    )
+    .select([
+      "withdrawal.id",
+      "withdrawal.accountId",
+      "withdrawal.deviceId",
+      "withdrawal.createdAt",
+      "withdrawal.accountTransactionId",
+      "withdrawalCashuSend.mintUrl",
+      "withdrawalCashuSend.sendOperationId",
+      "withdrawalCashuSend.feeSats",
+    ])
+    .where("withdrawal.isDeleted", "is not", sqliteTrue)
+    .where("withdrawal.failedAt", "is", null)
+    .where("withdrawalCashuSend.isDeleted", "is not", sqliteTrue)
+    .where("withdrawal.createdAt", "is not", null)
+    .where("withdrawal.accountId", "is not", null)
+    .where("withdrawal.accountTransactionId", "is not", null)
+    .where("withdrawalCashuSend.mintUrl", "is not", null)
+    .where("accountTransaction.id", "is", null)
+    .$narrowType<{
+      createdAt: KyselyNotNull
+      accountId: KyselyNotNull
+      accountTransactionId: KyselyNotNull
+      mintUrl: KyselyNotNull
+    }>()
+)
+
 /** What "the money left" needs to write an on-chain withdrawal's movement. */
 export const withdrawalForResolutionQuery = (id: WithdrawalId) =>
   createQuery((db) =>
