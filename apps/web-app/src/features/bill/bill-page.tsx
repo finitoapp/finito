@@ -19,12 +19,19 @@ import {
   splitBill,
   splitBillIntoNewBill,
 } from "@payky/core/modules/bill/bill-actions"
-import { claimedPaymentsByBillIdQuery } from "@payky/core/modules/bill/bill-coverage-queries"
+import {
+  claimedPaymentsByBillIdQuery,
+  claimedTransactionsByBillIdQuery,
+} from "@payky/core/modules/bill/bill-coverage-queries"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import {
   type BillId,
   createRandomBillId,
 } from "@payky/core/modules/bill/bill-types"
+import {
+  calculateClaimedSum,
+  deriveBillAmountDue,
+} from "@payky/core/modules/bill/bill-utils"
 import type { BillLineSummary } from "@payky/core/modules/bill-line/bill-line-summary"
 import {
   deriveBillSummaryStats,
@@ -740,6 +747,12 @@ function BillCartView({
     [summaries]
   )
   const totalAmountPulseControls = useChangePulse(totalAmount)
+  // A partly paid bill charges only the rest (payment/0028).
+  const { data: claimedTransactions } = useEvoluQuery(
+    claimedTransactionsByBillIdQuery(billId)
+  )
+  const claimedSum = calculateClaimedSum(claimedTransactions)
+  const amountDue = deriveBillAmountDue(totalAmount, claimedSum)
   // Charge, or Finish in its place for a bill whose goods come to zero.
   const checkout = deriveBillCheckout({
     summaries,
@@ -753,9 +766,9 @@ function BillCartView({
 
   const handleCharge = async () => {
     if (checkout !== "charge" || chargePendingRef.current) return
-    // Charge is offered only for goods above zero (`deriveBillCheckout`), so
-    // the bill's total is never negative here (payment/0015).
-    const amount = NonNegativeInteger(totalAmount)
+    // Charge is offered only for goods above zero (`deriveBillCheckout`);
+    // what is due is the total less what was paid (payment/0028).
+    const amount = amountDue
 
     chargePendingRef.current = true
     setChargePending(true)
@@ -1232,6 +1245,17 @@ function BillCartView({
                 {formatMoney({ value: totalAmount, currency }, locale)}
               </motion.span>
             </div>
+            {claimedSum > 0 ? (
+              <p
+                className="pt-2 text-right text-sm text-muted-foreground"
+                data-testid="bill-amount-due"
+              >
+                {t("bill.summary.paidAndDue", {
+                  paid: formatMoney({ value: claimedSum, currency }, locale),
+                  due: formatMoney({ value: amountDue, currency }, locale),
+                })}
+              </p>
+            ) : null}
             <div className="flex items-center gap-2 pt-4 lg:flex-wrap">
               <Button
                 variant="outline"
@@ -1298,7 +1322,7 @@ function BillCartView({
                     {t("home.pay")}
                     <span className="hidden lg:inline">
                       {" "}
-                      {formatMoney({ value: totalAmount, currency }, locale)}
+                      {formatMoney({ value: amountDue, currency }, locale)}
                     </span>
                   </span>
                 )}

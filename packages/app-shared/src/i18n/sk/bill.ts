@@ -97,6 +97,7 @@ export const skBill = {
   "bill.summary.decrement.aria": "Odobrať 1 ks {name}",
   "bill.summary.empty": "Pridajte položky z ponuky vľavo",
   "bill.summary.increment.aria": "Pridať 1 ks {name}",
+  "bill.summary.paidAndDue": "Zaplatené {paid} · Zostáva {due}",
   "bill.summary.redo": "Znova",
   "bill.summary.removeLine.aria": "Odobrať {name} z účtu",
   "bill.summary.removeLine.toast": "{name} odobraté",

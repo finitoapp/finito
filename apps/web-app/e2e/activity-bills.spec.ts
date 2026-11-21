@@ -254,6 +254,35 @@ test("the bills list and detail page show an underpaid bill when another device 
   })
 })
 
+test("Charge on a partly paid bill asks only for what is still due", async ({
+  seededPage: page,
+}) => {
+  await addCatalogItem(page, "en", { name: "Coffee", price: "5" })
+  const billId = await startBillAndBeginCashPayment(page, "en")
+  await simulateBillModifiedDuringPayment(page, billId, "add")
+  await markCashPaidAndSettle(page, "en")
+
+  await test.step("the cart shows what was paid and what is due", async () => {
+    await page.goto(`/bill?billId=${billId}`, {
+      waitUntil: "domcontentloaded",
+    })
+    await page.getByRole("heading", { name: /^Bill #/ }).waitFor()
+    const due = page.getByTestId("bill-amount-due")
+    await expect(due).toContainText("5.00")
+    await expect(due).toContainText("3.00")
+  })
+
+  await test.step("Charge goes to the tip step with the rest only", async () => {
+    await page
+      .getByRole("button", { name: translate("en", "home.pay") })
+      .click()
+    await page
+      .getByRole("heading", { name: translate("en", "paymentTip.title") })
+      .waitFor()
+    await expect(page).toHaveURL(/[?&]amount=300(&|$)/)
+  })
+})
+
 test("the bills list and detail page show an overpaid bill when another device shrank the total while the payment was in flight", async ({
   seededPage: page,
 }) => {
