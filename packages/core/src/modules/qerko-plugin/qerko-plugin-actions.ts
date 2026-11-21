@@ -27,6 +27,14 @@ import type { qerkoPlugin } from "./qerko-plugin.ts"
 import { qerkoPluginQuery } from "./qerko-plugin-queries.ts"
 import { qerkoPluginIdByRole } from "./qerko-plugin-utils.ts"
 
+/**
+ * A name Qerko sends, as the plugin row stores it: Qerko's schema checks
+ * only that it is a string, and an empty or over-long one must not fail a
+ * pairing whose code is already used up.
+ */
+const qerkoName = (name: string): NonEmptyString255 =>
+  NonEmptyString255(name.slice(0, 255) || "—")
+
 export const createQerkoPairingInvalidCodeError = defineError(
   "QerkoPairingInvalidCode"
 )<{ readonly remainingAttempts: number }>()
@@ -166,7 +174,7 @@ export const completeQerkoPairing =
       role,
       environment,
       apiKey: NonEmptyStringSchema.decode(result.apiKey.token),
-      apiKeyName: NonEmptyString255(result.apiKey.name),
+      apiKeyName: qerkoName(result.apiKey.name),
     }
 
     if (role === "standard") {
@@ -181,15 +189,12 @@ export const completeQerkoPairing =
       await run.ok(
         saveQerkoPlugin({
           ...key,
-          legalEntityName: NonEmptyString255(legalEntity.name),
-          identificationNumber: NonEmptyString255(
-            legalEntity.identificationNumber
-          ),
+          legalEntityName: qerkoName(legalEntity.name),
+          identificationNumber: qerkoName(legalEntity.identificationNumber),
           country: legalEntity.country,
           restaurantId:
             paired === undefined ? null : NonEmptyString255(paired.id),
-          locationName:
-            paired === undefined ? null : NonEmptyString255(paired.name),
+          locationName: paired === undefined ? null : qerkoName(paired.name),
         })
       )
       return ok()
@@ -202,10 +207,8 @@ export const completeQerkoPairing =
     await run.ok(
       saveQerkoPlugin({
         ...key,
-        legalEntityName: NonEmptyString255(legalEntity.name),
-        identificationNumber: NonEmptyString255(
-          legalEntity.identificationNumber
-        ),
+        legalEntityName: qerkoName(legalEntity.name),
+        identificationNumber: qerkoName(legalEntity.identificationNumber),
         country: legalEntity.country,
       })
     )
@@ -247,7 +250,7 @@ export const pairQerkoPaymentLocation =
         {
           id: qerkoPluginIdByRole.standard,
           restaurantId: NonEmptyString255(locationId),
-          locationName: NonEmptyString255(locationName.slice(0, 255) || "—"),
+          locationName: qerkoName(locationName),
         },
         { ...options, owner: run.deps.evoluOwner }
       )

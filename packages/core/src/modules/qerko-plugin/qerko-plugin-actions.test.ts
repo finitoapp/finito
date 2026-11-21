@@ -118,6 +118,26 @@ describe("completeQerkoPairing", () => {
       ])
   })
 
+  test("saves a key Qerko named with an empty or over-long name", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createQerkoApiDep({ posId: "pos" }),
+      fetch: fakeFetch({ type: "ok", apiKey: { token: "secret", name: "" } }),
+    } satisfies EvoluDep & EvoluOwnerDep & QerkoApiDep & FetchDep
+    await using run = testCreateRun(deps)
+
+    await expect(run(completeQerkoPairing(pairing))).resolves.toEqual({
+      ok: true,
+      value: undefined,
+    })
+
+    await expect
+      .poll(() => evolu.loadQuery(qerkoPluginQuery("terminalPayments")))
+      .toMatchObject([{ apiKeyName: "—" }])
+  })
+
   test.each([
     [
       { type: "invalidCode", remainingAttempts: 2 },
