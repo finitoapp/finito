@@ -262,8 +262,9 @@ export const publishNostrProfileName =
   }
 
 /**
- * A relay that cannot be reached resolves with a "connection failure" string
- * instead of rejecting, so successes are counted explicitly.
+ * Whether any relay accepted. nostr-tools rejects a relay it cannot reach
+ * with a "connection failure" reason; older versions resolved with that
+ * string instead, which is why a fulfilled one is still checked.
  */
 export const isPublishAccepted = (
   results: ReadonlyArray<PromiseSettledResult<string>>
