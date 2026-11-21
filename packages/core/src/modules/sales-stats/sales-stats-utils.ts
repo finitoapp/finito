@@ -96,7 +96,13 @@ export const statsPeriodRanges = (
       return {
         range: toRange(from, tomorrow),
         comparison: toRange(subMonths(from, 1), subMonths(now, 1)),
-        comparisonWhole: toRange(subMonths(from, 1), subMonths(tomorrow, 1)),
+        // Through the end of the day `comparison` ends in: on 29 March that
+        // is 28 February, where `subMonths(tomorrow, 1)` would clamp to its
+        // start and leave the day out of the chart.
+        comparisonWhole: toRange(
+          subMonths(from, 1),
+          addDays(startOfDay(subMonths(now, 1)), 1)
+        ),
         bucket: "day",
       }
     }
