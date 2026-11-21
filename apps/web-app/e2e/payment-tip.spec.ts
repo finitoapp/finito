@@ -138,6 +138,41 @@ test("charge with no tip then mark cash paid", async ({ seededPage: page }) => {
   })
 })
 
+test("back from a payment made on the tip screens skips them, so it cannot pay twice", async ({
+  seededPage: page,
+}) => {
+  await test.step("enter an amount and go to the tip step", async () => {
+    await enterAmount(page, "en")
+    await page
+      .getByRole("button", { name: translate("en", "home.pay") })
+      .click()
+    await page
+      .getByRole("heading", { name: translate("en", "paymentTip.title") })
+      .waitFor()
+  })
+
+  await test.step("charge with a custom tip", async () => {
+    await page
+      .getByRole("button", { name: translate("en", "paymentTip.custom.label") })
+      .click()
+    await enterAmount(page, "en", "2.5")
+    await page
+      .getByRole("button", { name: translate("en", "paymentTip.continue") })
+      .click()
+    await page
+      .getByRole("tab", { name: translate("en", "paymentWait.method.iban") })
+      .waitFor()
+  })
+
+  await test.step("back leaves the payment for home, past both tip screens", async () => {
+    await page.goBack()
+    await expect(page).not.toHaveURL(/\/payment\//)
+    await expect(
+      page.getByRole("heading", { name: translate("en", "paymentTip.title") })
+    ).toHaveCount(0)
+  })
+})
+
 test("a malformed tip link shows a message instead of the error screen", async ({
   seededPage: page,
 }) => {

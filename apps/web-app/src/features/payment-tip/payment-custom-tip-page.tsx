@@ -41,6 +41,7 @@ export function PaymentCustomTipPage({
       }),
       currency,
       billId,
+      fromTipScreen: true,
     })
   }
 

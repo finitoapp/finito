@@ -35,6 +35,7 @@ export function PaymentCustomTipPage() {
       ...calculatePaymentAmounts({ amount, tipAmount }),
       currency,
       billId,
+      fromTipScreen: true,
     })
 
   return (

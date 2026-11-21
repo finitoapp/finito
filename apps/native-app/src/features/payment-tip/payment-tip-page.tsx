@@ -95,6 +95,7 @@ function PaymentTipForm({
         ...calculatePaymentAmounts({ amount, tipAmount }),
         currency,
         billId,
+        fromTipScreen: true,
       })
     } finally {
       pendingRef.current = false
@@ -198,8 +199,9 @@ function PaymentTipForm({
           aria-label={t("paymentTip.title")}
           value={null}
           onValueChange={(value) => {
+            // Replaces this screen, so the payment then replaces both.
             if (value === "custom")
-              router.push({
+              router.replace({
                 pathname: "/payment/custom-tip",
                 params: {
                   amount: String(amount),

@@ -131,6 +131,7 @@ function PaymentTipForm({
         ...paymentAmounts,
         currency,
         billId,
+        fromTipScreen: true,
       })
     } finally {
       confirmPendingRef.current = false
@@ -259,9 +260,11 @@ function PaymentTipForm({
               onValueChange={(values) => {
                 const [value] = values
                 if (value === "custom") {
+                  // Replaces this screen, so the payment then replaces both.
                   void navigate({
                     to: "/payment/custom-tip",
                     search: { amount, currency, billId: billId ?? undefined },
+                    replace: true,
                   })
                   return
                 }
