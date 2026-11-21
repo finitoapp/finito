@@ -592,28 +592,34 @@ const createSparkAccountSyncSession = ({
       pageSize: TRANSFER_PAGE_SIZE,
     })
 
-    while (!queue.isDisposed) {
-      const page = await currentWallet.getTransfers(
-        TRANSFER_PAGE_SIZE,
-        offset,
-        createdAfter
-      )
-      pageCount += 1
-      transferCount += page.transfers.length
+    try {
+      while (!queue.isDisposed) {
+        const page = await currentWallet.getTransfers(
+          TRANSFER_PAGE_SIZE,
+          offset,
+          createdAfter
+        )
+        pageCount += 1
+        transferCount += page.transfers.length
 
-      run.deps.console.debug("Fetched Spark transfer page.", {
-        accountId: account.id,
-        offset,
-        nextOffset: page.offset,
-        transferCount: page.transfers.length,
-      })
+        run.deps.console.debug("Fetched Spark transfer page.", {
+          accountId: account.id,
+          offset,
+          nextOffset: page.offset,
+          transferCount: page.transfers.length,
+        })
 
-      for (const result of await recordTransferPage(page.transfers)) {
-        results[result] += 1
+        for (const result of await recordTransferPage(page.transfers)) {
+          results[result] += 1
+        }
+
+        if (page.transfers.length === 0 || page.offset <= offset) break
+        offset = page.offset
       }
-
-      if (page.transfers.length === 0 || page.offset <= offset) break
-      offset = page.offset
+    } catch (error) {
+      // A full sweep asked for and not finished is still owed.
+      if (isFull) fullSweepRequested = true
+      throw error
     }
 
     // Only once the sweep actually finished — a sweep cut short by disposal
