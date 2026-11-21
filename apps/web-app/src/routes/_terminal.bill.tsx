@@ -67,7 +67,10 @@ function BillRoute() {
 
   return (
     <Suspense fallback={null}>
+      {/* Keyed so a split that navigates to another bill starts a fresh
+          cart: its undo history belongs to the bill it was recorded on. */}
       <BillPage
+        key={parsedBillId.data}
         billId={parsedBillId.data}
         initialTableId={tableId}
         initialScanCode={scan}
