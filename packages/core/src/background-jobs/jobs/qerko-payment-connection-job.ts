@@ -121,6 +121,11 @@ class QerkoPaymentConnection {
   /** The config a stolen or refused connection stopped at. */
   private stoppedAt: string | null = null
   private holding: Promise<void> | null = null
+  /**
+   * Whether `holding` has the lock. Until then it waits in the lock queue,
+   * behind another tab perhaps, and `dispose` has nothing to wait for.
+   */
+  private granted = false
   private disposed = false
   private wakeUp: (() => void) | null = null
 
@@ -156,7 +161,7 @@ class QerkoPaymentConnection {
     this.disposed = true
     for (const unsubscribe of this.unsubscribes) unsubscribe()
     this.wake()
-    await this.holding
+    if (this.granted) await this.holding
   }
 
   private wake(): void {
@@ -215,6 +220,7 @@ class QerkoPaymentConnection {
     if (next !== null && this.holding === null) {
       this.holding = this.hold().finally(() => {
         this.holding = null
+        this.granted = false
         // The lock may have been granted after the config went away and back.
         if (!this.disposed && this.config !== null) void this.reconcile()
       })
@@ -226,6 +232,7 @@ class QerkoPaymentConnection {
     await this.run.deps.lockManager.request(
       qerkoPaymentConnectionLockName,
       async () => {
+        this.granted = true
         let failures = 0
         while (!this.disposed && this.config !== null) {
           const config = this.config
