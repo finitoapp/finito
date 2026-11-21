@@ -413,7 +413,7 @@ describe("payment preparation actions", () => {
       )
 
     // Same for a payment created straight through `createPreparedPayment`
-    // without one — the shape `bin/cli-payments.ts` uses. A null `expiresAt`
+    // without one — the shape `apps/cli/src/cli-payments.ts` uses. A null `expiresAt`
     // there means the payment never reads as expired and the bill stays
     // locked for good.
     const preparedId = await run.orThrow(

@@ -48,8 +48,8 @@ export const activeReconciliationClaimByAccountTransactionIdQuery = (
 /**
  * Every distinct account transaction actively claimed against a single
  * payment, with the real transaction amount — the basis for
- * `calculatePaymentClaimedSum`/`derivePaymentHasExcessSettlement`
- * (`payment-status-utils.ts`), which detect the duplicate-settlement
+ * `sumDistinctClaimedAmounts` (`shared/claimed-amount.ts`) and
+ * `derivePaymentHasExcessSettlement` (`payment-status-utils.ts`), which detect the duplicate-settlement
  * collision: a payment claimed for more than its own `amount`. See
  * docs/bill-payment-states.md.
  */

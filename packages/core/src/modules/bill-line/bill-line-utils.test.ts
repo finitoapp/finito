@@ -433,7 +433,7 @@ describe("getBillLineSummaryUnitAmount", () => {
   })
 
   test("survives a fractional quantity whose division does not land on an integer", () => {
-    // `bin/cli-bills.ts add-item --quantity 0.7` is accepted
+    // `apps/cli/src/cli-bills.ts add-item --quantity 0.7` is accepted
     // (`PositiveNumberFromStringSchema`), and `addCatalogItemToBill` takes a
     // `PositiveNumber` too, so a line of 0.7 x 2000 is a real row: its total
     // of 1400 is a clean integer. Dividing back is not — `1400 / 0.7` is

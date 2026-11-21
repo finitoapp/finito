@@ -45,8 +45,8 @@ export const claimedPaymentsByBillIdQuery = (billId: BillId) =>
  * payment). Unlike `claimedPaymentsByBillIdQuery`, this carries the real
  * transaction `amount` rather than the payment's nominal one, so it stays
  * correct when a payment ends up claimed for more (or, mid-split, less)
- * than its own amount — see `calculatePaymentClaimedSum`'s doc comment in
- * `payment-status-utils.ts`.
+ * than its own amount — see `sumDistinctClaimedAmounts`'s doc comment in
+ * `shared/claimed-amount.ts`.
  *
  * `accountTransaction.amount` is in the transaction's own currency, which
  * for a Lightning/Spark settlement is satoshis against a fiat payment, so

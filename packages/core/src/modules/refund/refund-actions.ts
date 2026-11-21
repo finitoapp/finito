@@ -249,7 +249,7 @@ const prepareRecordedRefund =
           {
             id: deriveCashRefundAccountTransactionId(refund.id),
             accountId,
-            amount: Integer(-cashHandedAmount),
+            amount: Integer(-cashHandedAmount + 0), // never -0
             currency: refund.currency,
             occurredAt: refundedAt,
             note: null,

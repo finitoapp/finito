@@ -372,6 +372,8 @@ export const withdrawalByCashuMeltQuery = (meltOperationId: CashuOperationId) =>
       ])
       .where("withdrawalLightningCashu.meltOperationId", "=", meltOperationId)
       .where("withdrawal.isDeleted", "is not", sqliteTrue)
+      .where("withdrawal.accountId", "is not", null)
+      .where("withdrawal.accountTransactionId", "is not", null)
       .$narrowType<{
         accountId: KyselyNotNull
         accountTransactionId: KyselyNotNull
