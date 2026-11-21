@@ -7,11 +7,12 @@ interface AsyncValue<T> {
 }
 
 /**
- * Native has no TanStack Query, so a read from a remote or native API (the
- * Spark balance, an LNURL's metadata, the BTC rate) goes through this. Loads
- * when `key` changes, `null` loads nothing, and a result for a key that has
- * been replaced is dropped. With `refetchMs` it asks again until `done` says
- * the answer is final.
+ * A keyed read from a remote or native API (the Spark balance, an LNURL's
+ * metadata, the BTC rate). Loads when `key` changes, `null` loads nothing,
+ * and both a late result and the settled value of a replaced key are dropped:
+ * a new key starts from no data, so a failed load never shows the previous
+ * key's answer. With `refetchMs` it asks again until `done` says the answer
+ * is final.
  */
 export function useAsyncValue<T>(
   key: string | null,
@@ -21,28 +22,30 @@ export function useAsyncValue<T>(
     readonly done?: (data: T) => boolean
   } = {}
 ): AsyncValue<T> {
-  const [state, setState] = useState<AsyncValue<T>>({
-    data: null,
-    failed: false,
-    loading: key !== null,
-  })
+  const [state, setState] = useState<
+    AsyncValue<T> & { readonly key: string | null }
+  >({ key, data: null, failed: false, loading: key !== null })
   const latest = useRef({ load, options })
   latest.current = { load, options }
 
   useEffect(() => {
     if (key === null) {
-      setState({ data: null, failed: false, loading: false })
+      setState({ key, data: null, failed: false, loading: false })
       return
     }
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
-    setState((previous) => ({ ...previous, loading: true }))
+    setState((previous) =>
+      previous.key === key
+        ? { ...previous, loading: true }
+        : { key, data: null, failed: false, loading: true }
+    )
 
     const attempt = async () => {
       try {
         const data = await latest.current.load()
         if (cancelled) return
-        setState({ data, failed: false, loading: false })
+        setState({ key, data, failed: false, loading: false })
         const { refetchMs, done } = latest.current.options
         if (refetchMs !== undefined && done?.(data) !== true) {
           timer = setTimeout(attempt, refetchMs)
@@ -62,5 +65,9 @@ export function useAsyncValue<T>(
     }
   }, [key])
 
-  return state
+  // Between a key change and the effect that resets the state, render must
+  // not show the replaced key's answer either.
+  if (state.key !== key)
+    return { data: null, failed: false, loading: key !== null }
+  return { data: state.data, failed: state.failed, loading: state.loading }
 }
