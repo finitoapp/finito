@@ -23,6 +23,15 @@ const createFetchError = defineError("FetchError")<{
 }>()
 export type FetchError = ReturnType<typeof createFetchError>
 
+/**
+ * How long one request may take, its body included, before it fails as a
+ * `FetchError`. Without it a half-open connection (Wi-Fi handed over to
+ * mobile data) never answers on native, and the queue waiting on it, a
+ * bank's sync among them, stops until the app restarts. Generous enough
+ * for the product library's whole download on a slow line.
+ */
+export const APP_FETCH_TIMEOUT_MS = 60_000
+
 const appFetchAsText =
   (
     url: string | URL,
@@ -35,12 +44,27 @@ const appFetchAsText =
   ({ deps, signal }) =>
     tryAsync(
       async () => {
-        const response = await deps.fetch(url, { ...init, signal })
+        // The run's abort or the timeout, whichever comes first; not
+        // `AbortSignal.any`, which React Native may not have.
+        const controller = new AbortController()
+        const forwardAbort = () => controller.abort(signal.reason)
+        if (signal.aborted) forwardAbort()
+        else signal.addEventListener("abort", forwardAbort, { once: true })
+        const timer = setTimeout(() => controller.abort(), APP_FETCH_TIMEOUT_MS)
+        try {
+          const response = await deps.fetch(url, {
+            ...init,
+            signal: controller.signal,
+          })
 
-        return {
-          text: await response.text(),
-          ok: response.ok,
-          status: response.status,
+          return {
+            text: await response.text(),
+            ok: response.ok,
+            status: response.status,
+          }
+        } finally {
+          clearTimeout(timer)
+          signal.removeEventListener("abort", forwardAbort)
         }
       },
       (error): FetchError => {
