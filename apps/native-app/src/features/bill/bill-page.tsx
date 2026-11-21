@@ -9,9 +9,16 @@ import { enabledPaymentMethodAccountsQuery } from "@payky/core/modules/account/a
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
 import { cancelBill } from "@payky/core/modules/bill/bill-actions"
-import { claimedPaymentsByBillIdQuery } from "@payky/core/modules/bill/bill-coverage-queries"
+import {
+  claimedPaymentsByBillIdQuery,
+  claimedTransactionsByBillIdQuery,
+} from "@payky/core/modules/bill/bill-coverage-queries"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import { BillId, createRandomBillId } from "@payky/core/modules/bill/bill-types"
+import {
+  calculateClaimedSum,
+  deriveBillAmountDue,
+} from "@payky/core/modules/bill/bill-utils"
 import type { BillLineSummary } from "@payky/core/modules/bill-line/bill-line-summary"
 import {
   deriveBillSummaryStats,
@@ -487,6 +494,12 @@ function BillCart({
     [summaries]
   )
   const totalAmountPulse = useChangePulse(totalAmount)
+  // A partly paid bill charges only the rest (payment/0028).
+  const claimedTransactions = useEvoluQuery(
+    claimedTransactionsByBillIdQuery(billId)
+  ).data
+  const claimedSum = calculateClaimedSum(claimedTransactions)
+  const amountDue = deriveBillAmountDue(totalAmount, claimedSum)
   const cart = useCartBill({ billId, currency, tableId, onTableSeedChange })
   // The grid's handlers are made once and call the latest cart, so a tap,
   // which renders this cart again, leaves every brick's props as they were
@@ -553,9 +566,9 @@ function BillCart({
   // (`createPreparedPayment` with `billId`); this only picks the route.
   const charge = async () => {
     if (checkout !== "charge" || chargePendingRef.current) return
-    // Charge is offered only for goods above zero (`deriveBillCheckout`), so
-    // the bill's total is never negative here (payment/0015).
-    const amount = NonNegativeInteger(totalAmount)
+    // Charge is offered only for goods above zero (`deriveBillCheckout`);
+    // what is due is the total less what was paid (payment/0028).
+    const amount = amountDue
     chargePendingRef.current = true
     setChargePending(true)
     // Not a `try`/`finally`: React Compiler skips a component holding one,
@@ -790,7 +803,9 @@ function BillCart({
   // A large monitor's Charge names the amount it charges, as web's; the
   // button is named by what it shows.
   const mainActionLabel =
-    wide && !finishing ? `${t("home.pay")} ${totalLabel}` : t(mainActionKey)
+    wide && !finishing
+      ? `${t("home.pay")} ${formatMoney({ value: amountDue, currency }, locale)}`
+      : t(mainActionKey)
 
   return (
     <SafeAreaView
@@ -1252,6 +1267,21 @@ function BillCart({
                     </Animated.View>
                   </XStack>
                 </>
+              ) : null}
+              {claimedSum > 0 ? (
+                <Text
+                  pt={8}
+                  self="flex-end"
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                  color="muted-foreground"
+                  testID="bill-amount-due"
+                >
+                  {t("bill.summary.paidAndDue", {
+                    paid: formatMoney({ value: claimedSum, currency }, locale),
+                    due: formatMoney({ value: amountDue, currency }, locale),
+                  })}
+                </Text>
               ) : null}
               <XStack
                 items="center"

@@ -391,6 +391,10 @@ its payments have paid (`deriveCartWriteClosing` in `bill-utils.ts`,
   counts them.
 - A split judges both bills, the source first. Its new bill has no payment
   and always stays open.
+- Charge on a partly paid bill asks only for the rest, total less what was
+  paid (`deriveBillAmountDue`,
+  [`payment/0028`](decisions/payment/0028-charge-on-a-partly-paid-bill-asks-for-the-rest.md)),
+  so paying it brings the bill to exactly `paid`.
 - The refusal exists because a bill closed below what was paid is
   `overpaid`: closing it would hand money back outside a refund. Staff
   return money through a refund on the payment instead, and the apps say so.

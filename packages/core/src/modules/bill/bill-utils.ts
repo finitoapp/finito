@@ -210,6 +210,18 @@ export const deriveBillCoverageDelta = (
   NonNegativeInteger(Math.abs(deriveBillOwedAmount(billTotal) - claimedSum))
 
 /**
+ * What Charge asks for on a bill: what it owes less what its payments have
+ * paid (payment/0028). On a bill nobody paid for, its total; on a partly
+ * paid one, the rest, so the next payment pays it off instead of overpaying
+ * it by everything paid before.
+ */
+export const deriveBillAmountDue = (
+  billTotal: Integer,
+  claimedSum: NonNegativeInteger
+): NonNegativeInteger =>
+  NonNegativeInteger(Math.max(0, deriveBillOwedAmount(billTotal) - claimedSum))
+
+/**
  * One claimed transaction as the bill-coverage queries return it: the
  * shared money fields plus which payment it settles and that payment's tip.
  */

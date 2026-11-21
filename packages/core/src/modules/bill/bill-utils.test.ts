@@ -21,6 +21,7 @@ import {
   type ClaimedTransaction,
   calculateClaimedSum,
   claimedPaymentIdSet,
+  deriveBillAmountDue,
   deriveBillCoverage,
   deriveBillCoverageDelta,
   deriveBillHistoryItemSummary,
@@ -217,6 +218,22 @@ describe("deriveBillCoverage", () => {
         claimedTransactions: [],
       })
     ).toMatchObject({ status: "open", coverage: "paid", billTotal: -500 })
+  })
+})
+
+describe("deriveBillAmountDue", () => {
+  test("charges the whole total on a bill nobody paid for", () => {
+    expect(deriveBillAmountDue(Integer(400), NonNegativeInteger(0))).toBe(400)
+  })
+
+  test("charges only the rest on a partly paid bill", () => {
+    expect(deriveBillAmountDue(Integer(400), NonNegativeInteger(300))).toBe(100)
+  })
+
+  test("owes nothing on a bill paid off, over or below zero", () => {
+    expect(deriveBillAmountDue(Integer(400), NonNegativeInteger(400))).toBe(0)
+    expect(deriveBillAmountDue(Integer(400), NonNegativeInteger(500))).toBe(0)
+    expect(deriveBillAmountDue(Integer(-50), NonNegativeInteger(0))).toBe(0)
   })
 })
 
