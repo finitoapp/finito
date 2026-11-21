@@ -140,10 +140,10 @@ class QerkoPaymentConnection {
     const { evolu, connectivity, qerkoConnectionStatus } = run.deps
     this.unsubscribes = [
       evolu.subscribeQuery(qerkoPaymentAccountQuery)(() => {
-        void this.reconcile()
+        this.reconcileSoon()
       }),
       evolu.subscribeQuery(qerkoPluginQuery("standard"))(() => {
-        void this.reconcile()
+        this.reconcileSoon()
       }),
       connectivity.onOnline(() => this.wake()),
       qerkoConnectionStatus.onResume(() => {
@@ -154,7 +154,7 @@ class QerkoPaymentConnection {
   }
 
   start(): void {
-    void this.reconcile()
+    this.reconcileSoon()
   }
 
   async dispose(): Promise<void> {
@@ -187,6 +187,10 @@ class QerkoPaymentConnection {
       // One sleeper at a time: the loop below is the only one.
       this.wakeUp = done
     })
+  }
+
+  private reconcileSoon(): void {
+    this.reconcile().catch(this.run.deps.onError)
   }
 
   private async reconcile(): Promise<void> {
@@ -222,7 +226,7 @@ class QerkoPaymentConnection {
         this.holding = null
         this.granted = false
         // The lock may have been granted after the config went away and back.
-        if (!this.disposed && this.config !== null) void this.reconcile()
+        if (!this.disposed && this.config !== null) this.reconcileSoon()
       })
     }
   }

@@ -211,7 +211,7 @@ export const createCashuTokenListener = (run: Run<CashuTokenListenerDeps>) => {
 
     // The payment holds the receive id before anyone receives the token.
     if (match.type === "payment")
-      await run(
+      await run.ok(
         holdCashuReceive({
           paymentId: match.paymentId,
           receiveOperationId: token.receiveOperationId,
