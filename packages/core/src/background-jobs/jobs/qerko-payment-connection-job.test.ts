@@ -40,6 +40,7 @@ import type { AppBackgroundJobContext } from "../background-job-types.ts"
 import {
   createQerkoPaymentConnectionJob,
   getQerkoReconnectDelayMs,
+  qerkoPaymentConnectionLockName,
 } from "./qerko-payment-connection-job.ts"
 
 const accountId = createQerkoPaymentAccountId("CZK")
@@ -121,13 +122,14 @@ const setup = async () => {
   const errors: unknown[] = []
 
   const device = await createTestDeviceAccountDep()
+  const lockManager = createInProcessLockManager()
   const jobDeps: AppBackgroundJobContext = {
     ...device.deviceAccount,
     ...deps,
     ...createEetApiDep({ ...deps, ...clock }),
     ...connectivity,
     deviceId,
-    lockManager: createInProcessLockManager(),
+    lockManager,
     ...testNotificationsDep(),
     console: testCreateConsole(),
     onError: (error) => {
@@ -160,6 +162,8 @@ const setup = async () => {
   return {
     run,
     deviceId,
+    lockManager,
+    stop: () => job[Symbol.asyncDispose](),
     connections,
     status,
     errors,
@@ -227,6 +231,28 @@ describe("qerko payment connection job", () => {
 
     await savePlugin("restaurant-1")
     await test.authorize()
+  })
+
+  test("stops while another tab holds the connection", async () => {
+    await using test = await setup()
+    let release = (): void => {}
+    const otherTab = test.lockManager.request(
+      qerkoPaymentConnectionLockName,
+      () => new Promise<void>((resolve) => (release = resolve))
+    )
+    await test.choose(test.deviceId)
+    await new Promise((resolve) => setTimeout(resolve, 30))
+
+    const stopped = await Promise.race([
+      test.stop().then(() => true),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 200)),
+    ])
+
+    expect(stopped).toBe(true)
+    release()
+    await otherTab
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(test.connections).toEqual([])
   })
 
   test("choosing another device hands the connection over", async () => {
