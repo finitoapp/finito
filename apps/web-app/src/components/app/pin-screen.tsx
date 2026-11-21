@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/field.tsx"
 import { useAccess } from "@/hooks/use-access.ts"
 import { useDeviceEvoluQuery } from "@/hooks/use-device-evolu-query.ts"
+import { useLocale } from "@/hooks/use-locale.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { permissionLabelKeys } from "@/i18n/access-labels.ts"
@@ -423,6 +424,7 @@ function FailedAttempts({
   readonly onContinue: () => void
 }) {
   const { t, language } = useTranslation()
+  const locale = useLocale()
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-4 text-left">
@@ -446,7 +448,7 @@ function FailedAttempts({
                     : attempt.target}
                 </span>
                 <span className="shrink-0 text-muted-foreground">
-                  {formatDateTime(new Date(attempt.attemptedAt), language)}
+                  {formatDateTime(new Date(attempt.attemptedAt), locale)}
                 </span>
               </li>
             ))}

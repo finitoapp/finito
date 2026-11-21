@@ -10,11 +10,13 @@ import {
   CardTitle,
 } from "@/components/ui/card.tsx"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 
 /** Security's recovery-phrase card: only whether the backup was verified, and the way to the backup screen. */
 export function RecoveryBackupCard() {
-  const { t, language } = useTranslation()
+  const { t } = useTranslation()
+  const locale = useLocale()
   const { data: settingsRows } = useEvoluQuery(settingsQuery)
   const verifiedAt = settingsRows[0]?.recoveryPhraseVerifiedAt ?? null
 
@@ -34,7 +36,7 @@ export function RecoveryBackupCard() {
           {verifiedAt === null
             ? t("settings.security.verify.status.unverified")
             : t("settings.security.verify.status.verified", {
-                date: formatDate(new Date(verifiedAt), language),
+                date: formatDate(new Date(verifiedAt), locale),
               })}
         </span>
         <Button
