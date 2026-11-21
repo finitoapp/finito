@@ -167,9 +167,17 @@ export const startCashuAccountSyncJob: CashuBackgroundJob = (taskRun) => {
   // not only while a payment waits (decision 12).
   const tokens = createCashuTokenListener(run)
   const tokensSoon = () => queue.enqueue("tokens", tokens.tick)
+  // Set first in dispose: an `isEnabled` read still running then must not
+  // subscribe after `tokens.stop()`, with nothing left to close it.
+  let stopped = false
   const followAccount = async (): Promise<void> => {
-    if (await isEnabled()) await tokens.start(tokensSoon)
+    const enabled = await isEnabled()
+    if (stopped) return
+    if (enabled) await tokens.start(tokensSoon)
     else tokens.stop()
+  }
+  const followAccountSoon = (): void => {
+    followAccount().catch(run.deps.onError)
   }
 
   const settleSoon = () => {
@@ -192,7 +200,7 @@ export const startCashuAccountSyncJob: CashuBackgroundJob = (taskRun) => {
   )
   const unsubscribeAccount = run.deps.evolu.subscribeQuery(cashuAccountQuery)(
     () => {
-      void followAccount()
+      followAccountSoon()
       settleSoon()
       bookSoon()
     }
@@ -203,13 +211,14 @@ export const startCashuAccountSyncJob: CashuBackgroundJob = (taskRun) => {
   ;(bookingTick as { readonly unref?: () => void }).unref?.()
 
   run.deps.console.info("Started Cashu account sync job.")
-  void followAccount()
+  followAccountSoon()
   settleSoon()
   bookSoon()
 
   return ok({
     async [Symbol.asyncDispose]() {
       if (queue.isDisposed) return
+      stopped = true
       clearInterval(tick)
       clearInterval(bookingTick)
       tokens.stop()
