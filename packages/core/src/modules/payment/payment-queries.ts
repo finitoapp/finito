@@ -48,6 +48,7 @@ export const paymentBillCoverageByIdQuery = (idValue: PaymentId) =>
         "paymentLightningAddress.amountSats as lightningAddressAmountSats",
       ])
       .where("payment.id", "=", idValue)
+      .where("payment.isDeleted", "is not", sqliteTrue)
       .where("payment.amount", "is not", null)
       .where("payment.currency", "is not", null)
       .where("payment.tipAmount", "is not", null)
@@ -58,12 +59,14 @@ export const paymentBillCoverageByIdQuery = (idValue: PaymentId) =>
       }>()
   )
 
+/** A live payment: one deleted (`cli payments delete`) is gone for every action. */
 export const paymentByIdQuery = (idValue: PaymentId) =>
   createQuery((db) =>
     db
       .selectFrom("payment")
       .selectAll()
       .where("id", "=", idValue)
+      .where("isDeleted", "is not", sqliteTrue)
       .where("amount", "is not", null)
       .where("currency", "is not", null)
       .where("tipAmount", "is not", null)

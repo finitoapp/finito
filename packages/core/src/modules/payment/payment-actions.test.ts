@@ -1304,6 +1304,11 @@ describe("payment actions", () => {
           isDeleted: sqliteTrue,
         },
       ])
+    // Gone for every action that loads it, recording cash included.
+    expect(await run(loadPayment(id))).toEqual({
+      ok: false,
+      error: { type: "PaymentNotFound", id },
+    })
   }, 15_000)
 
   test("creating a payment for a bill neither closes nor unlocks it, and a second/split payment is still accepted", async () => {
