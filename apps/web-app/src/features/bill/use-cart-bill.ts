@@ -188,8 +188,8 @@ export function useCartBill({
   // query) turns true (re-render lag, or two rapid scans in scan mode) —
   // without it, each call sees `billExists === false` and starts its own
   // `createBillAtEnd`. Unlike the id, this never needs resetting mid-mount:
-  // `billId` is fixed for the lifetime of this cart (see `bill-page.tsx`),
-  // so there's no "later add should start a fresh bill" case to guard for.
+  // `billId` is fixed for the lifetime of this cart (the route keys
+  // `BillPage` by it, so a split to another bill remounts the cart), so there's no "later add should start a fresh bill" case to guard for.
   const pendingBillCreationRef = useRef<Promise<void> | null>(null)
 
   const record = (entry: CartHistoryEntry) => {

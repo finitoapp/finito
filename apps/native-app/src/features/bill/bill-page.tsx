@@ -182,7 +182,10 @@ export function BillRoute() {
 
   return (
     <Suspense fallback={<LoadingView />}>
+      {/* Keyed so a split that moves to another bill starts a fresh cart:
+          its undo history belongs to the bill it was recorded on. */}
       <BillPage
+        key={parsed.data}
         billId={parsed.data}
         // A broken `tableId` is only a lost preselection, as on web.
         initialTableId={
