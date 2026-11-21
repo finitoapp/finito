@@ -2,6 +2,10 @@ import { OwnerId } from "@evolu/common"
 import { jsonCodec } from "@payky/core/zod-utils"
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
+import {
+  loadServerEnv,
+  throwInvalidServerEnv,
+} from "../../../../src/server/server-env.js"
 
 /**
  * Payky's OpenAI-compatible chat endpoint (ai/0001): the app sends its
@@ -18,29 +22,36 @@ export interface AiProxyConfig {
   readonly maxTokens: number
 }
 
-const env = createEnv({
-  server: {
-    // Gemini's OpenAI-compatible endpoint.
-    PAYKY_AI_UPSTREAM_URL: z
-      .url()
-      .default("https://generativelanguage.googleapis.com/v1beta/openai"),
-    PAYKY_AI_UPSTREAM_API_KEY: z.string().trim().min(1).optional(),
-    PAYKY_AI_UPSTREAM_MODEL: z
-      .string()
-      .trim()
-      .min(1)
-      .default("gemini-3.5-flash-lite"),
-    PAYKY_AI_MAX_TOKENS: z.coerce.number().int().positive().default(8192),
-  },
-  runtimeEnv: process.env,
-  emptyStringAsUndefined: true,
-})
-
-const defaultConfig: AiProxyConfig = {
-  upstreamUrl: env.PAYKY_AI_UPSTREAM_URL,
-  upstreamApiKey: env.PAYKY_AI_UPSTREAM_API_KEY,
-  model: env.PAYKY_AI_UPSTREAM_MODEL,
-  maxTokens: env.PAYKY_AI_MAX_TOKENS,
+/** The deploy's configuration, read per request; `null` when invalid. */
+const loadAiProxyConfig = (): AiProxyConfig | null => {
+  const env = loadServerEnv(() =>
+    createEnv({
+      server: {
+        // Gemini's OpenAI-compatible endpoint.
+        PAYKY_AI_UPSTREAM_URL: z
+          .url()
+          .default("https://generativelanguage.googleapis.com/v1beta/openai"),
+        PAYKY_AI_UPSTREAM_API_KEY: z.string().trim().min(1).optional(),
+        PAYKY_AI_UPSTREAM_MODEL: z
+          .string()
+          .trim()
+          .min(1)
+          .default("gemini-3.5-flash-lite"),
+        PAYKY_AI_MAX_TOKENS: z.coerce.number().int().positive().default(8192),
+      },
+      runtimeEnv: process.env,
+      emptyStringAsUndefined: true,
+      onValidationError: throwInvalidServerEnv,
+    })
+  )
+  return env === null
+    ? null
+    : {
+        upstreamUrl: env.PAYKY_AI_UPSTREAM_URL,
+        upstreamApiKey: env.PAYKY_AI_UPSTREAM_API_KEY,
+        model: env.PAYKY_AI_UPSTREAM_MODEL,
+        maxTokens: env.PAYKY_AI_MAX_TOKENS,
+      }
 }
 
 const ChatRequestJson = jsonCodec(
@@ -70,10 +81,10 @@ const hasOwnerIdBearer = (request: Request): boolean =>
 export const handleAiChatRequest = async (
   request: Request,
   {
-    config = defaultConfig,
+    config = loadAiProxyConfig(),
     fetch = globalThis.fetch,
   }: {
-    readonly config?: AiProxyConfig
+    readonly config?: AiProxyConfig | null
     readonly fetch?: typeof globalThis.fetch
   } = {}
 ): Promise<Response> => {
@@ -102,7 +113,7 @@ export const handleAiChatRequest = async (
     )
   }
 
-  if (config.upstreamApiKey === undefined) {
+  if (config === null || config.upstreamApiKey === undefined) {
     return errorResponse(500, "The AI endpoint is not configured.")
   }
 
