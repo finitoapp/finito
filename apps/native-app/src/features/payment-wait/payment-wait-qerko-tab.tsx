@@ -18,7 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { router } from "expo-router"
 import { useAtomValue } from "jotai"
 import Nfc from "lucide-react-native/icons/nfc"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { ActivityIndicator } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
@@ -73,6 +73,8 @@ export function QerkoPaymentTab({
     .data[0]
   const [starting, setStarting] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  // Two taps can land before React re-renders `starting`.
+  const startingRef = useRef(false)
   const [startErrorKey, setStartErrorKey] = useState<ReturnType<
     typeof describeQerkoPaymentError
   > | null>(null)
@@ -104,45 +106,53 @@ export function QerkoPaymentTab({
   const start = async () => {
     if (accountId === null || accountId === undefined) return
     if (selection === undefined) return
+    if (startingRef.current) return
+    startingRef.current = true
+    try {
+      if (unresolved) {
+        const confirmed = await confirm({
+          title: t("paymentWait.qerko.retryUnresolved.title"),
+          description: t("paymentWait.qerko.retryUnresolved.description"),
+          confirmLabel: t("paymentWait.qerko.retryUnresolved.confirm"),
+          cancelLabel: t("paymentWait.qerko.retryUnresolved.cancel"),
+          variant: "destructive",
+        })
+        if (!confirmed) return
+      }
 
-    if (unresolved) {
-      const confirmed = await confirm({
-        title: t("paymentWait.qerko.retryUnresolved.title"),
-        description: t("paymentWait.qerko.retryUnresolved.description"),
-        confirmLabel: t("paymentWait.qerko.retryUnresolved.confirm"),
-        cancelLabel: t("paymentWait.qerko.retryUnresolved.cancel"),
-        variant: "destructive",
-      })
-      if (!confirmed) return
+      setStartErrorKey(null)
+      queryClient.removeQueries({ queryKey: pollKey })
+      setStarting(true)
+      await using run = appRun()
+      const result = await run(
+        startQerkoTerminalPayment({
+          paymentId,
+          accountId,
+          terminalId: selection.terminalId,
+          terminalTid: selection.terminalTid,
+          deviceId: account.device.id,
+          retryUnresolved: unresolved,
+        })
+      )
+      if (!result.ok) setStartErrorKey(describeQerkoPaymentError(result.error))
+    } finally {
+      startingRef.current = false
+      setStarting(false)
     }
-
-    setStartErrorKey(null)
-    queryClient.removeQueries({ queryKey: pollKey })
-    setStarting(true)
-    await using run = appRun()
-    const result = await run(
-      startQerkoTerminalPayment({
-        paymentId,
-        accountId,
-        terminalId: selection.terminalId,
-        terminalTid: selection.terminalTid,
-        deviceId: account.device.id,
-        retryUnresolved: unresolved,
-      })
-    )
-    setStarting(false)
-    if (!result.ok) setStartErrorKey(describeQerkoPaymentError(result.error))
   }
 
   const cancel = async () => {
     setCancelling(true)
-    await using run = appRun()
-    const result = await run(cancelQerkoTerminalPayment(paymentId))
-    setCancelling(false)
-    if (!result.ok) {
-      toast.error(t(describeQerkoPaymentError(result.error)))
-    } else if (result.value === "notCancellable") {
-      toast.error(t("paymentWait.qerko.cancel.notCancellable"))
+    try {
+      await using run = appRun()
+      const result = await run(cancelQerkoTerminalPayment(paymentId))
+      if (!result.ok) {
+        toast.error(t(describeQerkoPaymentError(result.error)))
+      } else if (result.value === "notCancellable") {
+        toast.error(t("paymentWait.qerko.cancel.notCancellable"))
+      }
+    } finally {
+      setCancelling(false)
     }
   }
 
