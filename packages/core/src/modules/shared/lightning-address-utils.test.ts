@@ -1,5 +1,9 @@
+import { bech32 } from "@scure/base"
 import { describe, expect, test } from "vitest"
-import { parseLightningAddress } from "./lightning-address-utils.ts"
+import {
+  lnurlToLightningAddress,
+  parseLightningAddress,
+} from "./lightning-address-utils.ts"
 
 describe("parseLightningAddress", () => {
   test("trims and lowercases an address", () => {
@@ -18,5 +22,22 @@ describe("parseLightningAddress", () => {
     expect(parseLightningAddress("shop")).toBeNull()
     expect(parseLightningAddress("shop@localhost")).toBeNull()
     expect(parseLightningAddress("lnbc10n1…")).toBeNull()
+  })
+})
+
+describe("lnurlToLightningAddress", () => {
+  const lnurl = (url: string) =>
+    bech32.encode("lnurl", bech32.toWords(new TextEncoder().encode(url)), false)
+
+  test("decodes a LUD-16 URL to its address", () => {
+    expect(
+      lnurlToLightningAddress(lnurl("https://x.com/.well-known/lnurlp/Shop"))
+    ).toBe("shop@x.com")
+  })
+
+  test("rejects a malformed escape instead of throwing", () => {
+    expect(
+      lnurlToLightningAddress(lnurl("https://x.com/.well-known/lnurlp/%zz"))
+    ).toBeNull()
   })
 })
