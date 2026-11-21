@@ -294,7 +294,7 @@ export const reconcileAccountTransaction =
 
     // Asked together rather than in sequence. Each candidate query filters on
     // `accountTransaction.kind`, which is a single non-nullable enum, so at
-    // most one of the three can ever return a row: the kind decides, and the
+    // most one of the four can ever return a row: the kind decides, and the
     // `??` order below is only a total function over that, not a tie-break
     // (pinned by "picks the candidate matching the transaction's kind"). The
     // short-circuit it replaces therefore skipped nothing the kind filter

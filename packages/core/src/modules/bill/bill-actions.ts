@@ -584,7 +584,7 @@ export const appendRemoveBillLine =
  * Every open bill with its calculated line items, in one query — `lines` and
  * `items` ride along on `openBillsQuery` (see its doc comment), so this no
  * longer loads summaries per bill. `lines`/`items` are stripped off the
- * returned `bill` so it stays a plain `BillRow`: `bin/cli-bills.ts` spreads it
+ * returned `bill` so it stays a plain `BillRow`: `apps/cli/src/cli-bills.ts` spreads it
  * straight into `console.table`.
  */
 export const listOpenBills =
@@ -956,7 +956,7 @@ export const upsertBillClosedAt = (
   evolu.update("bill", { id: billId, closedAt }, options)
 }
 /**
- * Manually refreshes a bill's `closedAt` cache (e.g. `bin/cli-bills.ts
+ * Manually refreshes a bill's `closedAt` cache (e.g. `apps/cli/src/cli-bills.ts
  * close`) — a repair tool for the rare multi-device race where the
  * automatic write in `loadBillClosedAtIfCovered` never landed (see
  * `bill.ts`'s doc comment), not a way to force a bill closed. Rejects a

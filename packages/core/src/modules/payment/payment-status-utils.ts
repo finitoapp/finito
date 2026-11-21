@@ -13,7 +13,7 @@ import type { PaymentStatus } from "./payment-types.ts"
  * always the same number.
  *
  * It used to be each caller's job to pass this, which two of them got wrong:
- * `bin/cli-payments.ts` never did, leaving `expiresAt` null so the payment
+ * `apps/cli/src/cli-payments.ts` never did, leaving `expiresAt` null so the payment
  * never read as expired and its bill stayed locked for good; and re-preparing
  * Spark without it kept the *previous* stamp, reporting a live invoice as
  * expired. Without any value the Spark SDK still expires the invoice on its

@@ -78,7 +78,7 @@ export type BillNotFoundError = ReturnType<typeof createBillNotFoundError>
  * refusal: this used to be `BillNotOpen`, which was true every time it fired
  * and still told the operator nothing — `requireCancelableBill` accepts a
  * `canceled` bill and rejects a `closed` one, and `closeBill` accepts
- * `closed`. Neither of those is about being open. `bin/cli-bills.ts` prints
+ * `closed`. Neither of those is about being open. `apps/cli/src/cli-bills.ts` prints
  * the error verbatim, so the payload is the message.
  */
 export const createBillStatusNotAllowedError = defineError(
