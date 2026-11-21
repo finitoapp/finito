@@ -201,13 +201,15 @@ export const registerMonetaPluginsCommand =
           async action(_, options) {
             await using bankRun = createBankRun(options.token)
             const result = await bankRun(fetchMonetaAccounts())
+            if (!result.ok) {
+              printCliError(run.deps.console, JSON.stringify(result, null, 2))
+              return
+            }
             run.deps.console.log(
               JSON.stringify(
-                result.ok
-                  ? options.raw === true
-                    ? result.value.entries
-                    : result.value.accounts
-                  : result,
+                options.raw === true
+                  ? result.value.entries
+                  : result.value.accounts,
                 null,
                 2
               )
@@ -255,7 +257,7 @@ export const registerMonetaPluginsCommand =
               })
             )
             if (!result.ok) {
-              run.deps.console.log(JSON.stringify(result, null, 2))
+              printCliError(run.deps.console, JSON.stringify(result, null, 2))
               return
             }
             const { transactions, skipped, isTruncated, callCount } =
