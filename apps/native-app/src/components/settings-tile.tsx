@@ -1,6 +1,13 @@
 import type { LucideIcon } from "lucide-react-native"
-import type { ReactNode } from "react"
-import { Text, XStack, YStack } from "tamagui"
+import {
+  Children,
+  createContext,
+  isValidElement,
+  type ReactNode,
+  useContext,
+} from "react"
+import { Text, View, XStack, YStack } from "tamagui"
+import { YGroup } from "tamagui/unstyled"
 import { fontSize, fontWeight, shape } from "../theme/tokens.ts"
 import { Icon } from "./ui/icon.tsx"
 
@@ -26,6 +33,9 @@ export interface SettingsTileProps {
  * body, and the trailing control. Lay several out in `SettingsTileList`.
  * Native only: web has no counterpart file.
  */
+
+/** True inside a `SettingsTileList`, whose group rounds the tiles instead. */
+const GroupedContext = createContext(false)
 export function SettingsTile({
   icon,
   title,
@@ -34,6 +44,7 @@ export function SettingsTile({
   children,
   testID,
 }: SettingsTileProps) {
+  const grouped = useContext(GroupedContext)
   return (
     <XStack
       items="center"
@@ -41,7 +52,7 @@ export function SettingsTile({
       minH={56}
       px={12}
       py={8}
-      rounded={shape.control}
+      rounded={grouped ? 0 : shape.control}
       bg="neutral-soft"
       testID={testID}
     >
@@ -80,7 +91,12 @@ export function SettingsTile({
   )
 }
 
-/** `SettingsTile`s stacked 8 apart. */
+/**
+ * `SettingsTile`s as one grouped block (Tamagui `YGroup`): 2 apart, only
+ * the block's outer corners rounded. Each child sits in a clipping
+ * `YGroup.Item` view, so a tile drawn by another component (a device row)
+ * is grouped as well.
+ */
 export function SettingsTileList({
   children,
   testID,
@@ -89,8 +105,17 @@ export function SettingsTileList({
   readonly testID?: string
 }) {
   return (
-    <YStack gap={8} testID={testID}>
-      {children}
-    </YStack>
+    <GroupedContext value={true}>
+      <YGroup gap={2} testID={testID}>
+        {Children.toArray(children).map((child) => (
+          // `toArray` keys every child, so a reordered list keeps its rows.
+          <YGroup.Item key={isValidElement(child) ? child.key : null}>
+            <View rounded={shape.control} overflow="hidden">
+              {child}
+            </View>
+          </YGroup.Item>
+        ))}
+      </YGroup>
+    </GroupedContext>
   )
 }

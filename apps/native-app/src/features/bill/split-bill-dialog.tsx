@@ -23,7 +23,7 @@ import Minus from "lucide-react-native/icons/minus"
 import Plus from "lucide-react-native/icons/plus"
 import { useMemo, useState } from "react"
 import { Animated } from "react-native"
-import { isWeb, Text, XStack, YStack } from "tamagui"
+import { Text, XStack, YStack } from "tamagui"
 import { Button } from "../../components/ui/button.tsx"
 import {
   Dialog,
@@ -34,10 +34,9 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog.tsx"
 import {
-  PressFill,
   type PressFillColors,
   pressFillClause,
-  usePressFill,
+  useFastTransition,
 } from "../../components/ui/press-fill.tsx"
 import {
   ToggleGroup,
@@ -313,7 +312,7 @@ function ExistingBillOption({
       ),
     [bill]
   )
-  const pressFill = usePressFill({ disabled: selected })
+  const transition = useFastTransition()
 
   return (
     // The row itself takes the press: a `press:` clause makes a Tamagui view
@@ -329,25 +328,9 @@ function ExistingBillOption({
       items="center"
       justify="space-between"
       rounded={radius.md}
-      bg={
-        selected
-          ? "accent"
-          : isWeb
-            ? pressFillClause(optionFill)
-            : "transparent"
-      }
-      {...(isWeb ? { transition: "fast" as const } : {})}
-      {...(selected
-        ? {}
-        : { onPressIn: pressFill.onPressIn, onPressOut: pressFill.onPressOut })}
+      bg={selected ? "accent" : pressFillClause(optionFill)}
+      transition={transition}
     >
-      {selected ? null : (
-        <PressFill
-          progress={pressFill.progress}
-          colors={optionFill}
-          rounded={radius.md}
-        />
-      )}
       <YStack flex={1} minW={0}>
         <Text
           fontSize={fontSize.sm}

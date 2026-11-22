@@ -1,34 +1,37 @@
 import { useAtomValue, useSetAtom } from "jotai"
-import { useEffect } from "react"
-import { YStack } from "tamagui"
+import { useEffect, useState } from "react"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { isWeb } from "tamagui"
+import {
+  Toast as TamaguiToast,
+  toast as tamaguiToast,
+  useToastItem,
+} from "tamagui/unstyled"
 import {
   dismissToastAtom,
   type Toast as ToastData,
   toastsAtom,
 } from "../../atoms/toast.ts"
+import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
 import { Toast } from "../ui/toast.tsx"
 
 const DISMISS_AFTER_MS = 4000
 
-function ToastItem({ toast }: { readonly toast: ToastData }) {
-  const dismiss = useSetAtom(dismissToastAtom)
-  useEffect(() => {
-    const timer = setTimeout(() => dismiss(toast.id), DISMISS_AFTER_MS)
-    return () => clearTimeout(timer)
-  }, [dismiss, toast.id])
-
+/** One toast's look, closed through Tamagui so it slides out. */
+function AppToast({ toast }: { readonly toast: ToastData }) {
+  const { handleClose } = useToastItem()
   return (
     <Toast
       variant={toast.variant}
       message={toast.message}
-      onPress={() => dismiss(toast.id)}
+      onPress={handleClose}
       action={
         toast.action === undefined
           ? undefined
           : {
               label: toast.action.label,
               onPress: () => {
-                dismiss(toast.id)
+                handleClose()
                 toast.action?.onPress()
               },
             }
@@ -37,21 +40,52 @@ function ToastItem({ toast }: { readonly toast: ToastData }) {
   )
 }
 
-/** Mount once inside the Jotai Provider and TamaguiProvider. */
+/**
+ * Mount once inside the Jotai Provider and TamaguiProvider. `toastsAtom` is
+ * the inbox callers write to; each toast is handed to Tamagui's toaster
+ * (its timing, stacking, enter/exit and swipe to dismiss) and leaves the
+ * atom. The viewport renders in place, not through Tamagui's portal, which
+ * on native would drop the app's React contexts.
+ */
 export function ToastHost() {
   const toasts = useAtomValue(toastsAtom)
+  const dismiss = useSetAtom(dismissToastAtom)
+  const insets = useSafeAreaInsets()
+  // Read once per mount: Tamagui's driver ignores the system setting.
+  const [reducedMotion] = useState(isReduceMotionEnabled)
+
+  useEffect(() => {
+    for (const toast of toasts) {
+      tamaguiToast.custom(() => <AppToast toast={toast} />, {
+        id: toast.id,
+        duration: DISMISS_AFTER_MS,
+      })
+      dismiss(toast.id)
+    }
+  }, [toasts, dismiss])
+
   return (
-    <YStack
-      position="absolute"
-      b={24}
-      l={16}
-      r={16}
-      gap="2"
-      pointerEvents="box-none"
+    <TamaguiToast
+      position="bottom-center"
+      duration={DISMISS_AFTER_MS}
+      reducedMotion={reducedMotion}
     >
-      {toasts.map((toast) => (
-        <ToastItem key={toast.id} toast={toast} />
-      ))}
-    </YStack>
+      <TamaguiToast.Viewport
+        portalToRoot={false}
+        offset={{ bottom: 24, left: 16, right: 16 }}
+        // Tamagui's `safe` edges need its own safe-area setup; give the
+        // insets directly (web keeps its centered column).
+        b={insets.bottom}
+        {...(isWeb ? {} : { l: insets.left, r: insets.right })}
+      >
+        <TamaguiToast.List
+          renderItem={({ toast, index }) => (
+            <TamaguiToast.Item toast={toast} index={index}>
+              {toast.jsx}
+            </TamaguiToast.Item>
+          )}
+        />
+      </TamaguiToast.Viewport>
+    </TamaguiToast>
   )
 }

@@ -77,8 +77,11 @@ export const maxWidth = {
 
 /**
  * The kit's transition presets, in ms: `fast` is a fill fading between rest,
- * hover and press (`animations.ts`, `animations.web.ts`, `ui/press-fill.tsx`).
+ * hover and press (`animations.ts`, `animations.web.ts`, `ui/press-fill.tsx`);
+ * `slide` is Linky's `base`, the menu and tabs pill moving to the active
+ * entry (ease-out cubic).
  */
 export const duration = {
   fast: 150,
+  slide: 220,
 } as const

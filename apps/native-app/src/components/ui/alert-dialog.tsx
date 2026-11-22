@@ -1,8 +1,9 @@
 import type { ReactNode } from "react"
+import { Modal } from "react-native"
 import { styled, Text, View } from "tamagui"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Button, type ButtonProps } from "./button.tsx"
-import { Dialog, useDialog } from "./dialog.tsx"
+import { DialogContext, useDialog } from "./dialog.tsx"
 
 /**
  * Web `apps/web-app/src/components/ui/alert-dialog.tsx`: `AlertDialog`,
@@ -16,7 +17,8 @@ import { Dialog, useDialog } from "./dialog.tsx"
  * description `text-sm text-muted-foreground`; footer `flex-col-reverse
  * gap-2`; Action a default button, Cancel an outline one.
  *
- * Built on `ui/dialog`'s RN `Modal`: an overlay tap does not dismiss it, the
+ * A centered card on an RN `Modal` (fade, `statusBarTranslucent`), where
+ * `ui/dialog` is a bottom sheet: an overlay tap does not dismiss it, the
  * hardware back button calls `onOpenChange(false)`. Unlike web, where both
  * buttons are `Close` primitives, Action only runs its `onPress`: the owner
  * decides whether that closes the dialog, so a queue (the confirm host) can
@@ -34,13 +36,25 @@ export function AlertDialog({
   readonly children: ReactNode
 }) {
   return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-      dismissOnOverlayPress={false}
-    >
-      {children}
-    </Dialog>
+    <DialogContext value={{ onOpenChange }}>
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => onOpenChange(false)}
+      >
+        <View
+          flex={1}
+          justify="center"
+          items="center"
+          p={16}
+          bg="rgba(0,0,0,0.5)"
+        >
+          {children}
+        </View>
+      </Modal>
+    </DialogContext>
   )
 }
 

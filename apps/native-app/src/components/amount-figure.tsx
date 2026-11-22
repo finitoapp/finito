@@ -1,11 +1,10 @@
 import { Platform } from "react-native"
-import { isWeb, Text, XStack, YStack } from "tamagui"
+import { Text, XStack, YStack } from "tamagui"
 import { control, fontWeight, shape } from "../theme/tokens.ts"
 import {
-  PressFill,
   type PressFillColors,
   pressFillClause,
-  usePressFill,
+  useFastTransition,
 } from "./ui/press-fill.tsx"
 
 /**
@@ -14,8 +13,9 @@ import {
  * large and its unit beside it on the baseline, bold and muted, at a third
  * of the number's size, on the side the locale puts it ("120 Kč", "$5").
  * Linky's `Amount`; the two sizes keep that one ratio. Given `onPress`, the
- * whole figure is a button (a bitcoin amount switching its unit), whose
- * fill a `PressFill` draws on native; a plain figure animates nothing.
+ * whole figure is a button (a bitcoin amount switching its unit), its
+ * fill fading on the kit's `fast` transition; a plain figure animates
+ * nothing.
  */
 const sizes = {
   /** The keypad. */
@@ -73,11 +73,11 @@ export function AmountFigure({
     </Text>
   )
   const pressable = onPress !== undefined
-  const pressFill = usePressFill({ disabled: !pressable })
+  const transition = useFastTransition()
   return (
     <YStack
       // Tamagui keeps a view's animated state for its whole mount, so the
-      // web transition a pressable figure takes must not come and go on the
+      // transition a pressable figure takes must not come and go on the
       // same view: the payment screen switches between the two.
       key={pressable ? "press" : "plain"}
       items={align === "center" ? "center" : "flex-start"}
@@ -91,8 +91,8 @@ export function AmountFigure({
       hitSlop={onPress === undefined ? undefined : pressSlop}
       justify="center"
       rounded={shape.control}
-      bg={pressable && isWeb ? pressFillClause(figureFill) : undefined}
-      {...(pressable && isWeb ? { transition: "fast" as const } : {})}
+      bg={pressable ? pressFillClause(figureFill) : undefined}
+      {...(pressable ? { transition } : {})}
       cursor={onPress === undefined ? undefined : "web:pointer"}
       accessible
       role={onPress === undefined ? "heading" : "button"}
@@ -101,18 +101,8 @@ export function AmountFigure({
         ? { title: pressLabel }
         : {})}
       onPress={onPress}
-      {...(pressable
-        ? { onPressIn: pressFill.onPressIn, onPressOut: pressFill.onPressOut }
-        : {})}
       testID={testID}
     >
-      {pressable ? (
-        <PressFill
-          progress={pressFill.progress}
-          colors={figureFill}
-          rounded={shape.control}
-        />
-      ) : null}
       <XStack
         items="baseline"
         justify={align === "center" ? "center" : "flex-start"}

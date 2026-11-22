@@ -1,5 +1,9 @@
-import { createContext, type ReactNode, useContext, useMemo } from "react"
-import { styled, View } from "tamagui"
+import { type ReactNode, useContext } from "react"
+import { styled } from "tamagui"
+import {
+  RadioGroupContext,
+  RadioGroup as TamaguiRadioGroup,
+} from "tamagui/unstyled"
 import { shape } from "../../theme/tokens.ts"
 import { useFieldLabelControl } from "./field.tsx"
 
@@ -16,19 +20,12 @@ import { useFieldLabelControl } from "./field.tsx"
  * selected stays selected when pressed again. Inside a choice card
  * (`FieldLabel` around a `Field`, `ui/field`) the whole card presses the
  * item and carries its role and checked state; the item alone reaches 48
- * through `hitSlop`. Base: a controlled Tamagui `View`, not Tamagui
- * `RadioGroup`, which has not been tried on the device.
+ * through `hitSlop`.
+ *
+ * Base: Tamagui `RadioGroup`, controlled through `value` (`""` for none,
+ * which no item carries), its `RadioGroup.Item` a `<button>` on web with
+ * the browser's border cleared, the dot its `RadioGroup.Indicator`.
  */
-
-interface RadioGroupContextValue {
-  readonly value: string | null
-  readonly onValueChange: (value: string) => void
-  readonly disabled: boolean
-}
-
-const RadioGroupContext = createContext<RadioGroupContextValue | undefined>(
-  undefined
-)
 
 export interface RadioGroupProps<Value extends string> {
   readonly value: Value | null
@@ -46,39 +43,38 @@ export function RadioGroup<Value extends string>({
   disabled = false,
   children,
 }: RadioGroupProps<Value>) {
-  const context = useMemo<RadioGroupContextValue>(
-    () => ({
-      value,
-      // Items carry plain strings; every one of them is a `Value`.
-      onValueChange: (next) => onValueChange(next as Value),
-      disabled,
-    }),
-    [value, onValueChange, disabled]
-  )
   return (
-    <RadioGroupContext value={context}>
-      <View role="radiogroup" aria-label={ariaLabel} gap={8}>
-        {children}
-      </View>
-    </RadioGroupContext>
+    <TamaguiRadioGroup
+      value={value ?? ""}
+      // Items carry plain strings; every one of them is a `Value`.
+      onValueChange={(next) => onValueChange(next as Value)}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      gap={8}
+    >
+      {children}
+    </TamaguiRadioGroup>
   )
 }
 
-const RadioGroupItemFrame = styled(View, {
+const RadioGroupItemFrame = styled(TamaguiRadioGroup.Item, {
   name: "RadioGroupItem",
   w: 20,
   h: 20,
+  p: 0,
   shrink: 0,
   rounded: shape.pill,
-  items: "center",
-  justify: "center",
 
   variants: {
     checked: {
-      true: { bg: "primary" },
-      false: { borderWidth: 2, borderColor: "muted-foreground" },
+      true: { bg: "primary", borderWidth: 0 },
+      false: {
+        bg: "transparent",
+        borderWidth: 2,
+        borderColor: "muted-foreground",
+      },
     },
-    disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
+    inactive: { true: { opacity: 0.5 } },
   } as const,
 })
 
@@ -96,38 +92,35 @@ export function RadioGroupItem({
   "aria-label": ariaLabel,
 }: RadioGroupItemProps) {
   const group = useContext(RadioGroupContext)
-  if (group === undefined)
-    throw new Error("RadioGroupItem must be inside a RadioGroup")
   const checked = group.value === value
-  const inactive = group.disabled || disabled
-  const { onValueChange } = group
-  const select = () => onValueChange(value)
+  const inactive = group.disabled === true || disabled
   const inCard = useFieldLabelControl({
     role: "radio",
     checked,
     disabled: inactive,
-    onPress: select,
+    onPress: () => group.onChange?.(value),
   })
   return (
     <RadioGroupItemFrame
+      value={value}
+      disabled={inactive}
       checked={checked}
+      inactive={inactive}
       {...(inCard
         ? // The card fades as a whole and is what a screen reader reads.
           { "aria-hidden": true }
         : {
-            disabled: inactive,
-            role: "radio",
-            "aria-checked": checked,
-            "aria-disabled": inactive,
             "aria-label": ariaLabel,
             hitSlop: 14,
             cursor: "web:pointer",
-            onPress: inactive ? undefined : select,
           })}
     >
-      {checked ? (
-        <View w={8} h={8} rounded={shape.pill} bg="primary-foreground" />
-      ) : null}
+      <TamaguiRadioGroup.Indicator
+        w={8}
+        h={8}
+        rounded={shape.pill}
+        bg="primary-foreground"
+      />
     </RadioGroupItemFrame>
   )
 }

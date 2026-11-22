@@ -18,10 +18,9 @@ import type { ThemeColor } from "../../theme/themes.ts"
 import { control, fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Icon } from "./icon.tsx"
 import {
-  PressFill,
   type PressFillColors,
   pressFillClause,
-  usePressFill,
+  useFastTransition,
 } from "./press-fill.tsx"
 
 /**
@@ -43,10 +42,9 @@ import {
  * and a `press:` one, for touch; every size reaches 48 through `hitSlop`;
  * `link` dims instead of underlining.
  *
- * The fill is `fills`, drawn on native by a `PressFill` layer under the
- * content (`press-fill.tsx` says why), so the frame animates nothing; on
- * the PWA the frame carries it as a flat clause with `transition="fast"`.
- * `link` has no fill: its dim snaps on native.
+ * The fill is `fills`, carried by the frame itself as a flat clause
+ * (`primary hover:primary-pressed press:primary-pressed`) on Tamagui's
+ * `fast` transition on both platforms (`press-fill.tsx`).
  */
 
 type ButtonVariant =
@@ -73,9 +71,8 @@ const ButtonFrame = styled(ButtonBehaviorFrame, {
   items: "center",
   justify: "center",
   cursor: "web:pointer",
-  // A real `<button>` on web, whose default is an outset border; its fill
-  // fades as a CSS transition there (`theme/animations.web.ts`).
-  ...(isWeb ? { borderWidth: 0, transition: "fast" } : {}),
+  // A real `<button>` on web, whose default is an outset border.
+  ...(isWeb ? { borderWidth: 0 } : {}),
 
   variants: {
     variant: {
@@ -203,10 +200,7 @@ type FrameProps = Omit<
 
 interface ButtonBaseProps extends FrameProps {
   readonly variant?: ButtonVariant
-  /**
-   * The corner radius, a number: the native fill layer draws it too.
-   * Defaults to the size's.
-   */
+  /** The corner radius, a number. Defaults to the size's. */
   readonly rounded?: number
   /**
    * Replaces the variant's fill, for the few web call sites that recolor a
@@ -262,7 +256,7 @@ export function Button({
   const color = labelColor ?? textColors[variant]
   const iconSize = iconSizes[size]
   const content = label ?? children
-  const pressFill = usePressFill({ disabled: inactive, onPressIn, onPressOut })
+  const transition = useFastTransition()
   // On web: a `<button>`, `disabled` and out of the tab order while inactive,
   // and an inert `<span>` (no role, no press handlers) when nested in another
   // button.
@@ -275,18 +269,11 @@ export function Button({
   >({
     role: "button",
     onPress: inactive ? undefined : onPress,
-    onPressIn: pressFill.onPressIn,
-    onPressOut: pressFill.onPressOut,
+    onPressIn,
+    onPressOut,
     disabled: inactive,
     children: (
       <>
-        {fill === undefined ? null : (
-          <PressFill
-            progress={pressFill.progress}
-            colors={fill}
-            rounded={rounded}
-          />
-        )}
         {pending ? (
           <ActivityIndicator size={iconSize} color={theme[color]?.val} />
         ) : iconStart === undefined ? null : (
@@ -312,7 +299,8 @@ export function Button({
     <ButtonFrame
       {...frameProps}
       {...buttonProps}
-      {...(isWeb && fill !== undefined ? { bg: pressFillClause(fill) } : {})}
+      {...(fill === undefined ? {} : { bg: pressFillClause(fill) })}
+      transition={transition}
       variant={variant}
       size={size}
       rounded={rounded}

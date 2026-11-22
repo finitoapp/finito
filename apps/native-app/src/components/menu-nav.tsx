@@ -5,7 +5,7 @@ import Bell from "lucide-react-native/icons/bell"
 import Calculator from "lucide-react-native/icons/calculator"
 import Clock3 from "lucide-react-native/icons/clock-3"
 import Settings from "lucide-react-native/icons/settings"
-import { memo, Suspense, useEffect, useRef, useState } from "react"
+import { memo, Suspense, useEffect, useState } from "react"
 import {
   Animated,
   Easing,
@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { isWeb, useTheme, View, XStack, YStack } from "tamagui"
+import { View, XStack, YStack } from "tamagui"
 import appIcon from "../../assets/app-icon.png"
 import { currentPathname } from "../core/current-pathname.ts"
 import { showMenuRoot } from "../core/menu-navigation.ts"
@@ -36,11 +36,12 @@ import { animateTo } from "./motion.ts"
 import { Icon } from "./ui/icon.tsx"
 import { NotificationDot } from "./ui/notification-dot.tsx"
 import {
-  PressFill,
   type PressFillColors,
   pressFillClause,
-  usePressFill,
+  useFastTransition,
+  useKitTransition,
 } from "./ui/press-fill.tsx"
+import { SlidingPill } from "./ui/tabs.tsx"
 
 /** The phone bar's height above the safe area: Linky's `TabBar`, 44 tabs in a `py-1` row. */
 export const menuBarHeight = control.md + 8
@@ -82,33 +83,9 @@ const menuTabFaces = {
  * instead of rewinding through tabs.
  *
  * Linky's labels are the entries' names (TalkBack, a browser tooltip),
- * never drawn. Motion is Linky's `base` transition (220 ms ease-out);
- * reduced motion switches at once.
+ * never drawn. Motion is Linky's `base` transition, the kit's `slide`
+ * (220 ms ease-out); reduced motion switches at once.
  */
-const slide = { duration: 220, easing: Easing.out(Easing.cubic) }
-
-/** Drives `value` to `toValue` on the slide curve, or at once under reduced motion. */
-const slideTo = (value: Animated.Value, toValue: number) =>
-  animateTo(value, toValue, slide)
-
-/**
- * The pill's offset along the bar: `step` is one tab's extent (0 until
- * measured), `index` the active tab. The first measure places it at once,
- * and so does a bar coming back from hidden, which arrives on its tab
- * rather than sliding from the one it left on.
- */
-function usePillOffset(index: number, step: number, visible: boolean) {
-  const [offset] = useState(() => new Animated.Value(0))
-  const shown = useRef(false)
-  useEffect(() => {
-    if (step === 0) return
-    const target = index * step
-    if (shown.current) slideTo(offset, target)
-    else offset.setValue(target)
-    shown.current = visible
-  }, [index, step, visible, offset])
-  return offset
-}
 
 /** The bar's quick slide in from below the screen and back out. */
 const barEnter = { duration: 160, easing: Easing.out(Easing.cubic) }
@@ -212,11 +189,9 @@ export function MenuNav({
   readonly onSelect?: (tab: MenuTab) => void
 }) {
   const { t } = useTranslation()
-  const theme = useTheme()
   const insets = useSafeAreaInsets()
   const index = menuTabOrder.indexOf(active)
   const [tabWidth, setTabWidth] = useState(0)
-  const barOffset = usePillOffset(index, tabWidth, visible)
 
   if (variant === "sidebar") {
     const tabs = menuTabOrder.filter((tab) => tab !== "settings")
@@ -276,19 +251,18 @@ export function MenuNav({
         }
       >
         {tabWidth === 0 ? null : (
-          <Animated.View
-            pointerEvents="none"
-            aria-hidden
-            style={{
-              position: "absolute",
-              top: 0,
-              bottom: 0,
-              left: 0,
+          <SlidingPill
+            // Remounted as the bar hides and comes back, so it arrives on
+            // its tab rather than sliding from the one it left on; its
+            // first render (the first measure) places it at once too.
+            key={visible ? "shown" : "hidden"}
+            layout={{
+              x: index * tabWidth,
+              y: 0,
               width: tabWidth,
-              borderRadius: shape.control,
-              backgroundColor: theme.primary?.val,
-              transform: [{ translateX: barOffset }],
+              height: control.md,
             }}
+            rounded={shape.control}
           />
         )}
         {menuTabOrder.map((tab) => (
@@ -317,18 +291,14 @@ function RailProfileTile() {
   const identity = useNostrIdentity()
   const profile = useNostrProfile(identity.pubkey)
   const name = profile.data?.name ?? null
-  // The press dims the picture: on native the `PressFill` progress drives
-  // its opacity on the native driver, so the frame animates nothing; on
-  // web the frame dims itself, a CSS transition.
-  const press = usePressFill({ disabled: false })
+  // The press dims the picture.
+  const transition = useFastTransition()
   return (
     <View
       rounded={shape.control}
       overflow="hidden"
-      {...(isWeb ? { transition: "fast" as const } : {})}
-      {...(isWeb ? { opacity: "1 hover:0.85 press:0.7" as const } : {})}
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
+      transition={transition}
+      opacity="1 hover:0.85 press:0.7"
       cursor="web:pointer"
       accessible
       role="link"
@@ -342,20 +312,7 @@ function RailProfileTile() {
         router.push("/settings/profile")
       }}
     >
-      <Animated.View
-        style={{
-          // Untouched until the first press, which mounts the progress.
-          opacity:
-            press.progress === null
-              ? 1
-              : press.progress.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 0.7],
-                }),
-        }}
-      >
-        <RailTile picture={profile.data?.picture ?? null} />
-      </Animated.View>
+      <RailTile picture={profile.data?.picture ?? null} />
     </View>
   )
 }
@@ -418,7 +375,7 @@ function MenuNavLink({
   )
 }
 
-/** An entry's fill under the finger, drawn by a `PressFill` on native. */
+/** An entry's fill under the finger. */
 const entryFill = {
   rest: "transparent",
   pressed: "neutral-soft",
@@ -450,15 +407,12 @@ function MenuNavEntry({
   readonly variant: "bar" | "rail"
   readonly onPress: () => void
 }) {
-  const [progress] = useState(() => new Animated.Value(active ? 1 : 0))
-  useEffect(() => {
-    slideTo(progress, active ? 1 : 0)
-  }, [active, progress])
+  const fade = useKitTransition("slide")
+  const transition = useFastTransition()
   const rail = variant === "rail"
   const iconSize = rail ? 24 : 20
   // The active entry takes no press fill: the pill (bar) or the accent
   // (rail) marks it, and a press on it does nothing.
-  const pressFill = usePressFill({ disabled: active })
 
   return (
     <View
@@ -470,20 +424,11 @@ function MenuNavEntry({
       px={rail ? 4 : 0}
       rounded={shape.control}
       bg={
-        active
-          ? rail
-            ? "accent"
-            : "transparent"
-          : isWeb
-            ? pressFillClause(entryFill)
-            : "transparent"
+        active ? (rail ? "accent" : "transparent") : pressFillClause(entryFill)
       }
-      {...(isWeb ? { transition: "fast" as const } : {})}
+      transition={transition}
       cursor="web:pointer"
       onPress={onPress}
-      {...(active
-        ? {}
-        : { onPressIn: pressFill.onPressIn, onPressOut: pressFill.onPressOut })}
       accessible
       role={role}
       aria-label={label}
@@ -491,13 +436,6 @@ function MenuNavEntry({
       aria-current={active ? "page" : undefined}
       {...(Platform.OS === "web" ? { title: label } : {})}
     >
-      {active ? null : (
-        <PressFill
-          progress={pressFill.progress}
-          colors={entryFill}
-          rounded={shape.control}
-        />
-      )}
       {rail ? (
         <View>
           <Icon
@@ -509,20 +447,12 @@ function MenuNavEntry({
         </View>
       ) : (
         <View w={iconSize} h={iconSize}>
-          <Animated.View
-            style={{
-              position: "absolute",
-              opacity: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0],
-              }),
-            }}
-          >
+          <View position="absolute" opacity={active ? 0 : 1} transition={fade}>
             <Icon icon={icon} size={iconSize} color="muted-foreground" />
-          </Animated.View>
-          <Animated.View style={{ position: "absolute", opacity: progress }}>
+          </View>
+          <View position="absolute" opacity={active ? 1 : 0} transition={fade}>
             <Icon icon={icon} size={iconSize} color="primary-foreground" />
-          </Animated.View>
+          </View>
           {dot ? (
             <NotificationDot
               color={active ? "primary-foreground" : "primary"}

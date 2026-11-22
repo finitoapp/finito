@@ -1,12 +1,16 @@
 import X from "lucide-react-native/icons/x"
-import { createContext, type ReactNode, useContext } from "react"
 import {
-  KeyboardAvoidingView,
-  Modal,
-  Pressable,
-  ScrollView,
-} from "react-native"
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react"
+import { Modal, useWindowDimensions } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { styled, Text, View } from "tamagui"
+import { Sheet } from "tamagui/unstyled"
+import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Button } from "./button.tsx"
 
@@ -15,20 +19,25 @@ import { Button } from "./button.tsx"
  * `DialogContent`, `DialogHeader`, `DialogFooter`, `DialogTitle`,
  * `DialogDescription`.
  *
- * Tailwind mirrored: content `max-w-[calc(100%-2rem)] sm:max-w-sm gap-4
- * bg-popover p-4`, as fazole.fit's sheet: 24 round and without web's ring;
- * a ghost `icon-sm` close button `top-2 right-2`; header `flex-col gap-2`;
- * title `text-base font-medium`; description `text-sm
- * text-muted-foreground`; footer `-mx-4 -mb-4 flex-col-reverse gap-2
- * bg-muted/50 p-4` (the phone layout), without web's top rule.
+ * Tailwind mirrored: content `gap-4 bg-popover p-4`; a ghost `icon-sm`
+ * close button `top-2 right-2`; header `flex-col gap-2`; title `text-base
+ * font-medium`; description `text-sm text-muted-foreground`; footer `-mx-4
+ * -mb-4 flex-col-reverse gap-2 bg-muted/50 p-4` (the phone layout), without
+ * web's top rule.
  *
- * Base: RN `Modal` (transparent, fade, `statusBarTranslucent`), which the
- * confirm host and the table picker already use on the device; Tamagui
- * `Dialog` has not been tried there. The hardware back button and a tap on
- * the overlay call `onOpenChange(false)`. The overlay is a plain
- * `rgba(0,0,0,0.5)` (web: `bg-black/10 backdrop-blur-xs`, which has no
- * native blur). Long content scrolls inside the card, and the card moves
- * up with the keyboard. The close button shows only when `closeLabel` (the
+ * Native difference: a bottom sheet, not web's centered card — Tamagui
+ * `Sheet` sized to its content (`snapPointsMode="fit"`), 24-round top
+ * corners and a grabber, dragged down or the overlay tapped to dismiss,
+ * moving up with the keyboard; at most 640 wide, centered, on a tablet.
+ * `ui/select` and `ui/combobox` open their lists in it too.
+ *
+ * Base: the sheet runs inline (`modal={false}`) inside an RN `Modal`, not
+ * through Tamagui's portal: without `react-native-teleport` that portal
+ * renders the sheet at the root host, outside every React context the
+ * content reads (Jotai, translations, a Select's own). The `Modal` stays
+ * up until the sheet has slid out. The hardware back button calls
+ * `onOpenChange(false)`; `dismissOnOverlayPress={false}` also turns off
+ * dragging it away. The close button shows only when `closeLabel` (the
  * translated "Close") is given: the kit has no translations of its own.
  */
 
@@ -36,7 +45,8 @@ interface DialogContextValue {
   readonly onOpenChange: (open: boolean) => void
 }
 
-const DialogContext = createContext<DialogContextValue>({
+/** Provided by `Dialog` and `AlertDialog` for the parts that close them. */
+export const DialogContext = createContext<DialogContextValue>({
   onOpenChange: () => {},
 })
 
@@ -47,9 +57,23 @@ export interface DialogProps {
   readonly open: boolean
   readonly onOpenChange: (open: boolean) => void
   readonly children: ReactNode
-  /** False for an alert dialog, which an overlay tap must not dismiss. */
+  /** False while the dialog must not be dismissed by a tap or a drag. */
   readonly dismissOnOverlayPress?: boolean
 }
+
+const sheetSpring = {
+  type: "spring",
+  damping: 20,
+  mass: 1.2,
+  stiffness: 250,
+} as const
+const noMotion = { type: "timing", duration: 0 } as const
+
+/**
+ * Longest the `Modal` waits for the sheet to report it has slid out. An
+ * invisible `Modal` left up would swallow every touch on the screen.
+ */
+const CLOSE_FALLBACK_MS = 1000
 
 export function Dialog({
   open,
@@ -57,48 +81,81 @@ export function Dialog({
   children,
   dismissOnOverlayPress = true,
 }: DialogProps) {
+  const insets = useSafeAreaInsets()
+  const [mounted, setMounted] = useState(open)
+  if (open && !mounted) setMounted(true)
+  // Read once per mount, as `ui/switch`: the React Native driver ignores
+  // the system's reduce-motion setting.
+  const [reduceMotion] = useState(isReduceMotionEnabled)
+
+  useEffect(() => {
+    if (open) return
+    const timer = setTimeout(() => setMounted(false), CLOSE_FALLBACK_MS)
+    return () => clearTimeout(timer)
+  }, [open])
+
   return (
     <DialogContext value={{ onOpenChange }}>
       <Modal
-        visible={open}
+        visible={mounted}
         transparent
-        animationType="fade"
+        animationType="none"
         statusBarTranslucent
+        navigationBarTranslucent
         onRequestClose={() => onOpenChange(false)}
       >
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-          <View flex={1} justify="center" items="center" p={16}>
-            <Pressable
-              accessible={false}
-              onPress={
-                dismissOnOverlayPress ? () => onOpenChange(false) : undefined
-              }
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                bottom: 0,
-                left: 0,
-                backgroundColor: "rgba(0,0,0,0.5)",
-              }}
+        <View flex={1}>
+          <Sheet
+            modal={false}
+            open={open}
+            onOpenChange={onOpenChange}
+            snapPointsMode="fit"
+            dismissOnSnapToBottom
+            dismissOnOverlayPress={dismissOnOverlayPress}
+            disableDrag={!dismissOnOverlayPress}
+            moveOnKeyboardChange
+            transitionConfig={reduceMotion ? noMotion : sheetSpring}
+            onTransition={(event) => {
+              if (
+                event.phase === "end" &&
+                event.cause === "close" &&
+                event.finished !== false
+              )
+                setMounted(false)
+            }}
+          >
+            <Sheet.Overlay
+              bg="rgba(0,0,0,0.5)"
+              opacity="1 enter:0 exit:0"
+              transition={reduceMotion ? undefined : "fast"}
             />
-            {children}
-          </View>
-        </KeyboardAvoidingView>
+            <Sheet.Container
+              w="100%"
+              maxW={640}
+              self="center"
+              bg="popover"
+              borderTopLeftRadius={shape.sheet}
+              borderTopRightRadius={shape.sheet}
+              pb={insets.bottom}
+              aria-modal
+            >
+              <View
+                self="center"
+                mt={8}
+                w={36}
+                h={4}
+                rounded={2}
+                bg="muted-foreground"
+                opacity={0.4}
+              />
+              {children}
+            </Sheet.Container>
+          </Sheet>
+        </View>
       </Modal>
     </DialogContext>
   )
 }
-
-const ContentFrame = styled(View, {
-  name: "DialogContent",
-  w: "100%",
-  maxW: 384,
-  maxH: "100%",
-  rounded: shape.sheet,
-  bg: "popover",
-  overflow: "hidden",
-})
 
 export function DialogContent({
   children,
@@ -108,14 +165,17 @@ export function DialogContent({
   readonly closeLabel?: string
 }) {
   const { onOpenChange } = useDialog()
+  const { height } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
   return (
-    <ContentFrame aria-modal>
-      <ScrollView
+    <>
+      <Sheet.ScrollView
+        // Leaves the status bar and a strip of the screen above the sheet.
+        maxH={height * 0.9 - insets.top}
         contentContainerStyle={{ padding: 16, gap: 16 }}
-        keyboardShouldPersistTaps="handled"
       >
         {children}
-      </ScrollView>
+      </Sheet.ScrollView>
       {closeLabel === undefined ? null : (
         <View position="absolute" t={8} r={8}>
           <Button
@@ -127,7 +187,7 @@ export function DialogContent({
           />
         </View>
       )}
-    </ContentFrame>
+    </>
   )
 }
 

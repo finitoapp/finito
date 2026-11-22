@@ -1,5 +1,7 @@
-import { Text, XStack, YStack } from "tamagui"
-import { fontSize, fontWeight } from "../theme/tokens.ts"
+import { Text, YStack } from "tamagui"
+import { ListItemFrame } from "tamagui/unstyled"
+import { fontSize, fontWeight, shape } from "../theme/tokens.ts"
+import { pressFillClause, useFastTransition } from "./ui/press-fill.tsx"
 import { Switch } from "./ui/switch.tsx"
 
 /**
@@ -10,6 +12,10 @@ import { Switch } from "./ui/switch.tsx"
  * switch for a screen reader and the e2e flows (`ui/switch` makes it the
  * testID). Native only: web draws the same as a horizontal `Field` around a
  * `Switch`.
+ *
+ * A Tamagui `ListItemFrame`: a press anywhere on the row flips the switch,
+ * under the neutral fill on the kit's `fast` transition. The row itself is
+ * not announced; the switch is.
  */
 export function SwitchRow({
   label,
@@ -26,8 +32,26 @@ export function SwitchRow({
   readonly disabled?: boolean
   readonly onCheckedChange: (checked: boolean) => void
 }) {
+  const transition = useFastTransition()
   return (
-    <XStack items="center" justify="space-between" gap={12} minH={44} px={4}>
+    <ListItemFrame
+      gap={12}
+      minH={44}
+      // The fill reaches 8 past the text, which stays 4 in as before.
+      px={12}
+      mx={-8}
+      rounded={shape.control}
+      bg={
+        disabled
+          ? "transparent"
+          : pressFillClause({ rest: "transparent", pressed: "neutral-soft" })
+      }
+      transition={transition}
+      cursor={disabled ? undefined : "web:pointer"}
+      onPress={disabled ? undefined : () => onCheckedChange(!checked)}
+      role="none"
+      accessible={false}
+    >
       <YStack flex={1} minW={0} gap={4}>
         <Text
           fontSize={fontSize.sm}
@@ -52,6 +76,6 @@ export function SwitchRow({
         aria-label={label}
         onCheckedChange={onCheckedChange}
       />
-    </XStack>
+    </ListItemFrame>
   )
 }

@@ -1,7 +1,8 @@
 import type { Href } from "expo-router"
 import type { ReactNode } from "react"
-import { Linking, Pressable, StyleSheet, View } from "react-native"
-import { isWeb, styled, View as TamaguiView, Text } from "tamagui"
+import { Linking } from "react-native"
+import { type GetProps, styled, Text, View } from "tamagui"
+import { ListItemFrame, YGroup } from "tamagui/unstyled"
 import { usePathnameSelect } from "../core/current-pathname.ts"
 import { isDetailOf, useMasterPane } from "../core/master-pane.ts"
 import { useOpenDetail } from "../hooks/use-open-detail.ts"
@@ -10,18 +11,23 @@ import type { ThemeColor } from "../theme/themes.ts"
 import { control, fontSize, fontWeight, shape } from "../theme/tokens.ts"
 import { LucideGlyph } from "./lucide-glyph"
 import {
-  PressFill,
   type PressFillColors,
-  usePressFill,
+  pressFillClause,
+  useFastTransition,
 } from "./ui/press-fill.tsx"
 
 /**
  * Web `apps/web-app/src/components/vertical-nav.tsx`: a card of rows, each
  * an icon, a label and a trailing action or chevron, drawn as fazole.fit's
  * list (Linky's `packages/ui/src/lists.tsx` `ListRow` in a `Card`): a
- * 16-round `bg-card` shell `py-2`, an eyebrow title, and 12-round rows
- * `px-3 py-2` at least 56 high that light up with the neutral fill when
- * pressed and the accent tint when active, with no rules between them.
+ * 16-round `bg-card` shell, an eyebrow title, and rows `px-4 py-2` at
+ * least 56 high that light up with the neutral fill when pressed and the
+ * accent tint when active, with no rules between them.
+ *
+ * Native difference: a grouped list. The shell is Tamagui `YGroup` and each
+ * row a Tamagui `ListItemFrame` running edge to edge, so a row's fill reaches
+ * the card's sides and only the first and last rows round their outer
+ * corners (the group squares the inner ones).
  *
  * Tailwind mirrored otherwise: the title `p-4 font-bold text-xs
  * text-muted-foreground`, the rows `gap-3 text-sm font-medium`, the chevron
@@ -35,20 +41,18 @@ import {
  */
 
 /** The shell a `VerticalNav` draws, shared with `ListSkeleton` so the two cannot drift apart. */
-export const VerticalNavShell = styled(TamaguiView, {
+export const VerticalNavShell = styled(YGroup, {
   name: "VerticalNavShell",
   bg: "card",
   rounded: shape.card,
-  py: 8,
-  px: 8,
   overflow: "hidden",
 })
 
 /** The title row a `VerticalNav` draws, shared with `ListSkeleton` for the same reason. */
 export const VerticalNavTitle = styled(Text, {
   name: "VerticalNavTitle",
-  px: 12,
-  pt: 8,
+  px: 16,
+  pt: 16,
   pb: 4,
   fontSize: fontSize.xs,
   lineHeight: fontSize.xs,
@@ -120,17 +124,17 @@ export function VerticalNav({
       {children !== undefined ? (
         children
       ) : items.length === 0 && empty !== undefined ? (
-        <VerticalNavRow
-          item={{ kind: "static", disableAction: true, label: empty }}
-          first
-        />
+        <YGroup.Item>
+          <VerticalNavRow
+            item={{ kind: "static", disableAction: true, label: empty }}
+            first
+          />
+        </YGroup.Item>
       ) : (
         items.map((item, index) => (
-          <VerticalNavRow
-            key={item.id ?? index}
-            item={item}
-            first={index === 0}
-          />
+          <YGroup.Item key={item.id ?? index}>
+            <VerticalNavRow item={item} first={index === 0} />
+          </YGroup.Item>
         ))
       )}
     </VerticalNavShell>
@@ -156,55 +160,43 @@ const press = (
   }
 }
 
-/** A row's fill under the finger, drawn by a `PressFill` on native. */
+/** A row's fill under the finger. */
 const rowFill = {
   rest: "transparent",
   pressed: "neutral-soft",
 } as const satisfies PressFillColors
 
-const rowStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    minHeight: control.lg,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: shape.control,
-  },
-  label: { flex: 1, minWidth: 0 },
-  action: { flexShrink: 0, paddingLeft: 8 },
-})
+/** The corners and edges `YGroup.Item` hands a row, squaring the inner ones. */
+type GroupItemStyle = Pick<
+  GetProps<typeof ListItemFrame>,
+  | "borderTopLeftRadius"
+  | "borderTopRightRadius"
+  | "borderBottomLeftRadius"
+  | "borderBottomRightRadius"
+  | "borderTopWidth"
+  | "borderBottomWidth"
+>
 
 /**
- * A pressable row on web: the pointer cursor, and the hover fill's fade as a
- * CSS transition, which react-native-web passes on (React Native's types do
- * not name it).
- */
-const webPressableRow = {
-  cursor: "pointer" as const,
-  transitionProperty: "background-color",
-  transitionDuration: "150ms",
-  transitionTimingFunction: "ease-out",
-}
-
-/**
- * One row of a `VerticalNav`, also drawn alone by a few screens. Its frame
- * is React Native's own `Pressable` and `View`, not Tamagui's, and its
- * colors come from `useAppColors`: a settings screen drew ~18 rows, each
- * frame resolving its styles and each icon subscribing to the theme on
- * every visit (2026-11-17). The label stays Tamagui `Text`, the kit's type.
+ * One row of a `VerticalNav`, also drawn alone by a few screens: a Tamagui
+ * `ListItemFrame`, its fill a flat clause on the kit's `fast` transition
+ * (`ui/press-fill.tsx`). Inside a `VerticalNav` its `YGroup.Item` squares
+ * the corners it shares with its neighbours. The label is Tamagui `Text`,
+ * the kit's type.
  */
 export function VerticalNavRow({
   item,
+  first: _first,
+  ...groupStyle
 }: {
   readonly item: VerticalNavItem
   /** Kept for the callers that number their rows; rows have no rule to drop. */
   readonly first?: boolean
-}) {
+} & Partial<GroupItemStyle>) {
   const openDetail = useOpenDetail()
   const masterPane = useMasterPane()
   const colors = useAppColors()
+  const transition = useFastTransition()
   // In a master pane the row whose detail is open beside it reads as
   // selected. Only that fact is read from the route, so a navigation renders
   // the rows whose selection it changes, not the whole list under it.
@@ -219,31 +211,40 @@ export function VerticalNavRow({
   const interactive = item.kind !== "static"
   const active = item.active ?? detailOpen
   // The active row is tinted instead, and a static or disabled one is inert.
-  const pressable = interactive && !disabled && !active
-  const pressFill = usePressFill({ disabled: !pressable })
-  const frame = [
-    rowStyles.row,
-    {
-      borderLeftWidth: item.stripeColor === undefined ? 0 : 3,
-      borderLeftColor:
-        item.stripeColor === undefined
-          ? "transparent"
-          : colors[item.stripeColor],
-      backgroundColor: active ? colors.accent : "transparent",
-      opacity: disabled ? 0.5 : 1,
-    },
-  ]
-  const content = (
-    <>
-      {pressable ? (
-        <PressFill
-          progress={pressFill.progress}
-          colors={rowFill}
-          rounded={shape.control}
-        />
-      ) : null}
+  const pressable = interactive && !disabled && !active && onPress !== undefined
+  return (
+    <ListItemFrame
+      gap={12}
+      minH={control.lg}
+      px={16}
+      py={8}
+      rounded={shape.card}
+      {...groupStyle}
+      borderLeftWidth={item.stripeColor === undefined ? 0 : 3}
+      borderLeftColor={item.stripeColor ?? "transparent"}
+      bg={
+        active ? "accent" : pressable ? pressFillClause(rowFill) : "transparent"
+      }
+      transition={transition}
+      opacity={disabled ? 0.5 : 1}
+      cursor={pressable ? "web:pointer" : undefined}
+      onPress={pressable ? onPress : undefined}
+      accessible={interactive ? true : undefined}
+      role={
+        item.kind === "link" || item.kind === "href"
+          ? "link"
+          : item.kind === "button"
+            ? "button"
+            : undefined
+      }
+      aria-label={
+        item.accessibilityLabel ??
+        (typeof item.label === "string" ? item.label : undefined)
+      }
+      aria-disabled={disabled || undefined}
+    >
       {item.icon}
-      <View style={rowStyles.label}>
+      <View flex={1} minW={0}>
         {typeof item.label === "string" ? (
           <Text
             fontSize={fontSize.sm}
@@ -257,7 +258,7 @@ export function VerticalNavRow({
         )}
       </View>
       {item.disableAction === true ? null : (
-        <View style={rowStyles.action}>
+        <View shrink={0} pl={8}>
           {item.action ?? (
             <LucideGlyph
               name="chevron-right"
@@ -268,51 +269,6 @@ export function VerticalNavRow({
           )}
         </View>
       )}
-    </>
-  )
-  const accessibility = {
-    accessible: interactive ? true : undefined,
-    role:
-      item.kind === "link" || item.kind === "href"
-        ? ("link" as const)
-        : item.kind === "button"
-          ? ("button" as const)
-          : undefined,
-    "aria-label":
-      item.accessibilityLabel ??
-      (typeof item.label === "string" ? item.label : undefined),
-    "aria-disabled": disabled || undefined,
-  }
-
-  if (onPress === undefined)
-    return (
-      <View style={frame} {...accessibility}>
-        {content}
-      </View>
-    )
-  return (
-    <Pressable
-      {...accessibility}
-      onPress={onPress}
-      {...(pressable
-        ? { onPressIn: pressFill.onPressIn, onPressOut: pressFill.onPressOut }
-        : {})}
-      // On web the fill is the frame's own, under a pointer or a press; a
-      // style function there only, as it renders the row on every press.
-      style={
-        isWeb
-          ? (state) => [
-              ...frame,
-              webPressableRow,
-              pressable &&
-              (state.pressed || ("hovered" in state && state.hovered === true))
-                ? { backgroundColor: colors[rowFill.pressed] }
-                : null,
-            ]
-          : frame
-      }
-    >
-      {content}
-    </Pressable>
+    </ListItemFrame>
   )
 }

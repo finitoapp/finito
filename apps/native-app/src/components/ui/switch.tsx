@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
-import { Animated, Easing, StyleSheet } from "react-native"
-import { styled, useTheme, View } from "tamagui"
+import { useState } from "react"
+import { styled, View } from "tamagui"
+import { createSwitch, SwitchStyledContext } from "tamagui/unstyled"
 import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
 import { control } from "../../theme/tokens.ts"
 
@@ -11,38 +11,60 @@ import { control } from "../../theme/tokens.ts"
  * sitting inside the track and sliding across it
  * (`transition-transform`), `disabled:opacity-50`.
  *
- * Base: a controlled Tamagui `View` with the switch role, not RN `Switch`,
- * whose Android thumb overhangs a thin track and takes its own tint, and
- * not Tamagui `Switch`, whose uncontrolled state adds nothing here. The
- * track is Material 3's 52 × 32 (thumb 26), the kit's small control
- * height, so it stands beside a 44-high field rather than shrinking next
- * to it, and reaches 48 through `hitSlop`. Web's `size="sm"` is not ported.
+ * Base: Tamagui `Switch` (`createSwitch`), controlled through `checked`,
+ * with the kit's own track and thumb: their `active` variants read the
+ * switch's styled context, and the thumb slides by Tamagui's `x` on the
+ * `fast` transition (React Native's driver, native-driven). Not RN
+ * `Switch`, whose Android thumb overhangs a thin track and takes its own
+ * tint. The track is Material 3's 52 × 32 (thumb 26), the kit's small
+ * control height, so it stands beside a 44-high field rather than
+ * shrinking next to it, and reaches 48 through `hitSlop`. Web's
+ * `size="sm"` is not ported.
  */
 
 const TRACK_WIDTH = 52
 const TRACK_HEIGHT = control.sm
 const THUMB_INSET = 3
 const THUMB_SIZE = TRACK_HEIGHT - 2 * THUMB_INSET
-const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - 2 * THUMB_INSET
 
 const SwitchTrack = styled(View, {
   name: "Switch",
+  context: SwitchStyledContext,
   w: TRACK_WIDTH,
   h: TRACK_HEIGHT,
   rounded: TRACK_HEIGHT / 2,
   p: THUMB_INSET,
+  // Tamagui renders the frame as a `<button>` on web; drop the browser's border.
+  borderWidth: 0,
   justify: "center",
   hitSlop: (48 - TRACK_HEIGHT) / 2,
   cursor: "web:pointer",
 
   variants: {
-    checked: {
+    active: {
       true: { bg: "primary" },
       false: { bg: "switch-track-off" },
     },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })
+
+const SwitchThumb = styled(View, {
+  name: "SwitchThumb",
+  context: SwitchStyledContext,
+  w: THUMB_SIZE,
+  h: THUMB_SIZE,
+  rounded: THUMB_SIZE / 2,
+
+  variants: {
+    active: {
+      true: { bg: "switch-thumb-on" },
+      false: { bg: "switch-thumb-off" },
+    },
+  } as const,
+})
+
+const TamaguiSwitch = createSwitch({ Frame: SwitchTrack, Thumb: SwitchThumb })
 
 export interface SwitchProps {
   readonly checked: boolean
@@ -58,31 +80,19 @@ export function Switch({
   disabled = false,
   "aria-label": ariaLabel,
 }: SwitchProps) {
-  const theme = useTheme()
-  const [progress] = useState(() => new Animated.Value(checked ? 1 : 0))
-
-  useEffect(() => {
-    const toValue = checked ? 1 : 0
-    if (isReduceMotionEnabled()) {
-      progress.setValue(toValue)
-      return
-    }
-    // Tailwind's default transition: 150 ms, ease-in-out.
-    const animation = Animated.timing(progress, {
-      toValue,
-      duration: 150,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
-      useNativeDriver: true,
-    })
-    animation.start()
-    return () => animation.stop()
-  }, [checked, progress])
+  // Read once per mount: Tamagui must not see a view gain or lose its
+  // transition while mounted, and its React Native driver ignores the
+  // system's reduce-motion setting.
+  const [transition] = useState(() =>
+    isReduceMotionEnabled() ? undefined : "fast"
+  )
 
   return (
-    <SwitchTrack
+    <TamaguiSwitch
       checked={checked}
+      onCheckedChange={onCheckedChange}
       disabled={disabled}
-      onPress={disabled ? undefined : () => onCheckedChange(!checked)}
+      // Tamagui sets the role only on web.
       role="switch"
       aria-checked={checked}
       aria-disabled={disabled}
@@ -91,32 +101,7 @@ export function Switch({
       // not a same-named control on a screen mounted under it (Android).
       testID={ariaLabel}
     >
-      <Animated.View
-        style={[
-          styles.thumb,
-          {
-            backgroundColor: checked
-              ? theme["switch-thumb-on"]?.val
-              : theme["switch-thumb-off"]?.val,
-            transform: [
-              {
-                translateX: progress.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, THUMB_TRAVEL],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
-    </SwitchTrack>
+      <TamaguiSwitch.Thumb transition={transition} />
+    </TamaguiSwitch>
   )
 }
-
-const styles = StyleSheet.create({
-  thumb: {
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: THUMB_SIZE / 2,
-  },
-})
