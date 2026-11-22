@@ -8,13 +8,12 @@ import {
   useRef,
   useState,
 } from "react"
-import { type GetProps, isWeb, styled, Text, View } from "tamagui"
+import { type GetProps, styled, Text, View } from "tamagui"
 import { control, fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import {
-  PressFill,
   type PressFillColors,
   pressFillClause,
-  usePressFill,
+  useFastTransition,
 } from "./press-fill.tsx"
 
 /**
@@ -173,8 +172,6 @@ const FieldLabelCardFrame = styled(View, {
   py: 10,
   rounded: shape.control,
   cursor: "web:pointer",
-  // Its fill fades as a CSS transition on web (`theme/animations.web.ts`).
-  ...(isWeb ? { transition: "fast" } : {}),
 
   variants: {
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
@@ -182,9 +179,8 @@ const FieldLabelCardFrame = styled(View, {
 })
 
 /**
- * The card's fill at rest and pressed (or hovered, on web), drawn on native
- * by a `PressFill` layer (`press-fill.tsx` says why); checking it swaps the
- * fill at once there.
+ * The card's fill at rest and pressed (or hovered, on web), faded by the
+ * kit's `fast` transition (`press-fill.tsx`).
  */
 const cardFills = {
   unchecked: { rest: "surface-raised", pressed: "neutral-soft" },
@@ -196,24 +192,18 @@ function FieldLabelCard({ children }: { readonly children: ReactNode }) {
   const checked = control?.checked ?? false
   const disabled = control?.disabled ?? false
   const fill = cardFills[checked ? "checked" : "unchecked"]
-  const pressFill = usePressFill({ disabled })
+  const transition = useFastTransition()
   return (
     <FieldLabelControlContext value={setControl}>
       <FieldLabelCardFrame
         disabled={disabled}
-        {...(isWeb ? { bg: pressFillClause(fill) } : {})}
+        bg={pressFillClause(fill)}
+        transition={transition}
         onPress={disabled ? undefined : control?.onPress}
-        onPressIn={pressFill.onPressIn}
-        onPressOut={pressFill.onPressOut}
         role={control?.role}
         aria-checked={checked}
         aria-disabled={disabled}
       >
-        <PressFill
-          progress={pressFill.progress}
-          colors={fill}
-          rounded={shape.control}
-        />
         {children}
       </FieldLabelCardFrame>
     </FieldLabelControlContext>

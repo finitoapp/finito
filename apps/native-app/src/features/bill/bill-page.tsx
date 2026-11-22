@@ -81,7 +81,7 @@ import {
   StyleSheet,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { isWeb, styled, Text, useTheme, View, XStack, YStack } from "tamagui"
+import { styled, Text, useTheme, View, XStack, YStack } from "tamagui"
 import { FadeHeader, goBack } from "../../components/fade-header.tsx"
 import {
   LibraryPictureFill,
@@ -107,10 +107,9 @@ import {
 } from "../../components/ui/collapsible.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
 import {
-  PressFill,
   type PressFillColors,
   pressFillClause,
-  usePressFill,
+  useFastTransition,
 } from "../../components/ui/press-fill.tsx"
 import {
   useBillSummaryPanelWidth,
@@ -1712,7 +1711,7 @@ function ItemBrick({
   const { t } = useTranslation()
   const name = getStaffDisplayName(catalogItem)
   const quantityPulse = useChangePulse(quantity)
-  const pressFill = usePressFill({ disabled: false })
+  const transition = useFastTransition()
 
   const inCart = quantity > 0
   const pictured = pictureUrl !== undefined
@@ -1750,24 +1749,17 @@ function ItemBrick({
         r={0}
         b={0}
         l={0}
-        bg={isWeb ? pressFillClause(fill) : undefined}
-        {...(isWeb ? { transition: "fast" as const } : {})}
+        rounded={shape.card}
+        bg={pressFillClause(fill)}
+        transition={transition}
         role="button"
         aria-label={t("bill.brick.add.aria", { name })}
         cursor="web:pointer"
-        onPressIn={pressFill.onPressIn}
-        onPressOut={pressFill.onPressOut}
         onPress={() => {
           hapticButtonPress()
           actions.add(catalogItem)
         }}
-      >
-        <PressFill
-          progress={pressFill.progress}
-          colors={fill}
-          rounded={shape.card}
-        />
-      </View>
+      />
       {/* The name and price leave the minus button its corner. */}
       {pictured ? (
         <YStack

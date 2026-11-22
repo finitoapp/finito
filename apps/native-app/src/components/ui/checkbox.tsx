@@ -1,5 +1,5 @@
 import CheckIcon from "lucide-react-native/icons/check"
-import { styled, View } from "tamagui"
+import { Checkbox as TamaguiCheckbox } from "tamagui/unstyled"
 import { Icon } from "./icon.tsx"
 
 /**
@@ -8,29 +8,11 @@ import { Icon } from "./icon.tsx"
  * bg-primary` with a `size-3.5` check in `primary-foreground`,
  * `disabled:opacity-50`.
  *
- * Base: a controlled Tamagui `View` with the checkbox role, not Tamagui
- * `Checkbox`, whose uncontrolled state and indicator add nothing a
- * controlled box needs. The 16 px box reaches 48 through `hitSlop`.
+ * Base: Tamagui `Checkbox`, controlled through `checked`, with the check
+ * in its `Checkbox.Indicator` (mounted only while checked). Tamagui renders
+ * it as a `<button>` on web, so the browser's border and padding are
+ * cleared. The 16 px box reaches 48 through `hitSlop`.
  */
-
-const CheckboxFrame = styled(View, {
-  name: "Checkbox",
-  w: 16,
-  h: 16,
-  rounded: 4,
-  items: "center",
-  justify: "center",
-  hitSlop: 16,
-  cursor: "web:pointer",
-
-  variants: {
-    checked: {
-      true: { bg: "primary" },
-      false: { bg: "surface-raised" },
-    },
-    disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
-  } as const,
-})
 
 export interface CheckboxProps {
   readonly checked: boolean
@@ -47,10 +29,20 @@ export function Checkbox({
   "aria-label": ariaLabel,
 }: CheckboxProps) {
   return (
-    <CheckboxFrame
+    <TamaguiCheckbox
       checked={checked}
+      onCheckedChange={(next) => onCheckedChange(next === true)}
       disabled={disabled}
-      onPress={disabled ? undefined : () => onCheckedChange(!checked)}
+      w={16}
+      h={16}
+      p={0}
+      borderWidth={0}
+      rounded={4}
+      hitSlop={16}
+      cursor="web:pointer"
+      bg={checked ? "primary" : "surface-raised"}
+      opacity={disabled ? 0.5 : 1}
+      // Tamagui sets the role only on web.
       role="checkbox"
       aria-checked={checked}
       aria-disabled={disabled}
@@ -58,14 +50,14 @@ export function Checkbox({
       // As ui/switch: its name doubles as testID for e2e `id:` selectors.
       testID={ariaLabel}
     >
-      {checked ? (
+      <TamaguiCheckbox.Indicator>
         <Icon
           icon={CheckIcon}
           size={14}
           color="primary-foreground"
           strokeWidth={3}
         />
-      ) : null}
-    </CheckboxFrame>
+      </TamaguiCheckbox.Indicator>
+    </TamaguiCheckbox>
   )
 }

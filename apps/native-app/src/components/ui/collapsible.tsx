@@ -181,10 +181,10 @@ export function CollapsibleContent({
 
 /**
  * Web's trigger chevron, `ChevronDown` with `transition-transform
- * group-data-panel-open:rotate-180`: it turns over as the panel opens (150
- * ms, Tailwind's default transition), on the native driver. `direction` is
- * where it points while closed: `up` for a panel that opens upwards, as
- * the bill's bottom summary does.
+ * group-data-panel-open:rotate-180`: it turns over as the panel opens on
+ * Tamagui's `fast` transition (150 ms, the React Native driver,
+ * native-driven). `direction` is where it points while closed: `up` for a
+ * panel that opens upwards, as the bill's bottom summary does.
  */
 export function CollapsibleChevron({
   size,
@@ -196,39 +196,14 @@ export function CollapsibleChevron({
   readonly direction?: "down" | "up"
 }) {
   const { open } = useCollapsible()
-  const [progress] = useState(() => new Animated.Value(open ? 1 : 0))
-
-  useEffect(() => {
-    const toValue = open ? 1 : 0
-    if (isReduceMotionEnabled()) {
-      progress.setValue(toValue)
-      return
-    }
-    const animation = Animated.timing(progress, {
-      toValue,
-      duration: 150,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
-      useNativeDriver: true,
-    })
-    animation.start()
-    return () => animation.stop()
-  }, [open, progress])
-
+  // Read once per mount, as `ui/switch`.
+  const [transition] = useState(() =>
+    isReduceMotionEnabled() ? undefined : "fast"
+  )
+  const turned = direction === "down" ? open : !open
   return (
-    <Animated.View
-      style={{
-        transform: [
-          {
-            rotate: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange:
-                direction === "down" ? ["0deg", "180deg"] : ["180deg", "0deg"],
-            }),
-          },
-        ],
-      }}
-    >
+    <View rotate={turned ? "180deg" : "0deg"} transition={transition}>
       <Icon icon={ChevronDown} size={size} color={color} />
-    </Animated.View>
+    </View>
   )
 }

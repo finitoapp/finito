@@ -1,20 +1,13 @@
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react"
-import { Animated, Easing, type LayoutRectangle } from "react-native"
-import { type GetProps, isWeb, styled, Text, useTheme, View } from "tamagui"
-import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
+import { createContext, type ReactNode, useContext, useState } from "react"
+import type { LayoutRectangle } from "react-native"
+import { type GetProps, styled, Text, View } from "tamagui"
+import { Tabs as TamaguiTabs } from "tamagui/unstyled"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import {
-  PressFill,
   type PressFillColors,
   pressFillClause,
-  usePressFill,
+  useFastTransition,
+  useKitTransition,
 } from "./press-fill.tsx"
 
 /**
@@ -39,9 +32,13 @@ import {
  * that should travel needs its list to stay mounted, as `ActivityLayout`
  * keeps Activity's.
  *
- * An inactive trigger's hover and press fill is a `PressFill` layer on
- * native (`press-fill.tsx` says why), so the trigger animates nothing; on
- * the PWA the trigger carries it as a flat clause with `transition="fast"`.
+ * Base: Tamagui `Tabs` (roles, ids, roving focus, press activation), always
+ * controlled by the kit's own value so a trigger knows whether it is
+ * active; the selected trigger reports its layout through `onInteraction`,
+ * which places the pill.
+ *
+ * An inactive trigger's hover and press fill is a flat clause on its frame,
+ * faded by the kit's `fast` transition (`press-fill.tsx`).
  *
  * Controlled (`value` + `onValueChange`) or not (`defaultValue`), as web.
  * A trigger with its own `onPress` (web's `render={<Link />}`, a tab that is
@@ -89,14 +86,15 @@ export function Tabs<Value extends string>(props: TabsProps<Value>) {
   }
   return (
     <TabsContext value={{ value, select }}>
-      <View gap={8}>{props.children}</View>
+      <TamaguiTabs value={value} onValueChange={select} gap={8}>
+        {props.children}
+      </TamaguiTabs>
     </TabsContext>
   )
 }
 
-const ListFrame = styled(View, {
+const ListFrame = styled(TamaguiTabs.List, {
   name: "TabsList",
-  role: "tablist",
   flexDirection: "row",
   items: "center",
   justify: "center",
@@ -106,85 +104,71 @@ const ListFrame = styled(View, {
   bg: "neutral-soft",
 })
 
-/** Where each trigger of a list sits in it, for the pill. */
-const TriggerLayoutContext = createContext<
-  ((value: string, layout: LayoutRectangle) => void) | undefined
+/** Where the selected trigger sits in its list, for the pill. */
+const SelectedLayoutContext = createContext<
+  ((layout: LayoutRectangle) => void) | undefined
 >(undefined)
 
-/** The menu pill's slide (`menu-nav.tsx`): Linky's `base`, 220 ms ease-out. */
-const slide = { duration: 220, easing: Easing.out(Easing.cubic) }
-
 /**
- * The pill's offset to the active trigger, on the native driver: placed at
- * once the first time it is known, slid there on every later change.
+ * The accent pill under the selected trigger, sliding to it on the kit's
+ * `slide` transition. Its size sits on a still frame and only the inner
+ * view moves, by `x` alone: a transition covering a width would take the
+ * node off the native driver. A pill mounted anew (its first measure, a
+ * list that is its own route) is placed without sliding.
  */
-function usePillOffset(x: number | undefined) {
-  const [offset] = useState(() => new Animated.Value(0))
-  const placed = useRef(false)
-  useEffect(() => {
-    if (x === undefined) return
-    if (!placed.current || isReduceMotionEnabled()) {
-      offset.setValue(x)
-      placed.current = true
-      return
-    }
-    const animation = Animated.timing(offset, {
-      toValue: x,
-      ...slide,
-      useNativeDriver: true,
-    })
-    animation.start()
-    return () => animation.stop()
-  }, [x, offset])
-  return offset
+export function SlidingPill({
+  layout,
+  rounded,
+}: {
+  readonly layout: LayoutRectangle
+  readonly rounded: number
+}) {
+  const transition = useKitTransition("slide")
+  return (
+    <View
+      pointerEvents="none"
+      aria-hidden
+      position="absolute"
+      t={layout.y}
+      l={0}
+      w={layout.width}
+      h={layout.height}
+    >
+      <View
+        position="absolute"
+        t={0}
+        r={0}
+        b={0}
+        l={0}
+        rounded={rounded}
+        bg="primary"
+        x={layout.x}
+        transition={transition}
+      />
+    </View>
+  )
 }
 
 export type TabsListProps = GetProps<typeof ListFrame>
 
 export function TabsList({ children, ...frameProps }: TabsListProps) {
-  const theme = useTheme()
-  const { value } = useTabs()
-  const [layouts, setLayouts] = useState<
-    Readonly<Record<string, LayoutRectangle>>
-  >({})
-  const target = layouts[value]
-  const offset = usePillOffset(target?.x)
-  const report = (trigger: string, layout: LayoutRectangle) => {
-    setLayouts((current) => {
-      const known = current[trigger]
-      return known !== undefined &&
-        known.x === layout.x &&
-        known.y === layout.y &&
-        known.width === layout.width &&
-        known.height === layout.height
-        ? current
-        : { ...current, [trigger]: layout }
-    })
-  }
+  const [target, setTarget] = useState<LayoutRectangle>()
   return (
     <ListFrame {...frameProps}>
       {target === undefined ? null : (
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: target.y,
-            height: target.height,
-            left: 0,
-            width: target.width,
-            transform: [{ translateX: offset }],
-            borderRadius: shape.pill,
-            backgroundColor: theme.primary.val,
-          }}
-        />
+        <SlidingPill layout={target} rounded={shape.pill} />
       )}
-      <TriggerLayoutContext value={report}>{children}</TriggerLayoutContext>
+      <SelectedLayoutContext value={setTarget}>
+        {children}
+      </SelectedLayoutContext>
     </ListFrame>
   )
 }
 
-const TriggerFrame = styled(View, {
+const TriggerFrame = styled(TamaguiTabs.Tab, {
   name: "TabsTrigger",
+  // Tamagui renders the trigger as a `<button>` on web.
+  borderWidth: 0,
   // An equal share of the list, written as its longhands: Yoga reads an
   // explicit `flexBasis: "auto"` as no basis at all, so under the `flex: 1`
   // shorthand a trigger sized by its content (the payment screen's methods)
@@ -201,8 +185,6 @@ const TriggerFrame = styled(View, {
   rounded: shape.pill,
   hitSlop: { top: 8, bottom: 8 },
   cursor: "web:pointer",
-  // Its fill fades as a CSS transition on web (`theme/animations.web.ts`).
-  ...(isWeb ? { transition: "fast" } : {}),
 
   variants: {
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
@@ -247,47 +229,26 @@ export function TabsTrigger({
   children,
   disabled = false,
   onPress,
-  onLayout,
-  onPressIn,
-  onPressOut,
   ...frameProps
 }: TabsTriggerProps) {
   const tabs = useTabs()
-  const report = useContext(TriggerLayoutContext)
+  const reportSelected = useContext(SelectedLayoutContext)
   const active = tabs.value === value
-  const pressFill = usePressFill({ disabled, onPressIn, onPressOut })
+  const transition = useFastTransition()
   return (
     <TriggerFrame
+      value={value}
       disabled={disabled}
-      {...(isWeb
-        ? { bg: active ? "transparent" : pressFillClause(triggerFill) }
-        : {})}
-      onPressIn={pressFill.onPressIn}
-      onPressOut={pressFill.onPressOut}
-      onLayout={(event) => {
-        report?.(value, event.nativeEvent.layout)
-        onLayout?.(event)
+      // Tamagui's list is a Group, which squares inner corners; keep pills.
+      rounded={shape.pill}
+      bg={active ? "transparent" : pressFillClause(triggerFill)}
+      transition={transition}
+      onInteraction={(type, layout) => {
+        if (type === "select" && layout !== null) reportSelected?.(layout)
       }}
-      onPress={
-        disabled
-          ? undefined
-          : () => {
-              tabs.select(value)
-              onPress?.()
-            }
-      }
-      role="tab"
-      aria-selected={active}
-      aria-disabled={disabled}
+      onPress={onPress}
       {...frameProps}
     >
-      {active ? null : (
-        <PressFill
-          progress={pressFill.progress}
-          colors={triggerFill}
-          rounded={shape.pill}
-        />
-      )}
       {typeof children === "string" ? (
         <TriggerText active={active} numberOfLines={1}>
           {children}
@@ -307,5 +268,9 @@ export function TabsContent({
   readonly value: string
   readonly children: ReactNode
 }) {
-  return useTabs().value === value ? <View flex={1}>{children}</View> : null
+  return (
+    <TamaguiTabs.Content value={value} flex={1}>
+      {children}
+    </TamaguiTabs.Content>
+  )
 }

@@ -1,11 +1,10 @@
 import { shortenNpub } from "@payky/core/integrations/nostr/nostr-client"
-import { isWeb, Text, YStack } from "tamagui"
+import { Text, YStack } from "tamagui"
 import { LucideGlyph } from "../../../components/lucide-glyph"
 import {
-  PressFill,
   type PressFillColors,
   pressFillClause,
-  usePressFill,
+  useFastTransition,
 } from "../../../components/ui/press-fill.tsx"
 import { VerticalNavShell } from "../../../components/vertical-nav.tsx"
 import { usePathnameSelect } from "../../../core/current-pathname.ts"
@@ -17,7 +16,7 @@ import {
 import { useOpenDetail } from "../../../hooks/use-open-detail.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { useAppColors } from "../../../theme/app-colors.ts"
-import { fontSize, fontWeight, shape } from "../../../theme/tokens.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 import { AccountAvatar } from "../account-avatar.tsx"
 
 /** The card's fill at rest and under the finger, while its editor is closed. */
@@ -39,8 +38,8 @@ const cardFill = {
  *
  * Native differences: the npub uses Manrope, as native has no mono font
  * token; in a wide window's master pane the card is tinted while the
- * editor is open beside it (navigation/0002); the hover fill is a
- * `PressFill` layer under the finger (`ui/press-fill.tsx`).
+ * editor is open beside it (navigation/0002); the hover fill is also the
+ * fill under the finger (`ui/press-fill.tsx`).
  */
 export function ProfileCard() {
   const { t } = useTranslation()
@@ -55,7 +54,7 @@ export function ProfileCard() {
   const name = profile.data?.name ?? null
   const pending = profile.data === null && profile.loading
   const picture = profile.data?.picture ?? null
-  const pressFill = usePressFill({ disabled: editorOpen })
+  const transition = useFastTransition()
 
   return (
     <VerticalNavShell
@@ -64,30 +63,14 @@ export function ProfileCard() {
       gap={16}
       px={16}
       py={12}
-      bg={
-        editorOpen
-          ? "accent"
-          : isWeb
-            ? pressFillClause(cardFill)
-            : "transparent"
-      }
-      {...(isWeb ? { transition: "fast" as const } : {})}
+      bg={editorOpen ? "accent" : pressFillClause(cardFill)}
+      transition={transition}
       cursor="web:pointer"
       onPress={() => openDetail("/settings/profile")}
-      {...(editorOpen
-        ? {}
-        : { onPressIn: pressFill.onPressIn, onPressOut: pressFill.onPressOut })}
       role="link"
       aria-label={name ?? t("settings.profile.setName")}
       testID="profile-card"
     >
-      {editorOpen ? null : (
-        <PressFill
-          progress={pressFill.progress}
-          colors={cardFill}
-          rounded={shape.card}
-        />
-      )}
       <AccountAvatar picture={picture} size={56} />
       <YStack flex={1} minW={0}>
         <Text

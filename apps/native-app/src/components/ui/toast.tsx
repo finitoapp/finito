@@ -15,7 +15,8 @@ import { Icon } from "./icon.tsx"
  * (`CircleCheck`, `OctagonX`, `Info`, `TriangleAlert`), none for sonner's
  * plain `toast()`. An action is sonner's action button: 24 high, 8 px side
  * padding, 12 px medium text in `--normal-bg` on `--normal-text`, radius 4.
- * The queue and the timing stay in `components/app/toast-host.tsx`.
+ * Tamagui's toaster places, times, stacks and swipes it away
+ * (`components/app/toast-host.tsx`).
  * Sonner's shadow is left out; the border separates the toast from the
  * screen.
  */

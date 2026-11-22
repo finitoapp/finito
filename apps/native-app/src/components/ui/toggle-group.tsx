@@ -5,13 +5,13 @@ import {
   useContext,
   useMemo,
 } from "react"
-import { type GetProps, isWeb, styled, Text, View } from "tamagui"
+import { type GetProps, styled, Text, View } from "tamagui"
+import { ToggleGroup as TamaguiToggleGroup } from "tamagui/unstyled"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import {
-  PressFill,
   type PressFillColors,
   pressFillClause,
-  usePressFill,
+  useFastTransition,
 } from "./press-fill.tsx"
 
 /**
@@ -32,17 +32,13 @@ import {
  * which is lighter than the outline fill on a light page and outshouts a
  * card on a dark one. `columns` stands in for
  * the `grid grid-cols-N` class web pages put on the group. Items reach 48
- * through `hitSlop`. Base: a controlled Tamagui `View`, not Tamagui
- * `ToggleGroup`, which has not been tried on the device.
+ * through `hitSlop`. Base: Tamagui `ToggleGroup` (`type="single"`,
+ * `disableDeactivation`), controlled through `value` (`""` for none),
+ * which selects on press; the kit draws its items' fills itself.
  *
- * The fill is `itemFills`, drawn on native by a `PressFill` layer under the
- * content (`press-fill.tsx` says why), so the frame animates nothing; on
- * the PWA the frame carries it as a flat clause with `transition="fast"`.
- * A selection change swaps the fill at once on native. Joined segments
- * (`spacing={0}`) round only their outer corners, which the layer's single
- * radius cannot draw: on native their frame carries the clause itself,
- * without a transition, so their pressed fill shows at once instead of
- * fading.
+ * The fill is `itemFills`, a flat clause on the item's frame faded by the
+ * kit's `fast` transition (`press-fill.tsx`); a selection change fades it
+ * too. Joined segments (`spacing={0}`) round only their outer corners.
  */
 
 type ToggleVariant = "default" | "outline"
@@ -50,7 +46,6 @@ type ToggleSize = "default" | "sm" | "lg"
 
 interface GroupContextValue {
   readonly value: string | null
-  readonly onValueChange: (value: string) => void
   readonly variant: ToggleVariant
   readonly size: ToggleSize
   readonly joined: boolean
@@ -65,16 +60,16 @@ const PositionContext = createContext<{
   readonly last: boolean
 }>({ first: true, last: true })
 
-const ItemFrame = styled(View, {
+const ItemFrame = styled(TamaguiToggleGroup.Item, {
   name: "ToggleGroupItem",
+  // Tamagui renders the item as a `<button>` on web.
+  borderWidth: 0,
   flexDirection: "row",
   items: "center",
   justify: "center",
   shrink: 0,
   gap: 4,
   cursor: "web:pointer",
-  // Its fill fades as a CSS transition on web (`theme/animations.web.ts`).
-  ...(isWeb ? { transition: "fast" } : {}),
 
   variants: {
     variant: { default: {}, outline: {} },
@@ -165,31 +160,26 @@ export function ToggleGroupItem({
   children,
   "aria-label": ariaLabel,
   disabled = false,
-  onPressIn,
-  onPressOut,
   ...frameProps
 }: ToggleGroupItemProps) {
   const group = useContext(GroupContext)
   const position = useContext(PositionContext)
   const inactive = (group?.disabled ?? false) || disabled
-  const pressFill = usePressFill({ disabled: inactive, onPressIn, onPressOut })
+  const transition = useFastTransition()
   if (group === undefined)
     throw new Error("ToggleGroupItem must be inside a ToggleGroup")
   const selected = group.value === value
   const fill = itemFills[selected ? "selected" : group.variant]
-  // The layer has one radius; a joined segment's frame draws its own fill.
-  const layered = !isWeb && !group.joined
   return (
     <ItemFrame
       variant={group.variant}
       size={group.size}
       disabled={inactive}
       rounded={radii[group.size]}
-      {...(layered ? {} : { bg: pressFillClause(fill) })}
+      bg={pressFillClause(fill)}
+      transition={transition}
+      value={value}
       hitSlop={hitSlops[group.size]}
-      onPress={inactive ? undefined : () => group.onValueChange(value)}
-      onPressIn={pressFill.onPressIn}
-      onPressOut={pressFill.onPressOut}
       role="radio"
       aria-checked={selected}
       aria-disabled={inactive}
@@ -199,13 +189,6 @@ export function ToggleGroupItem({
       {...(group.joined ? joinedStyle(group.vertical, position) : {})}
       {...frameProps}
     >
-      {layered ? (
-        <PressFill
-          progress={pressFill.progress}
-          colors={fill}
-          rounded={radii[group.size]}
-        />
-      ) : null}
       {typeof children === "string" ? (
         <ItemText size={group.size} numberOfLines={1}>
           {children}
@@ -250,15 +233,13 @@ export function ToggleGroup<Value extends string>({
   const context = useMemo<GroupContextValue>(
     () => ({
       value,
-      // Items carry plain strings; every one of them is a `Value`.
-      onValueChange: (next) => onValueChange(next as Value),
       variant,
       size,
       joined,
       vertical,
       disabled,
     }),
-    [value, onValueChange, variant, size, joined, vertical, disabled]
+    [value, variant, size, joined, vertical, disabled]
   )
   const items = Children.toArray(children)
   const positioned = items.map((item, index) => (
@@ -273,7 +254,14 @@ export function ToggleGroup<Value extends string>({
   const gap = spacing * 4
   return (
     <GroupContext value={context}>
-      <View
+      <TamaguiToggleGroup
+        type="single"
+        value={value ?? ""}
+        // Items carry plain strings; every one of them is a `Value`.
+        onValueChange={(next: string) => onValueChange(next as Value)}
+        disableDeactivation
+        orientation={orientation}
+        disabled={disabled}
         role="radiogroup"
         aria-label={ariaLabel}
         flexDirection={vertical ? "column" : "row"}
@@ -297,7 +285,7 @@ export function ToggleGroup<Value extends string>({
             ))}
           </View>
         )}
-      </View>
+      </TamaguiToggleGroup>
     </GroupContext>
   )
 }
