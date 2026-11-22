@@ -31,6 +31,8 @@ const makeItem = (
   scanCode: null,
   taxRateId: null,
   libraryProductId: null,
+  inMenu: null,
+  soldOut: null,
   ...overrides,
 })
 

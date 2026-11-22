@@ -47,6 +47,7 @@ import {
   TimestampMs,
 } from "../shared/schema.ts"
 import {
+  createEetSale,
   enableEet,
   saveEetEstablishmentId,
   selectEetEnvironment,
@@ -321,4 +322,36 @@ export const settleByTransfer = async (
     claimManualReconciliation({ paymentId, accountTransactionId, deviceId })
   )
   return accountTransactionId
+}
+
+export const reportSaleOf = async (
+  context: EetTestContext,
+  {
+    paymentId,
+    billId = null,
+    amount,
+  }: {
+    readonly paymentId: PaymentId
+    readonly billId?: BillId | null
+    readonly amount: number
+  }
+): Promise<void> => {
+  await using run = testCreateRun(context.deps)
+  await run.ok(
+    createEetSale({
+      payment: {
+        id: paymentId,
+        billId,
+        amount: NonNegativeInteger(amount),
+        tipAmount: NonNegativeInteger(0),
+        cashReceivedAmount: null,
+        currency: "CZK",
+        method: "cashRegister",
+        firstClaimedAt: TimestampMs(context.clock.date.now().getTime()),
+        firstClaimTransactionId: createRowId<"AccountTransaction">(),
+        firstSettlementValue: NonNegativeInteger(amount),
+      },
+      deviceId: context.deviceId,
+    })
+  )
 }

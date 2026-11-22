@@ -15,6 +15,8 @@ import type { Permission } from "@payky/core/modules/access/access-types"
  */
 export const notificationPermissions = {
   recoveryPhraseBackup: "admin",
+  guestsCannotPay: "catalog",
+  tableBillsUnseen: "catalog",
 } as const satisfies Record<JobNotificationType, Permission>
 
 /** The notifications a device holding `effective` may see, in store order. */

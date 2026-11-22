@@ -1,5 +1,5 @@
 import type { InferRow } from "@evolu/common"
-import type { BillCoverage } from "@payky/core/modules/bill/bill-types"
+import { deriveBillCoverage } from "@payky/core/modules/bill/bill-utils"
 import type { BillLineSummaryDiff } from "@payky/core/modules/bill-line/bill-line-utils"
 import { deriveReceivedTipAmount } from "@payky/core/modules/payment/payment-cash-utils"
 import type {
@@ -8,15 +8,11 @@ import type {
 } from "@payky/core/modules/payment/payment-queries"
 import {
   derivePaymentHasCancellationCollision,
-  derivePaymentHasExcessSettlement,
   derivePaymentStatus,
 } from "@payky/core/modules/payment/payment-status-utils"
 import type { PaymentStatus } from "@payky/core/modules/payment/payment-types"
-import {
-  calculatePaymentExcess,
-  sumDistinctClaimedAmounts,
-} from "@payky/core/modules/shared/claimed-amount"
-import type { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import { calculatePaymentExcess } from "@payky/core/modules/shared/claimed-amount"
+import { Integer, NonNegativeInteger } from "@payky/core/modules/shared/schema"
 
 /**
  * What the payment and bill detail screens derive, for both apps. Like the
@@ -38,13 +34,6 @@ export interface PaymentDetailState {
    * `confirmPaymentPaidDespiteCancellation`.
    */
   readonly hasCancellationCollision: boolean
-  /**
-   * The duplicate-settlement collision: two offline devices can each claim
-   * this payment through a different method — both real money, so the sum of
-   * its distinct claimed transactions can exceed its own `amount`. See
-   * `payment.ts`'s `excessAcknowledgedAt`.
-   */
-  readonly hasExcessSettlementCollision: boolean
   readonly excess: NonNegativeInteger
   readonly receivedTipAmount: NonNegativeInteger
   /** The methods that settled it, once each, in claim order. */
@@ -91,11 +80,6 @@ export const derivePaymentDetailState = ({
       confirmedPaidAt: payment.confirmedPaidAt,
       hasActiveClaim,
     }),
-    hasExcessSettlementCollision: derivePaymentHasExcessSettlement({
-      amount: payment.amount,
-      excessAcknowledgedAt: payment.excessAcknowledgedAt,
-      claimedSum: sumDistinctClaimedAmounts(claims),
-    }),
     excess: calculatePaymentExcess({ claims, amount: payment.amount }),
     receivedTipAmount: deriveReceivedTipAmount(payment),
     paymentMethodKinds: [
@@ -115,11 +99,24 @@ export const derivePaymentDetailState = ({
  */
 export type BillCoverageMismatchReason = "billLinesChanged" | "multiplePayments"
 
+export type BillCoverageWarningCoverage =
+  | { readonly type: "underpaid" }
+  | { readonly type: "overpaid"; readonly unresolved: NonNegativeInteger }
+
 export interface PaymentBillCoverageNotice {
-  readonly warning: "underpaid" | "overpaid" | null
+  readonly warning: BillCoverageWarningCoverage | null
+  readonly expectedAmount: Integer
   readonly reason: BillCoverageMismatchReason | null
   readonly hasLineDiff: boolean
 }
+
+export const keptGoodsTotal = ({
+  billTotal,
+  isCanceled,
+}: {
+  readonly billTotal: Integer
+  readonly isCanceled: boolean
+}): Integer => (isCanceled ? Integer(0) : billTotal)
 
 export const hasLineDiff = (diff: BillLineSummaryDiff | null): boolean =>
   diff !== null &&
@@ -129,29 +126,38 @@ export const hasLineDiff = (diff: BillLineSummaryDiff | null): boolean =>
  * The coverage warning of the payment detail's bill card. An open bill with
  * nothing claimed against it yet is also "underpaid" by `deriveBillCoverage`'s
  * definition, so underpayment is only flagged once a partial payment has
- * actually landed — the same gate the list rows use. Overpaid needs no gate:
- * an unpaid bill is never overpaid.
+ * actually landed — the same gate the list rows use.
  */
 export const derivePaymentBillCoverageNotice = ({
-  coverage,
+  billTotal,
+  isCanceled,
   claimedSum,
   lineDiff,
   otherClaimedPaymentCount,
+  unresolvedOverpayment,
 }: {
-  readonly coverage: BillCoverage
+  readonly billTotal: Integer
+  readonly isCanceled: boolean
   readonly claimedSum: NonNegativeInteger
   readonly lineDiff: BillLineSummaryDiff | null
   readonly otherClaimedPaymentCount: number
+  readonly unresolvedOverpayment: number
 }): PaymentBillCoverageNotice => {
   const linesChanged = hasLineDiff(lineDiff)
+  const expectedAmount = keptGoodsTotal({ billTotal, isCanceled })
+  const coverage = deriveBillCoverage(expectedAmount, claimedSum)
 
   return {
     warning:
-      coverage === "overpaid"
-        ? "overpaid"
+      coverage === "overpaid" && unresolvedOverpayment > 0
+        ? {
+            type: "overpaid",
+            unresolved: NonNegativeInteger(unresolvedOverpayment),
+          }
         : coverage === "underpaid" && claimedSum > 0
-          ? "underpaid"
+          ? { type: "underpaid" }
           : null,
+    expectedAmount,
     reason: linesChanged
       ? "billLinesChanged"
       : otherClaimedPaymentCount > 0

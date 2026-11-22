@@ -1,8 +1,4 @@
-import {
-  type NonNegativeInteger,
-  type TimestampMs,
-  TimestampMsSchema,
-} from "../shared/schema.ts"
+import { type TimestampMs, TimestampMsSchema } from "../shared/schema.ts"
 import type { PaymentStatus } from "./payment-types.ts"
 
 /**
@@ -92,22 +88,3 @@ export const computePaymentExpiresAt = (
   expirySeconds === undefined
     ? null
     : TimestampMsSchema.decode(now.getTime() + expirySeconds * 1000)
-
-/**
- * Whether a payment has been claimed for more than its own `amount` — the
- * duplicate-settlement collision (see `payment.ts`'s `excessAcknowledgedAt`
- * doc comment) — and staff hasn't yet acknowledged it. Unlike the
- * canceled+claimed collision, this doesn't change `derivePaymentStatus`'s
- * result (the payment is unambiguously `paid`); it's a separate, additive
- * warning about the *amount* rather than the status. See
- * docs/bill-payment-states.md.
- */
-export const derivePaymentHasExcessSettlement = ({
-  amount,
-  excessAcknowledgedAt,
-  claimedSum,
-}: {
-  readonly amount: NonNegativeInteger
-  readonly excessAcknowledgedAt: TimestampMs | null
-  readonly claimedSum: NonNegativeInteger
-}): boolean => excessAcknowledgedAt === null && claimedSum > amount

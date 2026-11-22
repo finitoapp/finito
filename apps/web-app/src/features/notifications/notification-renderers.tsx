@@ -4,7 +4,7 @@ import type { JobNotificationType } from "@payky/core/background-jobs/notificati
 import { snoozeBackupReminder } from "@payky/core/evolu/device-account"
 import { useNavigate } from "@tanstack/react-router"
 import { useAtomValue } from "jotai"
-import { type LucideIcon, ShieldCheckIcon } from "lucide-react"
+import { type LucideIcon, QrCodeIcon, ShieldCheckIcon } from "lucide-react"
 import { accountAtom } from "@/atoms/account.ts"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
 
@@ -65,6 +65,40 @@ export const notificationRenderers = {
           variant: "default",
           run: () => {
             void navigate({ to: "/settings/security/backup" })
+          },
+        },
+      ]
+    },
+  },
+  guestsCannotPay: {
+    icon: QrCodeIcon,
+    title: "notifications.guestsCannotPay.title",
+    description: "catalog.tables.selfPay.noPaymentMethod.description",
+    useActions: () => {
+      const navigate = useNavigate()
+      return [
+        {
+          label: "catalog.tables.selfPay.noPaymentMethod.link",
+          variant: "default",
+          run: () => {
+            void navigate({ to: "/settings/payment-accounts" })
+          },
+        },
+      ]
+    },
+  },
+  tableBillsUnseen: {
+    icon: QrCodeIcon,
+    title: "notifications.tableBillsUnseen.title",
+    description: "notifications.tableBillsUnseen.description",
+    useActions: () => {
+      const navigate = useNavigate()
+      return [
+        {
+          label: "notifications.tableBillsUnseen.action",
+          variant: "default",
+          run: () => {
+            void navigate({ to: "/catalog/tables" })
           },
         },
       ]

@@ -19,8 +19,9 @@ import {
   useNavigate,
 } from "@tanstack/react-router"
 import { LoaderCircleIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { AccessGate } from "@/components/app/access-gate.tsx"
+import { MenuOrderAnnouncer } from "@/components/app/menu-order-announcer.tsx"
 import { MenuNav } from "@/components/menu-nav.tsx"
 import { PhoneViewport } from "@/components/phone-viewport.tsx"
 import { EetSandboxBanner } from "@/features/shared/eet-sandbox-banner.tsx"
@@ -65,13 +66,17 @@ function TerminalLayout() {
         isSandboxActive && "[--terminal-banner-height:2.5rem]",
         // The room the menu takes (navigation/0001): the phone's bottom bar on
         // a tab's root screen, the sidebar on every screen of a large monitor.
-        menu?.root && "[--menu-nav-height:3rem] lg:[--menu-nav-height:0px]",
+        menu?.root &&
+          "[:root:has(&)]:[--menu-nav-height:3rem] lg:[:root:has(&)]:[--menu-nav-height:0px]",
         menu && "lg:[--menu-sidebar-width:14rem]",
         terminalLayout?.mainClassName
       )}
     >
       {isSandboxActive ? <EetSandboxBanner /> : null}
       {menu ? <MenuNav active={menu.tab} root={menu.root === true} /> : null}
+      <Suspense fallback={null}>
+        <MenuOrderAnnouncer />
+      </Suspense>
       <PhoneViewport
         className={
           terminalLayout?.viewportClassName ?? defaultViewportClassName

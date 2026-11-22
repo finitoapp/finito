@@ -27,7 +27,7 @@ import {
   accountTransactionSparkInvoice,
 } from "../modules/account-transaction/account-transaction.ts"
 import { appSettings } from "../modules/app-settings/app-settings.ts"
-import { bill, billIndexes } from "../modules/bill/bill.ts"
+import { _billClosingCursor, bill, billIndexes } from "../modules/bill/bill.ts"
 import { billLine, billLineIndexes } from "../modules/bill-line/bill-line.ts"
 import {
   cardSwitchioClosure,
@@ -59,16 +59,27 @@ import {
 import {
   fioPlugin,
   fioPluginIndexes,
+  fioPluginSyncLease,
   fioPluginSyncPointer,
   fioPluginToken,
+  fioSyncDeviceUptime,
 } from "../modules/fio-plugin/fio-plugin.ts"
 import { item, itemIndexes } from "../modules/item/item.ts"
 import { legalEntity } from "../modules/legal-entity/legal-entity.ts"
+import {
+  menuOrder,
+  menuOrderIndexes,
+  menuVersion,
+} from "../modules/menu-order/menu-order.ts"
 import {
   monetaPlugin,
   monetaPluginIndexes,
   monetaPluginSyncPointer,
 } from "../modules/moneta-plugin/moneta-plugin.ts"
+import {
+  overpaymentResolution,
+  overpaymentResolutionIndexes,
+} from "../modules/overpayment-resolution/overpayment-resolution.ts"
 import {
   payment,
   paymentBtc,
@@ -82,6 +93,7 @@ import {
   paymentLightningAddress,
   paymentQerkoPayment,
   paymentQerkoTerminal,
+  paymentSelfPay,
   qerkoPaymentAttempt,
 } from "../modules/payment/payment.ts"
 import {
@@ -109,6 +121,14 @@ import {
   refundQerkoTerminal,
 } from "../modules/refund/refund.ts"
 import { table } from "../modules/table/table.ts"
+import {
+  billSelfPayReference,
+  selfPayAllocation,
+  selfPayRelay,
+  selfPayViewPublication,
+  selfPayViewVersion,
+  tableSelfPayIndexes,
+} from "../modules/table-self-pay/table-self-pay.ts"
 import { taxRate, taxRateIndexes } from "../modules/tax-rate/tax-rate.ts"
 import {
   withdrawal,
@@ -147,6 +167,7 @@ export const AppSchema = {
   taxRate,
   table,
   bill,
+  _billClosingCursor,
   billLine,
   payment,
   paymentCashRegister,
@@ -161,6 +182,7 @@ export const AppSchema = {
   qerkoPaymentAttempt,
   paymentCashu,
   paymentLightningAddress,
+  paymentSelfPay,
   paymentLine,
   paymentNumber,
   paymentLastNumber,
@@ -169,6 +191,8 @@ export const AppSchema = {
   paymentNumberSeries,
   fioPlugin,
   fioPluginSyncPointer,
+  fioPluginSyncLease,
+  fioSyncDeviceUptime,
   fioPluginToken,
   monetaPlugin,
   monetaPluginSyncPointer,
@@ -186,6 +210,7 @@ export const AppSchema = {
   refundLine,
   cardSwitchioRefundAttempt,
   qerkoTerminalRefundAttempt,
+  overpaymentResolution,
   withdrawal,
   withdrawalOnchain,
   withdrawalLightning,
@@ -198,6 +223,13 @@ export const AppSchema = {
   cashuOperation,
   // Local-only: never synced (src/core/modules/cashu/cashu.ts).
   _cashuBookingCursor,
+  billSelfPayReference,
+  selfPayAllocation,
+  selfPayViewVersion,
+  selfPayViewPublication,
+  selfPayRelay,
+  menuVersion,
+  menuOrder,
 } as const
 
 export const createQuery = createQueryBuilder(AppSchema)
@@ -219,8 +251,11 @@ export const createAppIndexes: IndexesConfig = (create) => [
   ...monetaPluginIndexes(create),
   ...eetIndexes(create),
   ...refundIndexes(create),
+  ...overpaymentResolutionIndexes(create),
   ...withdrawalIndexes(create),
   ...cashuIndexes(create),
+  ...tableSelfPayIndexes(create),
+  ...menuOrderIndexes(create),
 ]
 
 export type EvoluSchema = typeof AppSchema

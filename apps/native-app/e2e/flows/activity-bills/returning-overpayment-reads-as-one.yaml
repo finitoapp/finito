@@ -1,0 +1,119 @@
+# web activity-bills.spec.ts: "returning an overpayment says how much is above the bill, warns about goods, and reads as a returned overpayment".
+appId: ${APP_ID}
+tags: [activity-bills]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/begin-coffee-payment.yaml
+- runFlow: ../../subflows/prepare-iban-payment.yaml
+- runFlow: ../../subflows/mark-cash-paid.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: simulateDuplicateSettlement
+      QUERY: paymentId=${output.paymentId}
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity/bills/${output.billId}
+      TEXT: ${output.t["billDetail.title"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00245" }))}'
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.action.return"]}
+- extendedWaitUntil:
+    visible: ${output.t["refund.page.choice.overpayment"]}
+    timeout: 15000
+- assertVisible: '${output.re(output.tv("overpayment.title", { amount: "\u00245" }))}'
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["refund.dialog.amount.label"]}
+      VALUE: "11"
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("refund.dialog.amount.invalid", { amount: "\u002410" }))}'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["refund.dialog.amount.label"]}
+      VALUE: "7"
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("refund.dialog.goodsPart", { amount: "\u00242" }))}'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["refund.dialog.amount.label"]}
+      VALUE: "4"
+- extendedWaitUntil:
+    notVisible: '${output.re(output.tv("refund.dialog.goodsPart", { amount: "\u00242" }))}'
+    timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("refund.dialog.confirm", { amount: "\u00244" })}'
+- extendedWaitUntil:
+    visible: ${output.t["refund.created"]}
+    timeout: 15000
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("refund.state.overpayment", { amount: "\u00244" }))}'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      text: '${output.re(output.tv("refund.state.overpayment", { amount: "\u00244" }))}'
+    centerElement: true
+- tapOn: '${output.re(output.tv("refund.state.overpayment", { amount: "\u00244" }))}'
+- extendedWaitUntil:
+    visible: ${output.t["paymentDetail.title"]}
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: payment-detail-refund
+    timeout: 15000
+- assertVisible: '${output.re(output.tv("refund.state.overpayment", { amount: "\u00244" }))}'
+- assertVisible:
+    text: \$4
+    above: '${output.re(output.t["paymentDetail.refunds.overpayment"])} · .+'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["paymentDetail.refunds.action"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00241" }))}'
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["refund.dialog.amount.label"]}
+      VALUE: "3"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: '${output.tv("refund.dialog.confirm", { amount: "\u00243" })}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("refund.dialog.confirm", { amount: "\u00243" })}'
+- extendedWaitUntil:
+    visible: ${output.t["refund.created"]}
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      text: \$3
+      above: '${output.re(output.tv("paymentDetail.refunds.overpaymentIncluded", { amount: "\u00241" }))} · .+'
+    timeout: 15000
+- assertVisible: '${output.re(output.tv("refund.state.overpayment", { amount: "\u00245" }))}'
+- assertVisible: '${output.re(output.tv("refund.state.partial", { amount: "\u00242" }))}'

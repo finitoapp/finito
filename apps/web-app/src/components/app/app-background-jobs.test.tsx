@@ -80,7 +80,7 @@ vi.mock("@/atoms/account.ts", async () => {
     accountAtom: atom({
       id: "device-account",
       demo: null,
-      masterKey: "master-key",
+      masterKey: "000102030405060708090a0b0c0d0e0f",
       device: { id: "device" },
     }),
   }
@@ -96,6 +96,10 @@ vi.mock("@/atoms/evolu.ts", async () => {
     cashuShardStoreAtom: atom({}),
     cashuWalletDepAtom: atom({ cashuWallet: {} }),
   }
+})
+vi.mock("@/atoms/run.ts", async () => {
+  const { atom } = await import("jotai")
+  return { runAtom: atom({ deps: { syncState: {} } }) }
 })
 vi.mock("@/atoms/service-proxy.ts", async () => {
   const { atom } = await import("jotai")

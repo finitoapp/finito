@@ -1,11 +1,15 @@
 import { createIdFromString } from "@evolu/common"
-
+import { z } from "zod"
+import { jsonCodec } from "../../zod-utils.ts"
 import type { AccountId } from "../account/account-types.ts"
 import type { CashuOperationId } from "../cashu/cashu-types.ts"
 import type { PaymentAccountKind, PaymentId } from "../payment/payment-types.ts"
 import type { RefundId } from "../refund/refund-types.ts"
 import type { NonEmptyString } from "../shared/schema.ts"
-import type { AccountTransactionId } from "./account-transaction-types.ts"
+import {
+  type AccountTransactionId,
+  AccountTransactionIdRaw,
+} from "./account-transaction-types.ts"
 
 /**
  * Written out verbatim, not assembled from the kind: they are not symmetrical
@@ -112,3 +116,7 @@ export const deriveLightningAddressAccountTransactionId = ({
   createIdFromString<"AccountTransaction">(
     `accountTransaction:lightningAddress:${accountId}:${paymentHash}`
   )
+
+export const AccountTransactionIdsJson = jsonCodec(
+  z.array(z.custom<AccountTransactionId>(AccountTransactionIdRaw.is)).readonly()
+)

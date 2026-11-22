@@ -32,5 +32,5 @@ A payment whose tip alone was refunded still shows no badge, as its state is
 
 ## Enforced by
 
-- `packages/app-shared/src/activity-history.test.ts > refundBadgeLabel > shows every amount given back, the tip included, while its state counts goods`
+- `packages/app-shared/src/activity-history.test.ts > refundBadgeLabels > shows every amount given back, the tip included, while its state counts goods`
 - `packages/core/src/modules/refund/refund-utils.test.ts > summarizeRefundsByPayment > leaves a tip refund out of the refunded state`

@@ -5,6 +5,19 @@ import { visibleNotifications } from "./notification-permissions.ts"
 
 const backup: JobNotification = { type: "recoveryPhraseBackup" }
 
+test("the tables' notifications need catalog", () => {
+  const tables: ReadonlyArray<JobNotification> = [
+    { type: "guestsCannotPay" },
+    { type: "tableBillsUnseen" },
+  ]
+  expect(visibleNotifications(tables, new Set<Permission>(["admin"]))).toEqual(
+    []
+  )
+  expect(
+    visibleNotifications(tables, new Set<Permission>(["catalog"]))
+  ).toEqual(tables)
+})
+
 test("the backup notification needs admin", () => {
   expect(visibleNotifications([backup], new Set<Permission>())).toEqual([])
   expect(

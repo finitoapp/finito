@@ -20,6 +20,10 @@ import {
   serviceProxyEndpointPath,
 } from "@payky/core/integrations/service-proxy/service-proxy-services"
 import { DateStringSchema } from "@payky/core/modules/shared/schema"
+import {
+  createTestDateDep,
+  type TestDateDep,
+} from "@payky/core/testing/date-dep"
 import { describe, expect, test } from "vitest"
 import { handleServiceProxyRequest } from "./service-proxy.ts"
 
@@ -136,11 +140,12 @@ const createProxiedFetch = (banks: ReturnType<typeof createBanks>) => {
   return { fetch, proxyUrls }
 }
 
-type BankDeps = FioApiDep & MonetaApiDep & FetchDep
+type BankDeps = FioApiDep & MonetaApiDep & FetchDep & TestDateDep
 
 const createDeps = (fetch: typeof globalThis.fetch): BankDeps => ({
   ...createFioApiDep({ tokens: [fioToken] }),
   ...createMonetaApiDep({ token: monetaToken }),
+  ...createTestDateDep(),
   fetch,
 })
 
@@ -231,7 +236,9 @@ describe("the bank clients through the service proxy", () => {
     const deps = createDeps(proxied.fetch)
 
     for (const { service, execute } of clientCalls) {
-      if (service === "fio") expect((await execute(deps)).ok).toBe(true)
+      if (service !== "fio") continue
+      expect((await execute(deps)).ok).toBe(true)
+      deps.advance(30_000)
     }
 
     expect(banks.calls.map((call) => call.url)).toEqual([

@@ -16,10 +16,11 @@ import { getRetryTicks } from "./retry-ticks.ts"
 
 /**
  * How one sync went: `synced`, `failed` (the next ones back off, as after a
- * throw, without reporting an error), or `stopped` (the session asks no more
+ * throw, without reporting an error), `waited` (it asked the bank nothing,
+ * so the backoff stays as it was), or `stopped` (the session asks no more
  * until the plugin changes and the job starts a new one).
  */
-export type BankPluginSyncOutcome = "synced" | "failed" | "stopped"
+export type BankPluginSyncOutcome = "synced" | "failed" | "waited" | "stopped"
 
 export interface BankPluginSyncSession extends AsyncDisposable {
   readonly start: () => void
@@ -70,6 +71,7 @@ export const createBankPluginSyncSession = ({
       delay()
       return
     }
+    if (outcome === "waited") return
     failedSyncCount = 0
     ticksToSkip = 0
     if (outcome === "stopped") isStopped = true

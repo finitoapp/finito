@@ -4,6 +4,7 @@ import {
   type MutationOptions,
   ok,
   type Result,
+  sqliteFalse,
   type Task,
   type UpdateValues,
   type UpsertValues,
@@ -15,6 +16,7 @@ import type { BillLineRow, billLine } from "../bill-line/bill-line.ts"
 import {
   insertBillLineRows,
   loadCalculatedBillLineSummaries,
+  upsertBillLineRows,
 } from "../bill-line/bill-line-actions.ts"
 import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
 import {
@@ -51,6 +53,9 @@ import {
   TimestampMsSchema,
 } from "../shared/schema.ts"
 import type { BillRow, bill } from "./bill.ts"
+import { loadBillCoveredSince } from "./bill-closing-guards.ts"
+import { billClosingCursorId } from "./bill-closing-queries.ts"
+import { deriveClosedAtCorrection } from "./bill-closing-utils.ts"
 import {
   type BillLineRemovalOutOfRangeError,
   type BillLockedError,
@@ -77,7 +82,11 @@ import {
   requireSplitTotalNotNegative,
   type SelectedLineTotals,
 } from "./bill-guards.ts"
-import { lastBillDisplayNumberQuery, openBillsQuery } from "./bill-queries.ts"
+import {
+  billByIdQuery,
+  lastBillDisplayNumberQuery,
+  openBillsQuery,
+} from "./bill-queries.ts"
 import type { BillId } from "./bill-types.ts"
 import { deriveZeroBillRefusal, type ZeroBillRefusal } from "./bill-utils.ts"
 
@@ -167,7 +176,7 @@ export const createBill =
  * `splitBillIntoNewBill`) can reuse this instead of duplicating it — mirrors
  * `payment-number-actions.ts`'s `loadNextPaymentNumber`.
  */
-const loadNextBillDisplayNumber =
+export const loadNextBillDisplayNumber =
   (): Task<PositiveInteger, never, EvoluDep> => async (run) => {
     const [last] = await run.deps.evolu.loadQuery(lastBillDisplayNumberQuery)
     const lastDisplayNumber = last?.displayNumber ?? 0
@@ -202,6 +211,22 @@ export const createBillAtEnd =
 
     return ok(input.id)
   }
+export interface MenuOrderBillRows {
+  readonly bill: UpsertValues<typeof bill>
+  readonly items: ReadonlyArray<ItemRow>
+  readonly lines: ReadonlyArray<BillLineRow>
+}
+
+export const upsertMenuOrderBillRows = (
+  evolu: EvoluDep["evolu"],
+  { bill: billRow, items, lines }: MenuOrderBillRows,
+  options: MutationOptions
+): void => {
+  evolu.upsert("bill", removeUndefinedValues(billRow), options)
+  for (const snapshot of items) upsertItemSnapshot(evolu, snapshot, options)
+  upsertBillLineRows(evolu, lines, options)
+}
+
 export const assignBillToTable =
   (
     input: Pick<UpdateValues<typeof bill>, "id" | "tableId">
@@ -1170,4 +1195,56 @@ export const appendGuardedBillLines =
     if (!billResult.ok) return billResult
 
     return run(appendCartLines(billResult.value, lines))
+  }
+
+export const reconcileBillsClosedAt =
+  (
+    billIds: ReadonlyArray<BillId>
+  ): Task<ReadonlyArray<BillId>, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const { evolu, evoluOwner } = run.deps
+    const corrections: Array<{
+      readonly billId: BillId
+      readonly closedAt: TimestampMs | null
+    }> = []
+    for (const billId of new Set(billIds)) {
+      const [bill] = await evolu.loadQuery(billByIdQuery(billId))
+      if (bill === undefined || bill.canceledAt !== null) continue
+      const correction = deriveClosedAtCorrection({
+        closedAt: bill.closedAt,
+        coveredSince: await run.ok(loadBillCoveredSince(billId)),
+      })
+      if (correction !== null) {
+        corrections.push({ billId, closedAt: correction.closedAt })
+      }
+    }
+
+    if (corrections.length > 0) {
+      await runMutationWithCompletion((options) => {
+        for (const { billId, closedAt } of corrections) {
+          upsertBillClosedAt(evolu, billId, closedAt, {
+            ...options,
+            owner: evoluOwner,
+          })
+        }
+      })
+    }
+    return ok(corrections.map(({ billId }) => billId))
+  }
+
+export const saveBillClosingCursor =
+  (historyRowid: number): Task<undefined, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.upsert(
+        "_billClosingCursor",
+        {
+          id: billClosingCursorId,
+          historyRowid: NonNegativeInteger(historyRowid),
+          isDeleted: sqliteFalse,
+        },
+        { ...options, owner: run.deps.evoluOwner }
+      )
+    )
+    return ok(undefined)
   }

@@ -12,6 +12,7 @@ export interface LightningInvoice {
   readonly amountSats: number | null
   readonly description: string | null
   readonly paymentHash: string | null
+  readonly createdAt: number
   readonly expiresAt: number
   /** The recipient's Spark identity public key from the invoice's Spark fallback, if it has one. */
   readonly sparkFallbackIdentity: string | null
@@ -187,6 +188,7 @@ export const parseLightningInvoice = (
         ? description
         : null,
     paymentHash: typeof paymentHash === "string" ? paymentHash : null,
+    createdAt: timestamp * 1000,
     expiresAt:
       (timestamp +
         (typeof expiry === "number"

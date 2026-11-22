@@ -3,6 +3,7 @@ import { type ReactNode, Suspense, useState } from "react"
 import { ListSkeleton } from "@/components/list-skeleton.tsx"
 import { SearchInput } from "@/components/search-input.tsx"
 import { CatalogListPage } from "@/features/catalog/catalog-list-page.tsx"
+import { SelfPayOptionsCard } from "@/features/catalog/tables/self-pay-options-card.tsx"
 import { TablesList } from "@/features/catalog/tables/tables-list.tsx"
 import { useDebouncedValue } from "@/hooks/use-debounced-value.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
@@ -66,6 +67,7 @@ function TablesSettingsContent({
 
   return (
     <>
+      {hasAny && <SelfPayOptionsCard />}
       {hasAny && searchInput}
 
       <Suspense fallback={<ListSkeleton />}>

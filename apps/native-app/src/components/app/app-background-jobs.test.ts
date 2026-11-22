@@ -34,7 +34,7 @@ vi.mock("react-native", () => ({
 }))
 
 vi.mock("@payky/core/background-jobs/background-jobs", () => ({
-  appBackgroundJobs: [{ group: "app" }],
+  appBackgroundJobsFor: () => [{ group: "app" }],
   bankBackgroundJobs: [{ group: "bank" }],
   cashuBackgroundJobs: [{ group: "cashu" }],
 }))
@@ -63,6 +63,7 @@ vi.mock("@payky/core/background-jobs/run-background-jobs", () => {
 vi.mock("../../core/native-runtime.ts", () => ({
   nativeConsole: { error: () => {}, debug: () => {} },
   nativeRun: {
+    deps: { syncState: {} },
     create: (deps: unknown) => {
       const run: {
         group?: string
@@ -126,7 +127,7 @@ vi.mock("../../atoms/account.ts", async () => {
       id: "device-account-1",
       device: { id: "device-1" },
       demo: null,
-      masterKey: "master-key",
+      masterKey: "000102030405060708090a0b0c0d0e0f",
     }),
   }
 })

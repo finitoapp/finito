@@ -1,0 +1,105 @@
+# web menu-orders.spec.ts: "ordering is switched on with nothing in the menu,
+# on this device".
+appId: ${APP_ID}
+tags: [menu-orders]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Table 3
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/enable-table-self-pay.yaml
+    env:
+      TABLE: Table 3
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.selfPayOptions.title"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.order"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.payBill"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.order"]}
+      CHECKED: "false"
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.orderDevice.label"]}
+      HIDDEN: "true"
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.order"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.orderDevice.label"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["catalog.tables.selfPayOptions.menu.empty.title"])}
+    timeout: 10000
+- extendedWaitUntil:
+    visible: '.*${output.re(output.tv("catalog.tables.selfPayOptions.orderDevice.this", { name: "" }).trim())}'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.orderDevice.label"]}
+- tapOn: '.*${output.re(output.tv("catalog.tables.selfPayOptions.orderDevice.this", { name: "" }).trim())}'
+- extendedWaitUntil:
+    visible: '.*${output.re(output.tv("catalog.tables.selfPayOptions.orderDevice.this", { name: "" }).trim())}'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: seedMenu
+      QUERY: items=Coffee:6500
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.selfPayOptions.title"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.orderDevice.label"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("catalog.tables.selfPayOptions.menu.visible", { count: 1 }))}'
+    timeout: 10000
+- assertNotVisible: ${output.re(output.t["catalog.tables.selfPayOptions.menu.empty.title"])}
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.payBill"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.payBill"]}
+      CHECKED: "false"
+- runFlow:
+    file: ../../subflows/reopen.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.title"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.orderDevice.label"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.payBill"]}
+      CHECKED: "false"
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.order"]}

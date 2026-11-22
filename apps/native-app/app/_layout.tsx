@@ -8,7 +8,7 @@ import {
 } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
-import { createStore, Provider } from "jotai"
+import { createStore, Provider, useAtomValue } from "jotai"
 import {
   type ComponentType,
   Suspense,
@@ -19,6 +19,7 @@ import {
 } from "react"
 import { useColorScheme, useWindowDimensions } from "react-native"
 import { TamaguiProvider, Theme, useTheme, View, XStack } from "tamagui"
+import { waitingOrdersNoticeRoomAtom } from "../src/atoms/toast.ts"
 import { AccessGate } from "../src/components/app/access-gate.tsx"
 import {
   AppEvoluConsumers,
@@ -31,6 +32,7 @@ import { ConfirmHost } from "../src/components/app/confirm-host.tsx"
 import { DemoDataSeed } from "../src/components/app/demo-data-seed.tsx"
 import { DeviceRegistration } from "../src/components/app/device-registration.tsx"
 import { EvoluStartupError } from "../src/components/app/evolu-startup-error.tsx"
+import { MenuOrderAnnouncer } from "../src/components/app/menu-order-announcer.tsx"
 import { NotOnboardedRedirect } from "../src/components/app/not-onboarded-redirect.tsx"
 import { PinPromptHost } from "../src/components/app/pin-prompt-host.tsx"
 import { SentryController } from "../src/components/app/sentry-controller.tsx"
@@ -197,6 +199,9 @@ function ThemedApp() {
             <ConfirmHost />
             <PinPromptHost />
             <ToastHost />
+            <Suspense fallback={null}>
+              <MenuOrderAnnouncer />
+            </Suspense>
             {/* Its own boundary: the pending check suspends on every account switch. */}
             <Suspense fallback={null}>
               <AppMigrations />
@@ -289,10 +294,11 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
   const MasterPage =
     masterPath === undefined ? undefined : masterPages[masterPath]
   const panes = MasterPage !== undefined
+  const waitingOrdersNoticeRoom = useAtomValue(waitingOrdersNoticeRoomAtom)
   return (
     <ThemeProvider value={navigationTheme}>
       <View flex={1} bg="background">
-        <XStack flex={1}>
+        <XStack flex={1} pb={waitingOrdersNoticeRoom}>
           {sidebar ? <MenuNav active={menu.tab} variant="sidebar" /> : null}
           <View flex={1}>
             <WebColumn

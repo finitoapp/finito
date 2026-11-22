@@ -80,6 +80,15 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/components/app/menu-order-announcer.tsx",
+    web: ["apps/web-app/src/components/app/menu-order-announcer.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      Toast:
+        "Web keeps sonner's toast up by its id; native keeps the kit Toast up in Tamagui's toaster by its id, as ToastHost hands it the others.",
+    },
+  },
+  {
     native: "src/components/app/pin-prompt-host.tsx",
     web: ["apps/web-app/src/components/app/pin-prompt-host.tsx"],
     status: "matched",
@@ -331,6 +340,16 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/features/activity/choice-toggle-item.tsx",
+    web: ["apps/web-app/src/features/activity/choice-toggle-item.tsx"],
+    status: "matched",
+  },
+  {
+    native: "src/features/activity/overpayment-card.tsx",
+    web: ["apps/web-app/src/features/activity/overpayment-card.tsx"],
+    status: "matched",
+  },
+  {
     native: "src/features/activity/payment-detail-page.tsx",
     web: ["apps/web-app/src/features/activity/payment-detail.tsx"],
     status: "matched",
@@ -559,6 +578,15 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       RouteMessage:
         "web answers an invalid tip link in its route file (_terminal.payment.custom-tip.tsx); native's route renders this page, which does it",
+    },
+  },
+  {
+    native: "src/features/orders/orders-to-serve-page.tsx",
+    web: ["apps/web-app/src/features/orders/orders-to-serve-page.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      CardAction:
+        "native's CardAction sits absolutely in the header's corner, so an order's badges beside a long table name covered it; they wrap under the time instead",
     },
   },
   {
@@ -1248,7 +1276,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   },
   {
     native: "src/features/catalog/items/edit-item-page.tsx",
-    web: ["apps/web-app/src/features/catalog/items/item-form-page.tsx"],
+    web: [
+      "apps/web-app/src/features/catalog/items/item-form-page.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-switch.tsx",
+    ],
     status: "matched",
     allowedDifferences: {
       FieldError:
@@ -1267,7 +1298,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   },
   {
     native: "src/features/catalog/items/items-page.tsx",
-    web: ["apps/web-app/src/features/catalog/items/items-page.tsx"],
+    web: [
+      "apps/web-app/src/features/catalog/items/items-page.tsx",
+      "apps/web-app/src/features/catalog/items/items-list.tsx",
+    ],
     status: "matched",
   },
   {
@@ -1820,6 +1854,13 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/features/settings/backends/self-pay-relay-card.tsx",
+    web: [
+      "apps/web-app/src/features/settings/backends/self-pay-relay-card.tsx",
+    ],
+    status: "matched",
+  },
+  {
     native: "src/features/shared/amount-keypad.tsx",
     web: ["apps/web-app/src/features/shared/amount-keypad.tsx"],
     status: "matched",
@@ -1921,8 +1962,52 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native: "src/features/catalog/tables/self-pay-options-card.tsx",
+    web: [
+      "apps/web-app/src/features/catalog/tables/self-pay-options-card.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-switch.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-select.tsx",
+    ],
+    status: "matched",
+    allowedDifferences: {
+      Button:
+        "The empty menu's way to the items is a link Button on native; web draws it as a router Link.",
+    },
+  },
+  {
+    native: "src/features/catalog/tables/table-self-pay-card.tsx",
+    web: ["apps/web-app/src/features/catalog/tables/table-self-pay-card.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      Field:
+        "Native renders the self-pay switch with ui/field and ui/switch directly; web saves the same switch through InlineEditSwitch, which wraps them.",
+      FieldContent:
+        "Native renders the self-pay switch with ui/field and ui/switch directly; web saves the same switch through InlineEditSwitch, which wraps them.",
+      FieldDescription:
+        "Native renders the self-pay switch with ui/field and ui/switch directly; web saves the same switch through InlineEditSwitch, which wraps them.",
+      FieldLabel:
+        "Native renders the self-pay switch with ui/field and ui/switch directly; web saves the same switch through InlineEditSwitch, which wraps them.",
+      Switch:
+        "Native renders the self-pay switch with ui/field and ui/switch directly; web saves the same switch through InlineEditSwitch, which wraps them.",
+    },
+  },
+  {
+    native: "src/features/catalog/tables/table-sticker-check.tsx",
+    web: ["apps/web-app/src/features/catalog/tables/table-sticker-check.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      ScanCodeScannerDialog:
+        "Native has no scanner dialog; the camera opens inline under the button, as the item form and withdraw scanners do.",
+      ScanCodeScanner:
+        "Native opens the camera inline instead of web's ScanCodeScannerDialog, as the item form and withdraw scanners do.",
+    },
+  },
+  {
     native: "src/features/catalog/tables/tables-page.tsx",
-    web: ["apps/web-app/src/features/catalog/tables/tables-page.tsx"],
+    web: [
+      "apps/web-app/src/features/catalog/tables/tables-page.tsx",
+      "apps/web-app/src/features/catalog/tables/tables-list.tsx",
+    ],
     status: "matched",
   },
   {

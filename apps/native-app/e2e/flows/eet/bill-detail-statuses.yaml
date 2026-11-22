@@ -37,6 +37,6 @@ tags: [eet]
       TEXT: ${output.t["billDetail.title"]}
 - scrollUntilVisible:
     element: ${output.t["eet.status.rejected"]}
-- extendedWaitUntil:
-    visible: ${output.t["eet.status.confirmed"]}
+- scrollUntilVisible:
+    element: ${output.t["eet.status.confirmed"]}
     timeout: 20000

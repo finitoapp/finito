@@ -1,5 +1,6 @@
 import { testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
+import { createTestDateDep } from "../../testing/date-dep.ts"
 
 import { createFioApiDep, fetchFioLastTransactions } from "../fio/fio-client.ts"
 import {
@@ -117,6 +118,7 @@ describe("createServiceProxyFetch", () => {
     const token = "fio-secret-token"
     await using run = testCreateRun({
       ...createFioApiDep({ tokens: [token] }),
+      ...createTestDateDep(),
       fetch,
     })
 
@@ -208,6 +210,7 @@ describe("createServiceProxyFetch", () => {
     })
     await using run = testCreateRun({
       ...createFioApiDep({ tokens: ["token"] }),
+      ...createTestDateDep(),
       fetch,
     })
 
@@ -284,6 +287,7 @@ describe("createServiceProxyFetch", () => {
       })
       await using run = testCreateRun({
         ...createFioApiDep({ tokens: ["token"] }),
+        ...createTestDateDep(),
         fetch,
       })
 

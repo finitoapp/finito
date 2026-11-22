@@ -12,10 +12,18 @@ interface NostrEvent {
   readonly id: string
   readonly pubkey: string
   readonly kind: number
+  readonly created_at: number
   readonly content: string
+  readonly tags: ReadonlyArray<ReadonlyArray<string>>
 }
 
-const accepted = new Map<string, NostrEvent>()
+interface NostrFilter {
+  readonly kinds?: ReadonlyArray<number>
+  readonly authors?: ReadonlyArray<string>
+  readonly "#d"?: ReadonlyArray<string>
+}
+
+const stored = new Map<string, NostrEvent>()
 const attempts = new Map<string, number>()
 
 const acceptsProfile = (event: NostrEvent): boolean => {
@@ -41,6 +49,33 @@ const acceptsProfile = (event: NostrEvent): boolean => {
   return true
 }
 
+const dTagOf = (event: NostrEvent): string | undefined =>
+  event.tags.find(([name]) => name === "d")?.[1]
+
+const storageKey = (event: NostrEvent): string => {
+  if (event.kind === 0) return `${event.pubkey}:0`
+  if (event.kind >= 30_000 && event.kind < 40_000)
+    return `${event.pubkey}:${event.kind}:${dTagOf(event) ?? ""}`
+  return event.id
+}
+
+const store = (event: NostrEvent): void => {
+  const key = storageKey(event)
+  const current = stored.get(key)
+  if (current === undefined || current.created_at <= event.created_at)
+    stored.set(key, event)
+}
+
+const matches = (event: NostrEvent, filter: NostrFilter): boolean => {
+  const dTag = dTagOf(event)
+  return (
+    (filter.kinds?.includes(event.kind) ?? true) &&
+    (filter.authors?.includes(event.pubkey) ?? true) &&
+    (filter["#d"] === undefined ||
+      (dTag !== undefined && filter["#d"].includes(dTag)))
+  )
+}
+
 const send = (ws: ServerWebSocket<unknown>, message: ReadonlyArray<unknown>) =>
   ws.send(JSON.stringify(message))
 
@@ -49,21 +84,19 @@ export const nostrRelay: WebSocketHandler<unknown> = {
     if (typeof raw !== "string") return
     const [type, ...rest] = JSON.parse(raw) as ReadonlyArray<unknown>
     if (type === "REQ") {
-      const [subscription, filter] = rest as [
+      const [subscription, ...filters] = rest as [
         string,
-        { kinds?: ReadonlyArray<number>; authors?: ReadonlyArray<string> },
+        ...ReadonlyArray<NostrFilter>,
       ]
-      if (filter?.kinds?.includes(0))
-        for (const author of filter.authors ?? []) {
-          const event = accepted.get(author)
-          if (event !== undefined) send(ws, ["EVENT", subscription, event])
-        }
+      for (const event of stored.values())
+        if (filters.some((filter) => matches(event, filter)))
+          send(ws, ["EVENT", subscription, event])
       send(ws, ["EOSE", subscription])
     }
     if (type === "EVENT") {
       const event = rest[0] as NostrEvent
       const ok = event.kind !== 0 || acceptsProfile(event)
-      if (ok && event.kind === 0) accepted.set(event.pubkey, event)
+      if (ok) store(event)
       send(ws, ["OK", event.id, ok, ok ? "" : "blocked: e2e rejection"])
     }
   },

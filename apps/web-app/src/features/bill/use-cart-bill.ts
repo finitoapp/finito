@@ -34,6 +34,7 @@ import { useStore } from "jotai"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { accountAtom } from "@/atoms/account.ts"
+import { useGuestPaidQuestion } from "@/features/bill/use-guest-paid-question.ts"
 import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useConsole } from "@/hooks/use-console.ts"
@@ -98,6 +99,7 @@ export function useCartBill({
   const jotaiStore = useStore()
   const { t } = useTranslation()
   const { require } = useRequirePermission()
+  const askGuestPaid = useGuestPaidQuestion(currency)
   /**
    * The one place the cart checks `discard`, on the lines about to be written
    * (access/0012): a `remove` line or a discount.
@@ -303,8 +305,23 @@ export function useCartBill({
     totalAmount: Integer
   ) =>
     runQueued(async () => {
-      if (!(await mayWrite([{ kind: "remove", totalAmount }]))) return false
       const { device } = await jotaiStore.get(accountAtom)
+      const line: CartLine = {
+        billId,
+        deviceId: device.id,
+        catalogItemId: summary.catalogItemId,
+        itemId: summary.itemId,
+        type: summary.type,
+        kind: "remove",
+        quantity,
+        totalAmount,
+      }
+      if (
+        !(await mayWrite([line])) ||
+        !(await askGuestPaid(billId, [line], "edit"))
+      ) {
+        return false
+      }
       await using run = appRun()
       const result = await run(
         appendRemoveBillLine({
@@ -322,18 +339,7 @@ export function useCartBill({
         return false
       }
 
-      record([
-        {
-          billId,
-          deviceId: device.id,
-          catalogItemId: summary.catalogItemId,
-          itemId: summary.itemId,
-          type: summary.type,
-          kind: "remove",
-          quantity,
-          totalAmount,
-        },
-      ])
+      record([line])
 
       return true
     })
@@ -364,7 +370,12 @@ export function useCartBill({
         totalAmount: summary.totalAmount,
       }))
 
-      if (!(await mayWrite(lines))) return false
+      if (
+        !(await mayWrite(lines)) ||
+        !(await askGuestPaid(billId, lines, "edit"))
+      ) {
+        return false
+      }
       await using run = appRun()
       const result = await run(appendGuardedBillLines(billId, lines))
       if (!result.ok) {
@@ -417,7 +428,12 @@ export function useCartBill({
       if (entry === undefined) return false
 
       const lines = entry.map(invertLine)
-      if (!(await mayWrite(lines))) return false
+      if (
+        !(await mayWrite(lines)) ||
+        !(await askGuestPaid(billId, lines, "edit"))
+      ) {
+        return false
+      }
       await using run = appRun()
       const result = await run(appendGuardedBillLines(billId, lines))
       if (!result.ok) {
@@ -440,7 +456,12 @@ export function useCartBill({
       const entry = redoStackRef.current.at(-1)
       if (entry === undefined) return false
 
-      if (!(await mayWrite(entry))) return false
+      if (
+        !(await mayWrite(entry)) ||
+        !(await askGuestPaid(billId, entry, "edit"))
+      ) {
+        return false
+      }
       await using run = appRun()
       const result = await run(appendGuardedBillLines(billId, entry))
       if (!result.ok) {

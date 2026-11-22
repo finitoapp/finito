@@ -275,3 +275,38 @@ export const deleteCatalogItem =
     )
     return ok(id)
   }
+
+const updateCatalogItemMenuFlags =
+  (
+    input: Pick<UpdateValues<CatalogItem>, "id" | "inMenu" | "soldOut">
+  ): Task<CatalogItemId, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.update("catalogItem", removeUndefinedValues(input), {
+        ...options,
+        owner: run.deps.evoluOwner,
+      })
+    )
+    return ok(input.id)
+  }
+
+export const setCatalogItemInMenu = ({
+  id,
+  inMenu,
+}: {
+  readonly id: CatalogItemId
+  readonly inMenu: boolean
+}): Task<CatalogItemId, never, EvoluDep & EvoluOwnerDep> =>
+  updateCatalogItemMenuFlags({
+    id,
+    inMenu: inMenu ? sqliteTrue : null,
+  })
+
+export const setCatalogItemSoldOut = ({
+  id,
+  soldOut,
+}: {
+  readonly id: CatalogItemId
+  readonly soldOut: boolean
+}): Task<CatalogItemId, never, EvoluDep & EvoluOwnerDep> =>
+  updateCatalogItemMenuFlags({ id, soldOut: soldOut ? sqliteTrue : null })
