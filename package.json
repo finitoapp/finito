@@ -48,6 +48,7 @@
     "cli": "bun run apps/cli/src/cli.ts",
     "build:core": "bun run --cwd packages/core build",
     "check:api": "bun run bin/check-api.ts",
+    "bench:payment-latency": "bun run packages/core/bench/payment-latency.ts",
     "dev:landing": "bun run --cwd apps/landing dev",
     "build:landing": "bun run build:core && bun run --cwd apps/landing build",
     "preview:landing": "bun run --cwd apps/landing preview",
