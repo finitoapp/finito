@@ -21,7 +21,7 @@ const statusIcons = {
   canceled: { bg: "destructive-10", color: "destructive", icon: X },
   paid: { bg: "success-10", color: "success", icon: Check },
   expired: { bg: "neutral-soft", color: "muted-foreground", icon: Clock },
-  pending: { bg: "warning-10", color: "warning", icon: RotateCw },
+  pending: { bg: "neutral-soft", color: "muted-foreground", icon: RotateCw },
 } as const satisfies Record<PaymentStatus, Tone>
 
 const collisionIcon = {
@@ -68,7 +68,7 @@ const paymentBadgeTints = {
   canceled: null,
   paid: { bg: "success-10", color: "success" },
   expired: { bg: "neutral-soft", color: "muted-foreground" },
-  pending: { bg: "warning-10", color: "warning" },
+  pending: { bg: "neutral-soft", color: "muted-foreground" },
 } as const satisfies Record<
   PaymentStatus,
   { readonly bg: ThemeColor; readonly color: ThemeColor } | null

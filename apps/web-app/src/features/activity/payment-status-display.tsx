@@ -21,14 +21,14 @@ export const paymentStatusBadgeClassName = {
   canceled: null,
   paid: "bg-success/10 text-success",
   expired: "bg-muted text-muted-foreground",
-  pending: "bg-warning/10 text-warning",
+  pending: "bg-muted text-muted-foreground",
 } satisfies Record<PaymentStatus, string | null>
 
 const paymentStatusIconData = {
   canceled: ["bg-destructive/10 text-destructive", <XIcon key="canceled" />],
   paid: ["bg-success/10 text-success", <CheckIcon key="paid" />],
   expired: ["bg-muted text-muted-foreground", <ClockIcon key="expired" />],
-  pending: ["bg-warning/10 text-warning", <RotateCwIcon key="pending" />],
+  pending: ["bg-muted text-muted-foreground", <RotateCwIcon key="pending" />],
 } satisfies Record<PaymentStatus, readonly [string, ReactNode]>
 
 /**
