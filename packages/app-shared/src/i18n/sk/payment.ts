@@ -129,7 +129,7 @@ export const skPayment = {
   "paymentDetail.delete.confirm.cancel": "Ponechať",
   "paymentDetail.delete.error.generic": "Platbu sa nepodarilo zmazať.",
   "paymentDetail.delete.error.notDeletable":
-    "Platba už nie je čakajúca ani zrušená, preto ju nie je možné zmazať.",
+    "Na platbu už dorazili peniaze, preto ju nie je možné zmazať.",
   "paymentDetail.delete.error.attemptOpen":
     "Platba možno ešte prebieha alebo nie je známy jej výsledok, preto ju nie je možné zmazať.",
   "paymentDetail.deviceId": "Zariadenie",

@@ -48,8 +48,8 @@ export interface PaymentDetailState {
   readonly excess: NonNegativeInteger
   readonly receivedTipAmount: NonNegativeInteger
   /**
-   * Whether the screen offers deleting it (payment/0029): pending or
-   * canceled, with no money. `deleteUnpaidPayment` still judges for itself.
+   * Whether the screen offers deleting it (payment/0029): it is not
+   * paid and has no money. `deleteUnpaidPayment` still judges for itself.
    */
   readonly canDelete: boolean
   /** The methods that settled it, once each, in claim order. */
@@ -93,8 +93,7 @@ export const derivePaymentDetailState = ({
 
   return {
     status,
-    canDelete:
-      !hasActiveClaim && (status === "pending" || status === "canceled"),
+    canDelete: !hasActiveClaim && status !== "paid",
     hasCancellationCollision: derivePaymentHasCancellationCollision({
       canceledAt: payment.canceledAt,
       confirmedPaidAt: payment.confirmedPaidAt,
