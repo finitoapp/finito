@@ -9,15 +9,26 @@ import { defineError } from "../../error.ts"
 import type { DeviceLanguage } from "../../evolu/device-client.ts"
 import type { CountryCode } from "../../modules/legal-entity/legal-entity-types.ts"
 
+/** The languages the library's contract names products in. */
+export type LibraryLanguage = Exclude<DeviceLanguage, "vi">
+
 /**
- * A name in every language the apps speak, at most 255 characters as the
+ * The language a device reads the library in. A Vietnamese one reads Czech:
+ * the library has no Vietnamese names, and the shop's customers, who read an
+ * item's name on the bill, are Czech (brand/0007).
+ */
+export const libraryLanguage = (language: DeviceLanguage): LibraryLanguage =>
+  language === "vi" ? "cs" : language
+
+/**
+ * A name in every language of the library, at most 255 characters as the
  * contract caps it: an item named after it stores a `NonEmptyString255`.
  */
 const LocalizedNameSchema = z.object({
   cs: z.string().min(1).max(255),
   sk: z.string().min(1).max(255),
   en: z.string().min(1).max(255),
-} satisfies Record<DeviceLanguage, z.ZodType>)
+} satisfies Record<LibraryLanguage, z.ZodType>)
 
 /**
  * The contract's ids are lowercase kebab-case without a length limit; the
@@ -61,7 +72,7 @@ const LibraryProductSchema = z.object({
     cs: SynonymsSchema,
     sk: SynonymsSchema,
     en: SynonymsSchema,
-  } satisfies Record<DeviceLanguage, z.ZodType>),
+  } satisfies Record<LibraryLanguage, z.ZodType>),
   /** Products to offer next once this one is in the catalog. */
   related: z.array(LibraryIdSchema).readonly(),
   vat: z.object({

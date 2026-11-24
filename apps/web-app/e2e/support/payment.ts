@@ -1,4 +1,4 @@
-import type { Language } from "@payky/app-shared/i18n/resources"
+import type { Language } from "@payky/web-shared/landing-redirect"
 import type { Page } from "@playwright/test"
 import { startBillWithCoffee } from "./bill.ts"
 import { translate } from "./i18n.ts"

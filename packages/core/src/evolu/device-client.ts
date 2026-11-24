@@ -75,9 +75,9 @@ export const deviceSettingsId = createIdFromString<"DeviceSettings">(
 const DemoAccountStateSchema = z.enum(["pending", "seeded"])
 export type DemoAccountState = z.output<typeof DemoAccountStateSchema>
 
-const DeviceLanguageSchema = z.enum(["en", "cs", "sk"])
+const DeviceLanguageSchema = z.enum(["en", "cs", "sk", "vi"])
 const DeviceThemeSchema = z.enum(["system", "light", "dark"])
-const DeviceLocaleSchema = z.enum(["cs-CZ", "en-US", "sk-SK"])
+const DeviceLocaleSchema = z.enum(["cs-CZ", "en-US", "sk-SK", "vi-VN"])
 /**
  * What the AI assistant may send off the device (ai/0004): nothing, Payky's
  * public documentation and code, or the merchant's data as well.
@@ -254,6 +254,7 @@ const deviceLocaleByLanguage = {
   en: "en-US",
   cs: "cs-CZ",
   sk: "sk-SK",
+  vi: "vi-VN",
 } satisfies Record<DeviceLanguage, DeviceLocale>
 
 export function getDeviceLocaleForLanguage(

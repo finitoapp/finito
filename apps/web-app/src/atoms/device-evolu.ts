@@ -7,6 +7,7 @@ import {
 import { getPreferredDeviceLanguage } from "@payky/core/modules/device/device-utils"
 import { atom } from "jotai"
 import { runAtom } from "@/atoms/run.ts"
+import { appBrand } from "@/core/app-brand.ts"
 
 const deviceSettingsQuery = createDeviceQuery((db) =>
   db
@@ -24,7 +25,7 @@ export const deviceEvoluAtom = atom(async (get) => {
     deviceEvolu.upsert(
       "deviceSettings",
       createDefaultDeviceSettings(
-        getPreferredDeviceLanguage(navigator.language)
+        getPreferredDeviceLanguage(navigator.language, appBrand.languages)
       )
     )
   }

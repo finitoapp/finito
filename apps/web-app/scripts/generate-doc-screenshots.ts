@@ -1,17 +1,15 @@
 import { spawn } from "node:child_process"
 import { mkdir, rm } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
-import {
-  type Language,
-  resources,
-  type TranslationKey,
-} from "@payky/app-shared/i18n/resources"
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { composeMockup, type ShotName } from "@payky/doc-mockups/compose-mockup"
 import { deviceScaleFactor } from "@payky/doc-mockups/phone-frame-geometry"
 import {
   billCartByLanguage,
   billCatalogByLanguage,
   type CartItem,
+  type DocumentationLanguage,
+  documentationLanguages,
   paymentAmountByLanguage,
   splitCartByLanguage,
   statsHistoryDays,
@@ -39,12 +37,13 @@ interface ScreenshotScenario {
   readonly name: ShotName
   /** Every shot `capture` takes, when it is more than the one named after it. */
   readonly shots?: ReadonlyArray<ShotName>
-  readonly capture: (page: Page, language: Language) => Promise<void>
+  readonly capture: (
+    page: Page,
+    language: DocumentationLanguage
+  ) => Promise<void>
 }
 
-const documentationLanguages = Object.keys(resources) as Language[]
-
-const localeByLanguage: Record<Language, string> = {
+const localeByLanguage: Record<DocumentationLanguage, string> = {
   en: "en-US",
   cs: "cs-CZ",
   sk: "sk-SK",
@@ -80,7 +79,7 @@ async function waitForApp(): Promise<void> {
 }
 
 function nameParam(
-  language: Language,
+  language: DocumentationLanguage,
   key: TranslationKey,
   name: string
 ): string {
@@ -88,7 +87,7 @@ function nameParam(
 }
 
 /** Matches `demoData.running.progress`, capturing `{done}`. */
-function demoProgressPattern(language: Language): RegExp {
+function demoProgressPattern(language: DocumentationLanguage): RegExp {
   const [before = "", after = ""] = translate(
     language,
     "demoData.running.progress"
@@ -100,7 +99,7 @@ function demoProgressPattern(language: Language): RegExp {
 
 async function addCart(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   cart: ReadonlyArray<CartItem>
 ): Promise<void> {
   for (const item of cart) {
@@ -119,7 +118,7 @@ async function addCart(
 async function capturePage(
   page: Page,
   name: ShotName,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await page.screenshot({
     path: `${rawScreenshotsDirectory}/${language}/${name}.png`,
@@ -441,7 +440,10 @@ if (selectedScenarios.length === 0) {
 /** The web app's dark `--background`, behind the capture in its screenshot. */
 const screenshotBackground = "#101314"
 
-function composeScreenshot(name: ShotName, language: Language): Promise<void> {
+function composeScreenshot(
+  name: ShotName,
+  language: DocumentationLanguage
+): Promise<void> {
   return composeMockup({
     rawPath: `${rawScreenshotsDirectory}/${language}/${name}.png`,
     screenshotPath: `${screenshotsDirectory}/${language}/${name}.png`,

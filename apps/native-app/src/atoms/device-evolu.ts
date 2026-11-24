@@ -6,6 +6,7 @@ import {
 } from "@payky/core/evolu/device-client"
 import { getPreferredDeviceLanguage } from "@payky/core/modules/device/device-utils"
 import { atom } from "jotai"
+import { appBrand } from "../core/app-brand.ts"
 import { nativeRun } from "../core/native-runtime.ts"
 
 /**
@@ -32,7 +33,9 @@ export const deviceEvoluAtom = atom(async () => {
   if (deviceSettings.length === 0) {
     deviceEvolu.upsert(
       "deviceSettings",
-      createDefaultDeviceSettings(getPreferredDeviceLanguage(getNativeLocale()))
+      createDefaultDeviceSettings(
+        getPreferredDeviceLanguage(getNativeLocale(), appBrand.languages)
+      )
     )
   }
 

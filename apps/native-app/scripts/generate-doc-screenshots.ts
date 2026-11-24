@@ -6,15 +6,16 @@
 // docs/screenshots/<language>/<shot>.png and docs/mockup/<language>/<shot>.webp.
 // PAYKY_SCREENSHOT_SCENARIOS=home,stats regenerates only those scenarios;
 // PAYKY_SCREENSHOT_SKIP_BUILD=1 reuses the last export.
+
 import { mkdir, rm } from "node:fs/promises"
 import { join, resolve } from "node:path"
-import { type Language, resources } from "@payky/app-shared/i18n/resources"
 import { composeMockup } from "@payky/doc-mockups/compose-mockup"
 import {
   captureHeight,
   captureWidth,
   deviceScaleFactor,
 } from "@payky/doc-mockups/phone-frame-geometry"
+import { documentationLanguages } from "@payky/doc-mockups/screenshot-content"
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
 import { palette } from "../src/theme/palette.ts"
@@ -49,8 +50,6 @@ const appDir = resolve(import.meta.dirname, "..")
 const rawScreenshotsDirectory = join(appDir, ".tmp/docs-screenshots")
 const screenshotsDirectory = join(appDir, "docs/screenshots")
 const mockupsDirectory = join(appDir, "docs/mockup")
-
-const documentationLanguages = Object.keys(resources) as Language[]
 
 const selectedScenarios =
   env.PAYKY_SCREENSHOT_SCENARIOS === undefined

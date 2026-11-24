@@ -3,6 +3,7 @@ import type {
   LibraryProduct,
   ProductLibrary,
 } from "@payky/core/integrations/product-library/product-library-client"
+import { libraryLanguage } from "@payky/core/integrations/product-library/product-library-client"
 import {
   libraryCategoryName,
   libraryVatRateFor,
@@ -103,7 +104,7 @@ export const libraryProductPrefill = ({
 
   const categoryName = libraryCategoryName(library, product, language)
   return {
-    name: product.names[language],
+    name: product.names[libraryLanguage(language)],
     libraryProductId: libraryProductId.data,
     taxRateId: libraryVatRateFor({ product, country, taxRates }),
     category:

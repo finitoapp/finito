@@ -698,6 +698,7 @@ export const enSettings = {
     "Choose the regional format used for dates, numbers, and currencies.",
   "settings.language.locale.english.title": "United States",
   "settings.language.locale.slovak.title": "Slovakia",
+  "settings.language.locale.vietnamese.title": "Vietnam",
   "settings.language.locale.title": "Regional format",
   "settings.language.mode.description":
     "Choose which language the app should use.",

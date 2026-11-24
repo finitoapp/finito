@@ -1,8 +1,10 @@
 import type { DeviceLanguage } from "../../evolu/device-client.ts"
 import { foldDiacritics } from "../../utils/sql-text-search.ts"
-import type {
-  LibraryProduct,
-  ProductLibrary,
+import {
+  type LibraryLanguage,
+  type LibraryProduct,
+  libraryLanguage,
+  type ProductLibrary,
 } from "./product-library-client.ts"
 
 /**
@@ -118,13 +120,13 @@ type LanguageIndex = ReadonlyArray<IndexedProduct>
  */
 const libraryIndexes = new WeakMap<
   ProductLibrary,
-  Map<DeviceLanguage, LanguageIndex>
+  Map<LibraryLanguage, LanguageIndex>
 >()
 
 const indexProduct = (
   product: LibraryProduct,
   index: number,
-  language: DeviceLanguage
+  language: LibraryLanguage
 ): IndexedProduct => {
   const name = foldDiacritics(product.names[language])
   const nameWords = wordsOf(name)
@@ -148,10 +150,10 @@ const indexProduct = (
 /** The library's suggestable products in `language`, folded once. */
 const languageIndex = (
   library: ProductLibrary,
-  language: DeviceLanguage
+  language: LibraryLanguage
 ): LanguageIndex => {
   const languages =
-    libraryIndexes.get(library) ?? new Map<DeviceLanguage, LanguageIndex>()
+    libraryIndexes.get(library) ?? new Map<LibraryLanguage, LanguageIndex>()
   libraryIndexes.set(library, languages)
 
   const known = languages.get(language)
@@ -206,7 +208,7 @@ export const searchLibraryProducts = (
   const folded = foldDiacritics(query.trim()).replace(/\s+/g, " ")
   if (folded === "") return []
 
-  return languageIndex(library, language)
+  return languageIndex(library, libraryLanguage(language))
     .flatMap((indexed) => {
       const rank = rankProduct(indexed, folded)
       return rank === undefined

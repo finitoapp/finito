@@ -33,7 +33,10 @@ import { captureReportedError } from "@/core/sentry.ts"
  */
 function t(key: TranslationKey): string {
   try {
-    const language = getPreferredDeviceLanguage(navigator.language)
+    const language = getPreferredDeviceLanguage(
+      navigator.language,
+      appBrand.languages
+    )
     return createTranslate(language, appBrand)(key)
   } catch {
     return createTranslate("en", appBrand)(key)

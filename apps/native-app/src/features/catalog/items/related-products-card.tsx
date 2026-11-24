@@ -1,4 +1,5 @@
 import { relatedItemCategoryId } from "@payky/app-shared/library-product-prefill"
+import { libraryLanguage } from "@payky/core/integrations/product-library/product-library-client"
 import { relatedSuggestions } from "@payky/core/integrations/product-library/product-library-utils"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import { router, useFocusEffect } from "expo-router"
@@ -111,7 +112,7 @@ export function RelatedProductsCard({
                 size="sm"
                 rounded={shape.pill}
                 iconStart={Plus}
-                label={related.names[language]}
+                label={related.names[libraryLanguage(language)]}
                 onPress={() =>
                   router.push({
                     pathname: "/settings/items/new",

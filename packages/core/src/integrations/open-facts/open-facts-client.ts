@@ -33,6 +33,7 @@ const OpenFactsProductResponseSchema = z.object({
     product_name_cs: z.string().optional(),
     product_name_en: z.string().optional(),
     product_name_sk: z.string().optional(),
+    product_name_vi: z.string().optional(),
     brands: z.string().optional(),
     quantity: z.string().optional(),
   }),

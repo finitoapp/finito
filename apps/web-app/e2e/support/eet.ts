@@ -1,4 +1,3 @@
-import type { Language } from "@payky/app-shared/i18n/resources"
 import {
   createFakeEetResponder,
   type FakeEetResponder,
@@ -7,6 +6,7 @@ import {
   createTestCertificate,
   createTestPkcs12,
 } from "@payky/core/testing/eet-test-certificates"
+import type { Language } from "@payky/web-shared/landing-redirect"
 import { expect, type Page, type Route } from "@playwright/test"
 import { fakeEetProductionUrl } from "./eet-endpoints.ts"
 import { translate } from "./i18n.ts"

@@ -1,4 +1,5 @@
 import type { LibraryProduct } from "@payky/core/integrations/product-library/product-library-client"
+import { libraryLanguage } from "@payky/core/integrations/product-library/product-library-client"
 import { searchLibraryProducts } from "@payky/core/integrations/product-library/product-library-search"
 import { libraryCategoryName } from "@payky/core/integrations/product-library/product-library-utils"
 import { useMemo, useState } from "react"
@@ -133,7 +134,7 @@ export function LibraryNameField({
                       lineHeight={fontSize.sm}
                       numberOfLines={1}
                     >
-                      {product.names[language]}
+                      {product.names[libraryLanguage(language)]}
                     </Text>
                     <Text
                       fontSize={fontSize.xs}

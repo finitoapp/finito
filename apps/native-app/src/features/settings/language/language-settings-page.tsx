@@ -24,6 +24,7 @@ const localeOptions = [
   { value: "en-US", label: "settings.language.locale.english.title" },
   { value: "cs-CZ", label: "settings.language.locale.czech.title" },
   { value: "sk-SK", label: "settings.language.locale.slovak.title" },
+  { value: "vi-VN", label: "settings.language.locale.vietnamese.title" },
 ] as const satisfies ReadonlyArray<{
   readonly value: DeviceLocale
   readonly label: TranslationKey

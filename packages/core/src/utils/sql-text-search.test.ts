@@ -20,6 +20,11 @@ describe("foldDiacritics", () => {
     expect(foldDiacritics("Ñandú")).toBe("nandu")
   })
 
+  test("strips Vietnamese diacritics regardless of case", () => {
+    expect(foldDiacritics("Phở bò tái đặc biệt")).toBe("pho bo tai dac biet")
+    expect(foldDiacritics("BÚN CHẢ, ĐẬU HŨ")).toBe("bun cha, dau hu")
+  })
+
   test("leaves unmapped characters untouched", () => {
     expect(foldDiacritics("item #42!")).toBe("item #42!")
   })

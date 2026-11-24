@@ -1,8 +1,8 @@
-import type { Language } from "@payky/app-shared/i18n/resources"
 import type { ShotName } from "@payky/doc-mockups/compose-mockup"
 import {
   billCartByLanguage,
   billCatalogByLanguage,
+  type DocumentationLanguage,
   paymentAmountByLanguage,
   splitCartByLanguage,
   statsHistoryDays,
@@ -49,7 +49,7 @@ export interface ScreenshotScenario {
   readonly shots?: ReadonlyArray<ShotName>
   readonly capture: (
     page: Page,
-    language: Language,
+    language: DocumentationLanguage,
     shoot: Shoot
   ) => Promise<void>
 }

@@ -65,8 +65,9 @@ export const createLandingSitePaths = (
 /** Payky's landing, where the web app sends a visitor (landing/0001). */
 export const landingPaths = createLandingSitePaths("/landing").home
 
-/** The landing's languages are the app's (`LanguageSchema`). */
-export const LandingLanguageSchema: z.ZodType<Language> = LanguageSchema
+/** The landing's languages, all of which the apps speak (brand/0007). */
+export const LandingLanguageSchema: z.ZodType<Language> =
+  LanguageSchema.extract(["cs", "en", "sk"])
 
 const LandingLanguageJson = jsonCodec(LandingLanguageSchema)
 

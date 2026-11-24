@@ -25,7 +25,10 @@ import { markFirstScreenReady } from "../../core/first-screen.ts"
 function t(key: TranslationKey): string {
   try {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale
-    return createTranslate(getPreferredDeviceLanguage(locale), appBrand)(key)
+    return createTranslate(
+      getPreferredDeviceLanguage(locale, appBrand.languages),
+      appBrand
+    )(key)
   } catch {
     return createTranslate("en", appBrand)(key)
   }

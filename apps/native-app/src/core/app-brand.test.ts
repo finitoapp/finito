@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import ts from "typescript"
 import { expect, test } from "vitest"
+import { languageOptions } from "../components/language-options.ts"
+import { appBrand } from "./app-brand.ts"
 
 /**
  * The native app ships as Finito (brand/0006), so nothing it shows may say
@@ -52,6 +54,10 @@ const brandedTexts = (file: string): ReadonlyArray<string> => {
   visit(source)
   return found
 }
+
+test("the language list offers the brand's languages", () => {
+  expect(languageOptions.map(({ value }) => value)).toEqual(appBrand.languages)
+})
 
 test("the native app's code shows no Payky", () => {
   const sources = [

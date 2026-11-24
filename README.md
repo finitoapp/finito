@@ -92,8 +92,8 @@ bun run google-play:assets       # the Google Play listing, into apps/native-app
 - `apps/native-app`: Finito, its PWA export and the API handlers it deploys.
 - `packages/core`: the single domain implementation both apps share, imported
   through explicit subpaths such as `@payky/core/modules/payment/payment-actions`.
-- `packages/app-shared`: the brands and the English, Czech and Slovak
-  translations both apps use.
+- `packages/app-shared`: the brands and the English, Czech, Slovak and
+  Vietnamese translations the apps use (Vietnamese in Finito only).
 - `apps/landing`: the marketing site, built as finito.fit
   (`PAYKY_LANDING_BRAND=finito`, see [landing deployment](docs/landing-deployment.md)).
 - `apps/cli`: local commands over the same data.

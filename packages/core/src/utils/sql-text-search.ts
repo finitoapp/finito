@@ -8,7 +8,7 @@ import type {
 
 /**
  * Every diacritic-bearing Latin letter (both cases) this app searches
- * across — Czech/Slovak plus common Western European accents. The single
+ * across — Czech/Slovak, Vietnamese and common Western European accents. The single
  * source of truth for `foldDiacritics` (JS side) and `foldDiacriticsSql`
  * (SQL side), so a search term and a stored column always fold to the same
  * value.
@@ -21,14 +21,26 @@ import type {
  * `ę`, ...) would then stop matching the row it came from. Add a letter here
  * and both sides learn it together.
  */
-const ACCENTED_LETTERS =
-  "áÁàÀâÂäÄãÃåÅčČçÇďĎéÉèÈêÊëËěĚíÍìÌîÎïÏňŇñÑóÓòÒôÔöÖõÕřŘšŠťŤúÚùÙûÛüÜůŮýÝÿžŽ"
+const ACCENTED_LETTERS = [
+  "áÁàÀâÂäÄãÃåÅčČçÇďĎéÉèÈêÊëËěĚíÍìÌîÎïÏňŇñÑóÓòÒôÔöÖõÕřŘšŠťŤúÚùÙûÛüÜůŮýÝÿžŽ",
+  // Vietnamese
+  "ĂăĨĩŨũƠơƯưẠạẢảẤấẦầẨẩẪẫẬậẮắẰằẲẳẴẵẶặẸẹẺẻẼẽẾếỀềỂểỄễỆệỈỉỊịỌọỎỏỐốỒồỔổỖỗỘộỚớỜờỞởỠỡỢợỤụỦủỨứỪừỬửỮữỰựỲỳỴỵỶỷỸỹ",
+].join("")
 
 const DIACRITICS_FOLD_MAP: ReadonlyArray<readonly [string, string]> = [
   ...ACCENTED_LETTERS,
-].map(
-  (letter) => [letter, letter.normalize("NFD").charAt(0).toLowerCase()] as const
-)
+]
+  .map(
+    (letter) =>
+      [letter, letter.normalize("NFD").charAt(0).toLowerCase()] as const
+  )
+  .concat(
+    // The one letter with a stroke, which NFD does not take apart.
+    [
+      ["đ", "d"],
+      ["Đ", "d"],
+    ]
+  )
 
 /**
  * Lowercases and strips diacritics from user-facing text the same way

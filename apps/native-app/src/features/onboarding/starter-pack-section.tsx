@@ -10,6 +10,7 @@ import {
 } from "@payky/app-shared/onboarding-starter-pack"
 import { onboardingCurrency } from "@payky/app-shared/onboarding-utils"
 import type { ProductLibrary } from "@payky/core/integrations/product-library/product-library-client"
+import { libraryLanguage } from "@payky/core/integrations/product-library/product-library-client"
 import { Text, XStack, YStack } from "tamagui"
 import {
   LibraryPicture,
@@ -103,7 +104,7 @@ export function StarterPackSection({
         </ToggleGroupItem>
         {packs.map((pack) => (
           <ToggleGroupItem key={pack.id} value={pack.id} minH={44}>
-            {pack.names[language]}
+            {pack.names[libraryLanguage(language)]}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>

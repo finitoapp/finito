@@ -10,10 +10,11 @@
 // scenarios (screenshots/terminal-scenarios.ts), PAYKY_SCREENSHOT_LANGUAGES=en
 // only those languages, and PAYKY_SCREENSHOT_SKIP_BUILD=1 reuses the last
 // export.
+
 import { mkdir, rm } from "node:fs/promises"
 import { join, resolve } from "node:path"
-import { type Language, resources } from "@payky/app-shared/i18n/resources"
 import { composeTerminalShot } from "@payky/doc-mockups/compose-terminal-shot"
+import { documentationLanguages } from "@payky/doc-mockups/screenshot-content"
 import {
   terminalCaptureHeight,
   terminalCaptureWidth,
@@ -38,7 +39,7 @@ const listFromCommas = z.string().transform((value) =>
     .filter((name) => name !== "")
 )
 
-const languages = Object.keys(resources) as [Language, ...Language[]]
+const languages = documentationLanguages
 
 const env = createEnv({
   server: {
