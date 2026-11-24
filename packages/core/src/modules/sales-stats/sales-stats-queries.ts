@@ -635,7 +635,8 @@ export type SalesSignal = "canceledPayment" | "canceledBill" | "manualIban"
  * What may look off, per currency (`count` and `amount` each):
  *
  * - `canceledPayment` — `canceledAt` in the range and not confirmed paid;
- *   `amount` is what was charged, tip included.
+ *   `amount` is what was charged, tip included. A deleted payment stays
+ *   counted, so deleting a canceled one does not hide it (payment/0029).
  * - `canceledBill` — `canceledAt` in the range and not confirmed closed,
  *   with the total of the goods discarded with it: only its groups that net
  *   above zero, so a discount added before discarding cannot zero the
@@ -659,7 +660,6 @@ export const signalsQuery = (range: StatsRange) =>
       .where("payment.canceledAt", ">=", fromMs)
       .where("payment.canceledAt", "<", toMs)
       .where("payment.confirmedPaidAt", "is", null)
-      .where("payment.isDeleted", "is not", sqliteTrue)
       .where("payment.amount", "is not", null)
       .where("payment.currency", "is not", null)
       .groupBy("payment.currency")

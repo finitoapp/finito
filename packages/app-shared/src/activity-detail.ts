@@ -47,6 +47,11 @@ export interface PaymentDetailState {
   readonly hasExcessSettlementCollision: boolean
   readonly excess: NonNegativeInteger
   readonly receivedTipAmount: NonNegativeInteger
+  /**
+   * Whether the screen offers deleting it (payment/0029): pending or
+   * canceled, with no money. `deleteUnpaidPayment` still judges for itself.
+   */
+  readonly canDelete: boolean
   /** The methods that settled it, once each, in claim order. */
   readonly paymentMethodKinds: ReadonlyArray<
     PaymentReconciliationRow["transactionKind"]
@@ -78,14 +83,18 @@ export const derivePaymentDetailState = ({
         ]
   )
 
+  const status = derivePaymentStatus({
+    canceledAt: payment.canceledAt,
+    confirmedPaidAt: payment.confirmedPaidAt,
+    expiresAt: payment.expiresAt,
+    hasActiveClaim,
+    now,
+  })
+
   return {
-    status: derivePaymentStatus({
-      canceledAt: payment.canceledAt,
-      confirmedPaidAt: payment.confirmedPaidAt,
-      expiresAt: payment.expiresAt,
-      hasActiveClaim,
-      now,
-    }),
+    status,
+    canDelete:
+      !hasActiveClaim && (status === "pending" || status === "canceled"),
     hasCancellationCollision: derivePaymentHasCancellationCollision({
       canceledAt: payment.canceledAt,
       confirmedPaidAt: payment.confirmedPaidAt,

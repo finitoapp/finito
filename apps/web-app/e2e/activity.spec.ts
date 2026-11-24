@@ -64,6 +64,51 @@ test("a paid payment shows up in activity list and detail", async ({
   })
 })
 
+test("a pending payment is deleted from its detail", async ({
+  seededPage: page,
+}) => {
+  await test.step("leave a payment pending", () => createPayment(page, "en"))
+
+  await test.step("open it from the activity list", async () => {
+    await gotoPage(page, "/activity", "en", "activity.title")
+    await contentNav(page, "en")
+      .getByRole("link", { name: translate("en", "payment.status.pending") })
+      .first()
+      .click()
+    await page
+      .getByRole("heading", { name: translate("en", "paymentDetail.title") })
+      .waitFor()
+  })
+
+  await test.step("delete it with the header's trash button", async () => {
+    const trash = page.getByRole("button", {
+      name: translate("en", "paymentDetail.delete"),
+      exact: true,
+    })
+    await expect(trash).toBeVisible()
+    await page.screenshot({ path: `${screenshotDir}/payment-delete.png` })
+    await trash.click()
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", {
+        name: translate("en", "paymentDetail.delete.confirm.confirm"),
+        exact: true,
+      })
+      .click()
+  })
+
+  await test.step("the list no longer has it", async () => {
+    await page
+      .getByRole("heading", { name: translate("en", "activity.title") })
+      .waitFor()
+    await expect(
+      page.getByText(translate("en", "payment.status.pending"), {
+        exact: true,
+      })
+    ).toHaveCount(0)
+  })
+})
+
 test("the payment detail's bill items list includes the tip so its total matches the payment amount", async ({
   seededPage: page,
 }) => {

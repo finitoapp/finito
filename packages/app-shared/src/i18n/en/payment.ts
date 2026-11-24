@@ -121,6 +121,17 @@ export const enPayment = {
     "Couldn't mark the payment as paid. Try again.",
   "paymentDetail.collision.refund": "Refund",
   "paymentDetail.collision.title": "Canceled, but money arrived",
+  "paymentDetail.delete": "Delete payment",
+  "paymentDetail.delete.confirm.title": "Delete the payment?",
+  "paymentDetail.delete.confirm.description":
+    "The payment disappears from the activity. If the customer still pays it, the money will not be matched to it.",
+  "paymentDetail.delete.confirm.confirm": "Delete",
+  "paymentDetail.delete.confirm.cancel": "Keep",
+  "paymentDetail.delete.error.generic": "The payment could not be deleted.",
+  "paymentDetail.delete.error.notDeletable":
+    "The payment is no longer pending or canceled, so it cannot be deleted.",
+  "paymentDetail.delete.error.attemptOpen":
+    "A payment may still be in progress or its result is unknown, so it cannot be deleted.",
   "paymentDetail.deviceId": "Device",
   "paymentDetail.emptyValue": "—",
   "paymentDetail.excessCollision.acknowledge": "Mark as resolved",

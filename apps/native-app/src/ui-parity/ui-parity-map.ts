@@ -331,6 +331,11 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/features/activity/payment-delete-button.tsx",
+    web: ["apps/web-app/src/features/activity/payment-delete-button.tsx"],
+    status: "matched",
+  },
+  {
     native: "src/features/activity/payment-detail-page.tsx",
     web: ["apps/web-app/src/features/activity/payment-detail.tsx"],
     status: "matched",

@@ -1216,6 +1216,7 @@ export const skSettings = {
   "access.action.confirmPaidDespiteCancellation":
     "Označiť zrušenú platbu ako zaplatenú",
   "access.action.createItem": "Vytvoriť položku katalógu",
+  "access.action.deletePayment": "Zmazať platbu",
   "access.action.disable": "Vypnúť riadenie prístupu",
   "access.action.exportDatabase": "Exportovať databázu aplikácie",
   "access.action.revealRecoveryPhrase": "Zobraziť obnovovaciu frázu",

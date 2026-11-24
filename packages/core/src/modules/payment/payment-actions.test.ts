@@ -88,6 +88,7 @@ import {
   confirmPaymentPaidDespiteCancellation,
   createPayment,
   deletePayment,
+  deleteUnpaidPayment,
   loadPayment,
   markPaymentPaid,
   markPaymentPaidCash,
@@ -1310,6 +1311,98 @@ describe("payment actions", () => {
       error: { type: "PaymentNotFound", id },
     })
   }, 15_000)
+
+  describe("deleting an unpaid payment (payment/0029)", () => {
+    const setUp = async () => {
+      const testEvolu = await createEvoluTest()
+      const deps = {
+        ...evoluTestDeps(testEvolu.evolu),
+        ...createTestDateDep(),
+      } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      const run = testCreateRun(deps)
+      const { cashRegisterAccountId } = await createPaymentAccounts(deps)
+      const create = (expiresAt: TimestampMs | null = null) =>
+        run.orThrow(
+          createPayment({
+            deviceId: null,
+            billId: null,
+            tableId: null,
+            amount: NonNegativeInteger(12_900),
+            currency: "CZK",
+            tipAmount: NonNegativeInteger(0),
+            canceledAt: null,
+            expiresAt,
+          })
+        )
+      return {
+        evolu: testEvolu.evolu,
+        run,
+        cashRegisterAccountId,
+        create,
+        [Symbol.asyncDispose]: async () => {
+          await run[Symbol.asyncDispose]()
+          await testEvolu[Symbol.asyncDispose]()
+        },
+      }
+    }
+
+    test("a pending payment is deleted, and canceled with it", async () => {
+      await using ctx = await setUp()
+      const id = await ctx.create()
+
+      await expect(ctx.run(deleteUnpaidPayment(id))).resolves.toEqual({
+        ok: true,
+        value: id,
+      })
+
+      expect(await ctx.run(loadPayment(id))).toEqual({
+        ok: false,
+        error: { type: "PaymentNotFound", id },
+      })
+      const [row] = await ctx.evolu.loadQuery(paymentWithDetailsByIdQuery(id))
+      expect(row?.canceledAt).not.toBeNull()
+    }, 15_000)
+
+    test("a canceled payment is deleted", async () => {
+      await using ctx = await setUp()
+      const id = await ctx.create()
+      await ctx.run.orThrow(cancelPayment(id))
+
+      await ctx.run.orThrow(deleteUnpaidPayment(id))
+
+      expect((await ctx.run(loadPayment(id))).ok).toBe(false)
+    }, 15_000)
+
+    test("a payment money arrived for is refused, canceled or not", async () => {
+      await using ctx = await setUp()
+      const id = await ctx.create()
+      await ctx.run.orThrow(
+        markPaymentPaidCash({
+          paymentId: id,
+          accountId: ctx.cashRegisterAccountId,
+        })
+      )
+      const refused = {
+        ok: false,
+        error: { type: "PaymentAlreadyPaid", id },
+      }
+      await expect(ctx.run(deleteUnpaidPayment(id))).resolves.toEqual(refused)
+
+      // Canceled by a merge from another device.
+      await ctx.run.ok(updatePayment({ id, canceledAt: TimestampMs(1_000) }))
+      await expect(ctx.run(deleteUnpaidPayment(id))).resolves.toEqual(refused)
+    }, 15_000)
+
+    test("an expired payment is refused", async () => {
+      await using ctx = await setUp()
+      const id = await ctx.create(TimestampMs(1))
+
+      await expect(ctx.run(deleteUnpaidPayment(id))).resolves.toEqual({
+        ok: false,
+        error: { type: "PaymentNotDeletable", id, status: "expired" },
+      })
+    }, 15_000)
+  })
 
   test("creating a payment for a bill neither closes nor unlocks it, and a second/split payment is still accepted", async () => {
     await using testEvolu = await createEvoluTest()
@@ -4527,6 +4620,24 @@ describe("payment actions", () => {
             async () => (await run.orThrow(loadPayment(paymentId))).canceledAt
           )
           .not.toBeNull()
+      }, 15_000)
+
+      test("keeps it from being deleted, canceled or not (payment/0029)", async () => {
+        await using ctx = await setUp(async () => await unreadable())
+        const { run, accountId, paymentId } = ctx
+        await run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+        const refused = {
+          ok: false,
+          error: { type: "PaymentAttemptOpen", id: paymentId },
+        }
+
+        await expect(run(deleteUnpaidPayment(paymentId))).resolves.toEqual(
+          refused
+        )
+        await run.orThrow(cancelPayment(paymentId, { confirmUnresolved: true }))
+        await expect(run(deleteUnpaidPayment(paymentId))).resolves.toEqual(
+          refused
+        )
       }, 15_000)
 
       test("needs no confirmation once the attempt is settled as declined", async () => {

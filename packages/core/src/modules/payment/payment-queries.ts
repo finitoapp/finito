@@ -1184,6 +1184,16 @@ export const cashuPaymentQuotesQuery = createQuery((db) =>
     .$narrowType<{ quoteId: KyselyNotNull; mintUrl: KyselyNotNull }>()
 )
 
+/** The receive of a token sent for this payment, once it holds one. */
+export const paymentCashuReceiveQuery = (idValue: PaymentId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("paymentCashu")
+      .select(["id", "receiveOperationId"])
+      .where("id", "=", idValue)
+      .where("isDeleted", "is not", sqliteTrue)
+  )
+
 /**
  * The payments a Cashu token may pay (cashu/0006): every one with a Cashu
  * method, with what decides whether it is still open. Few rows: only

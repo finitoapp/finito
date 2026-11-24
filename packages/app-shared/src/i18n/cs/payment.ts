@@ -120,6 +120,17 @@ export const csPayment = {
     "Platbu se nepodařilo označit jako zaplacenou. Zkuste to znovu.",
   "paymentDetail.collision.refund": "Vrátit platbu",
   "paymentDetail.collision.title": "Zrušeno, ale peníze dorazily",
+  "paymentDetail.delete": "Smazat platbu",
+  "paymentDetail.delete.confirm.title": "Smazat platbu?",
+  "paymentDetail.delete.confirm.description":
+    "Platba zmizí z aktivity. Pokud ji zákazník přesto zaplatí, peníze se k ní nespárují.",
+  "paymentDetail.delete.confirm.confirm": "Smazat",
+  "paymentDetail.delete.confirm.cancel": "Ponechat",
+  "paymentDetail.delete.error.generic": "Platbu se nepodařilo smazat.",
+  "paymentDetail.delete.error.notDeletable":
+    "Platba už není čekající ani zrušená, proto ji nelze smazat.",
+  "paymentDetail.delete.error.attemptOpen":
+    "Platba možná ještě probíhá nebo není znám její výsledek, proto ji nelze smazat.",
   "paymentDetail.deviceId": "Zařízení",
   "paymentDetail.emptyValue": "—",
   "paymentDetail.excessCollision.acknowledge": "Označit jako vyřešeno",

@@ -113,6 +113,7 @@ import {
   OptionalRow,
   Technical,
 } from "./detail-parts.tsx"
+import { PaymentDeleteButton } from "./payment-delete-button.tsx"
 import { PaymentQerkoAttempts } from "./payment-qerko-attempts.tsx"
 import { PaymentRefunds } from "./payment-refunds.tsx"
 import { PaymentStatusBadge } from "./payment-status-display.tsx"
@@ -138,7 +139,16 @@ export function PaymentDetailPage() {
   const parsed = PaymentId.safeParse(paymentId)
 
   return (
-    <DetailScreen title={t("paymentDetail.title")}>
+    <DetailScreen
+      title={t("paymentDetail.title")}
+      endAddon={
+        parsed.success ? (
+          <Suspense fallback={null}>
+            <PaymentDeleteButton paymentId={parsed.data} />
+          </Suspense>
+        ) : null
+      }
+    >
       {parsed.success ? (
         <Suspense fallback={<PaymentDetailSkeleton />}>
           <PaymentDetail paymentId={parsed.data} />

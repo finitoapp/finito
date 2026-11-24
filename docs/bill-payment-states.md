@@ -160,6 +160,13 @@ record money that really arrived. Among several payments matching one
 incoming transaction, the reconciliation prefers a live one and takes a
 canceled one only when nothing else matches (payment/0004).
 
+`deleteUnpaidPayment` takes a payment off the history (`isDeleted`). It
+accepts only a Pending or Canceled payment with no active claim and no
+attempt whose money may be on its way, and sets `canceledAt` on a pending one
+in the same write. Deleting a pending payment therefore unlocks its bill.
+Money that arrives later matches nothing
+([`payment/0029`](decisions/payment/0029-a-pending-or-canceled-payment-can-be-deleted.md)).
+
 `confirmPaymentPaidDespiteCancellation` is the mirror guard for that residual
 case: it requires **both** `canceledAt !== null` and an active claim to
 already exist before it will set `confirmedPaidAt`, rejecting with
