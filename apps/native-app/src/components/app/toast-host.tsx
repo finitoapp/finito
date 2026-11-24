@@ -44,8 +44,8 @@ function AppToast({ toast }: { readonly toast: ToastData }) {
  * Mount once inside the Jotai Provider and TamaguiProvider. `toastsAtom` is
  * the inbox callers write to; each toast is handed to Tamagui's toaster
  * (its timing, stacking, enter/exit and swipe to dismiss) and leaves the
- * atom. The viewport renders in place, not through Tamagui's portal, which
- * on native would drop the app's React contexts.
+ * atom. The viewport is portalled to the root above every sheet and dialog
+ * (`platform/native-portal.ts` keeps the app's React contexts on native).
  */
 export function ToastHost() {
   const toasts = useAtomValue(toastsAtom)
@@ -71,7 +71,6 @@ export function ToastHost() {
       reducedMotion={reducedMotion}
     >
       <TamaguiToast.Viewport
-        portalToRoot={false}
         offset={{ bottom: 24, left: 16, right: 16 }}
         // Tamagui's `safe` edges need its own safe-area setup; give the
         // insets directly (web keeps its centered column).

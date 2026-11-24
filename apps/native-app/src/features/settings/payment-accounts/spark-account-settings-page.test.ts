@@ -34,7 +34,9 @@ it("validates imported mnemonics and warns before every wallet switch", () => {
   expect(page).toMatch(
     /<Dialog[\s\S]*onOpenChange=\{\(nextOpen\) => \{\s*if \(!nextOpen\) close\(\)/
   )
-  expect(dialog).toMatch(/onRequestClose=\{\(\) => onOpenChange\(false\)\}/)
+  expect(dialog).toMatch(
+    /useCloseOnBackButton\(open, \(\) => onOpenChange\(false\)\)/
+  )
   expect(page).toMatch(
     /const close = \(\) => \{\s*setTarget\("custom"\)\s*setMnemonic\(""\)/
   )

@@ -1,9 +1,10 @@
 import type { ReactNode } from "react"
-import { Modal } from "react-native"
-import { styled, Text, View } from "tamagui"
+import { type GetProps, styled, View } from "tamagui"
+import { AlertDialog as TamaguiAlertDialog } from "tamagui/unstyled"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Button, type ButtonProps } from "./button.tsx"
-import { DialogContext, useDialog } from "./dialog.tsx"
+import { DialogContext, useCloseOnBackButton, useDialog } from "./dialog.tsx"
+import { useKitTransition } from "./press-fill.tsx"
 
 /**
  * Web `apps/web-app/src/components/ui/alert-dialog.tsx`: `AlertDialog`,
@@ -17,9 +18,12 @@ import { DialogContext, useDialog } from "./dialog.tsx"
  * description `text-sm text-muted-foreground`; footer `flex-col-reverse
  * gap-2`; Action a default button, Cancel an outline one.
  *
- * A centered card on an RN `Modal` (fade, `statusBarTranslucent`), where
- * `ui/dialog` is a bottom sheet: an overlay tap does not dismiss it, the
- * hardware back button calls `onOpenChange(false)`. Unlike web, where both
+ * Base: Tamagui `AlertDialog`, portalled to the root as `ui/dialog`'s sheet
+ * (`platform/native-portal.ts`), a centered card where `ui/dialog` is a
+ * bottom sheet: the overlay fades in and the card fades and grows in on the
+ * `fast` transition, an overlay tap does not dismiss it, the hardware back
+ * button calls `onOpenChange(false)`; Title and Description name and
+ * describe it to a screen reader. Unlike web, where both
  * buttons are `Close` primitives, Action only runs its `onPress`: the owner
  * decides whether that closes the dialog, so a queue (the confirm host) can
  * settle one request without also cancelling the next. Cancel without an
@@ -35,33 +39,32 @@ export function AlertDialog({
   readonly onOpenChange: (open: boolean) => void
   readonly children: ReactNode
 }) {
+  const transition = useKitTransition("fast")
+  useCloseOnBackButton(open, () => onOpenChange(false))
   return (
     <DialogContext value={{ onOpenChange }}>
-      <Modal
-        visible={open}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => onOpenChange(false)}
-      >
-        <View
-          flex={1}
-          justify="center"
-          items="center"
-          p={16}
-          bg="rgba(0,0,0,0.5)"
-        >
+      <TamaguiAlertDialog open={open} onOpenChange={onOpenChange}>
+        <TamaguiAlertDialog.Portal p={16}>
+          <TamaguiAlertDialog.Overlay
+            key="overlay"
+            position="absolute"
+            t={0}
+            r={0}
+            b={0}
+            l={0}
+            bg="rgba(0,0,0,0.5)"
+            opacity="1 enter:0 exit:0"
+            transition={transition}
+          />
           {children}
-        </View>
-      </Modal>
+        </TamaguiAlertDialog.Portal>
+      </TamaguiAlertDialog>
     </DialogContext>
   )
 }
 
-export const AlertDialogContent = styled(View, {
+const AlertDialogContentFrame = styled(TamaguiAlertDialog.Content, {
   name: "AlertDialogContent",
-  role: "alertdialog",
-  "aria-modal": true,
   w: "100%",
   maxW: 512,
   gap: 16,
@@ -69,14 +72,25 @@ export const AlertDialogContent = styled(View, {
   // fazole.fit's sheet: 24 round, no border.
   rounded: shape.sheet,
   bg: "popover",
+  opacity: "1 enter:0 exit:0",
+  scale: "1 enter:0.95 exit:0.95",
 })
+
+export function AlertDialogContent(
+  props: GetProps<typeof AlertDialogContentFrame>
+) {
+  const transition = useKitTransition("fast")
+  return (
+    <AlertDialogContentFrame key="content" transition={transition} {...props} />
+  )
+}
 
 export const AlertDialogHeader = styled(View, {
   name: "AlertDialogHeader",
   gap: 8,
 })
 
-export const AlertDialogTitle = styled(Text, {
+export const AlertDialogTitle = styled(TamaguiAlertDialog.Title, {
   name: "AlertDialogTitle",
   role: "heading",
   text: "center",
@@ -85,7 +99,7 @@ export const AlertDialogTitle = styled(Text, {
   fontWeight: fontWeight.semibold,
 })
 
-export const AlertDialogDescription = styled(Text, {
+export const AlertDialogDescription = styled(TamaguiAlertDialog.Description, {
   name: "AlertDialogDescription",
   text: "center",
   fontSize: fontSize.sm,
