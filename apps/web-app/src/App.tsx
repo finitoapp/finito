@@ -22,6 +22,7 @@ import { PinPromptHost } from "@/components/app/pin-prompt-host.tsx"
 import { PwaUpdateToast } from "@/components/app/pwa-update-toast.tsx"
 import { SentryController } from "@/components/app/sentry-controller.tsx"
 import { SwitchioRestoredResult } from "@/components/app/switchio-restored-result.tsx"
+import { UnhandledErrorsToConsole } from "@/components/app/unhandled-errors-to-console.tsx"
 import { ThemeProvider } from "@/components/theme-provider.tsx"
 import { Toaster } from "@/components/ui/sonner.tsx"
 import { queryClient } from "@/core/query-client.ts"
@@ -76,6 +77,8 @@ export function App() {
           getResetKey={() => "app"}
           errorComponent={AppErrorBoundary}
         >
+          {/* Outside the Suspense below, so it listens from the first render. */}
+          <UnhandledErrorsToConsole />
           <Suspense fallback={<AppLoadingFallback />}>
             <AppLoaderCleanup />
             <ThemeProvider disableTransitionOnChange>

@@ -15,6 +15,7 @@ import {
 import { appBrand } from "../../core/app-brand.ts"
 import { captureReportedError } from "../../core/error-reporting.ts"
 import { markFirstScreenReady } from "../../core/first-screen.ts"
+import { unhandledConsole } from "../../core/native-runtime.ts"
 
 /**
  * Plain React Native on purpose: Expo Router renders the root layout's
@@ -72,6 +73,8 @@ export function AppErrorScreen({
 
   useEffect(() => {
     captureReportedError(error)
+    // Into the debug console's history too, for after a retry.
+    unhandledConsole.error("Error screen", error)
   }, [error])
   // A crash before the first screen would stay behind the held splash.
   useEffect(() => {

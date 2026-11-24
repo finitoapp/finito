@@ -1,12 +1,16 @@
 /**
  * The policy both apps apply before an error report leaves the device:
- * recovery phrases, IBANs and hex secrets are redacted from events and
- * breadcrumbs, and clicks inside the PIN keypad are not recorded. Written
- * against structural shapes so neither Sentry SDK is imported here; the SDK
- * wiring stays in each app.
+ * recovery phrases, IBANs, Cashu tokens and hex secrets are redacted from
+ * events and breadcrumbs, and clicks inside the PIN keypad are not recorded.
+ * Written against structural shapes so neither Sentry SDK is imported here;
+ * the SDK wiring stays in each app. Debug console output that is copied,
+ * exported or sent passes the same `scrubText` (settings/0006).
  */
 
 const SENSITIVE_TEXT_PATTERNS: ReadonlyArray<RegExp> = [
+  // Cashu tokens (NUT-00 `cashuA`, `cashuB`) carry spendable proofs. First,
+  // so the whole token goes before the patterns below take a piece of it.
+  /\bcashu[AB][A-Za-z0-9_\-+/=]{20,}/g,
   // Recovery phrases: 11 or more consecutive lowercase words.
   /(?:\b[a-z]+\b[ \t]+){11,}\b[a-z]+\b/g,
   // IBAN-like bank account numbers.
@@ -16,7 +20,8 @@ const SENSITIVE_TEXT_PATTERNS: ReadonlyArray<RegExp> = [
   /\b[0-9a-fA-F]{32,}\b/g,
 ]
 
-function scrubText(text: string): string {
+/** Redacts every sensitive pattern above from a piece of free text. */
+export function scrubText(text: string): string {
   return SENSITIVE_TEXT_PATTERNS.reduce(
     (result, pattern) => result.replace(pattern, "[redacted]"),
     text

@@ -11,9 +11,10 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import Constants from "expo-constants"
 import * as Crypto from "expo-crypto"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { Platform } from "react-native"
 import { appBrand } from "../../../core/app-brand.ts"
+import type { NativeAppRun } from "../../../hooks/use-app-run.ts"
 import {
   useNostrIdentity,
   useNostrMemberProfile,
@@ -37,9 +38,7 @@ export function useSendSupportMessage({
   readonly inbox: DmInbox | undefined
 }) {
   const runToast = useRunToast()
-  const queryClient = useQueryClient()
-  const identity = useNostrIdentity()
-  const profile = useNostrMemberProfile(identity.pubkey)
+  const deliver = useDeliverSupportMessage()
   const [pending, setPending] = useState<ReadonlyArray<ChatEntry>>([])
 
   const send = async (text: string) => {
@@ -63,25 +62,12 @@ export function useSendSupportMessage({
 
     const outcome: { delivered?: SupportMessage } = {}
     await runToast(async (run) => {
-      const result = await run(
-        sendSupportMessage({
-          text,
-          subject: `${brandName(appBrand)} · ${profile.data?.name ?? shortenNpub(identity.npub)}`,
-          client: {
-            version: Constants.expoConfig?.version ?? "unknown",
-            platform: Platform.OS,
-          },
-          team,
-          // Not loaded yet: the own copy goes to the team's relays only.
-          inbox: inbox ?? { relays: [], state: "unverified" },
-        })
-      )
+      const result = await deliver(run, { text, team, inbox })
       // Not delivered is shown on the message itself, with a retry.
       if (result.ok) outcome.delivered = result.value
     })
 
-    const { delivered } = outcome
-    if (delivered === undefined) {
+    if (outcome.delivered === undefined) {
       setPending((current) =>
         current.map((entry) =>
           entry.id === id ? { ...entry, status: "failed" } : entry
@@ -89,12 +75,6 @@ export function useSendSupportMessage({
       )
       return
     }
-    // Relays may not serve it back yet, so the cache takes it directly.
-    queryClient.setQueryData(
-      supportMessagesQueryKey(pubkey),
-      (current: ReadonlyArray<SupportMessage> | undefined) =>
-        mergeSupportMessages(current, [delivered])
-    )
     setPending((current) => current.filter((entry) => entry.id !== id))
   }
 
@@ -104,4 +84,56 @@ export function useSendSupportMessage({
   }
 
   return { pending, send, retry }
+}
+
+/**
+ * `sendSupportMessage` signed as this app signs every message — the brand and
+ * the account's name as the subject, the version and platform as the
+ * trailer — and, once sent, the message in the conversation's cache: relays
+ * may not serve it back yet, and the chat shows it from there when it opens.
+ * Shared by the chat and the debug console's "Send to support".
+ */
+export function useDeliverSupportMessage() {
+  const queryClient = useQueryClient()
+  const identity = useNostrIdentity()
+  const profile = useNostrMemberProfile(identity.pubkey)
+  const name = profile.data?.name ?? shortenNpub(identity.npub)
+
+  return useCallback(
+    async (
+      run: NativeAppRun,
+      {
+        text,
+        team,
+        inbox,
+      }: {
+        readonly text: string
+        readonly team: SupportTeam
+        readonly inbox: DmInbox | undefined
+      }
+    ) => {
+      const result = await run(
+        sendSupportMessage({
+          text,
+          subject: `${brandName(appBrand)} · ${name}`,
+          client: {
+            version: Constants.expoConfig?.version ?? "unknown",
+            platform: Platform.OS,
+          },
+          team,
+          // Not loaded yet: the own copy goes to the team's relays only.
+          inbox: inbox ?? { relays: [], state: "unverified" },
+        })
+      )
+      if (result.ok) {
+        queryClient.setQueryData(
+          supportMessagesQueryKey(identity.pubkey),
+          (current: ReadonlyArray<SupportMessage> | undefined) =>
+            mergeSupportMessages(current, [result.value])
+        )
+      }
+      return result
+    },
+    [identity.pubkey, name, queryClient]
+  )
 }

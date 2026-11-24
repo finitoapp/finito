@@ -57,6 +57,7 @@ import { menuDetailRootOf, menuPositionOf } from "../src/core/menu-routes.ts"
 import {
   nativeConsole,
   nativeConsoleHistory,
+  unhandledConsole,
 } from "../src/core/native-runtime.ts"
 import { queryClient } from "../src/core/query-client.ts"
 import {
@@ -67,11 +68,12 @@ import { resolveTheme } from "../src/core/theme-preference.ts"
 import { ActivityLayout } from "../src/features/activity/activity-layout.tsx"
 import { BillHistoryPage } from "../src/features/activity/bill-history-page.tsx"
 import { PaymentHistoryPage } from "../src/features/activity/payment-history-page.tsx"
-import { removeStaleExportFolders } from "../src/features/settings/evolu-export/evolu-export-io"
 import { SettingsPage } from "../src/features/settings/settings-page.tsx"
 import { EetSandboxBanner } from "../src/features/shared/eet-sandbox-banner.tsx"
 import { useThemePreference } from "../src/hooks/use-theme-preference.ts"
 import { setBrowserThemeColor } from "../src/platform/browser-theme-color"
+import { removeStaleSharedFiles } from "../src/platform/share-file"
+import { captureUnhandledErrors } from "../src/platform/unhandled-errors"
 import { WindowSafeArea } from "../src/platform/window-safe-area"
 import { AppColorsContext } from "../src/theme/app-colors.ts"
 import { appThemes } from "../src/theme/themes.ts"
@@ -85,6 +87,9 @@ void SplashScreen.preventAutoHideAsync()
 // most of the fade comes at the end, so the ready screen sat behind a
 // lingering logo. 150 ms still reads as a fade.
 SplashScreen.setOptions({ duration: 150 })
+
+// Errors nothing caught reach Settings › Debug console too.
+captureUnhandledErrors(unhandledConsole)
 
 /**
  * Expo Router's fallback for a route that suspends, empty on the navigator's
@@ -144,10 +149,10 @@ export function ErrorBoundary({
 
 export default function RootLayout() {
   const [store] = useState(createStore)
-  // Once per process: clear Evolu export files an earlier run left in the cache.
+  // Once per process: clear shared files (Evolu export, console log) an earlier run left in the cache.
   useEffect(() => {
     try {
-      removeStaleExportFolders()
+      removeStaleSharedFiles()
     } catch {
       // Best effort; the next export clears them too.
     }

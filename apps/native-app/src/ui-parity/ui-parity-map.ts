@@ -1007,6 +1007,19 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native: "src/features/settings/debug-console/debug-console-filters.tsx",
+    web: [
+      "apps/web-app/src/features/settings/debug-console/debug-console-filters.tsx",
+    ],
+    status: "matched",
+    allowedDifferences: {
+      Toggle:
+        "the source chips: the kit has no Toggle, so each chip is a small outline Button",
+      Button:
+        "the source chips, which web draws as Toggles; a pressed chip takes a selected ToggleGroupItem's fill",
+    },
+  },
+  {
     native: "src/features/settings/debug-console/debug-console-page.tsx",
     web: [
       "apps/web-app/src/features/settings/debug-console/debug-console-settings-page.tsx",

@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { splitMentions } from "@payky/app-shared/support-chat-mentions"
 import {
@@ -8,14 +7,11 @@ import {
   toChatEntries,
 } from "@payky/app-shared/support-chat-timeline"
 import { shortenNpub } from "@payky/core/integrations/nostr/nostr-client"
-import {
-  type DmInbox,
-  mergeSupportMessages,
-  type SupportMessage,
-  type SupportTeam,
-  sendSupportMessage,
+import type {
+  DmInbox,
+  SupportMessage,
+  SupportTeam,
 } from "@payky/core/integrations/nostr/nostr-support-chat"
-import { useQueryClient } from "@tanstack/react-query"
 import {
   AlertCircleIcon,
   AlertTriangleIcon,
@@ -40,7 +36,7 @@ import {
 } from "@/features/settings/chat/chat-layout.tsx"
 import { ProfileAvatar } from "@/features/settings/profile/profile-avatar.tsx"
 import {
-  supportMessagesQueryKey,
+  useDeliverSupportMessage,
   useDmInbox,
   useDmRelayList,
   useSupportMessages,
@@ -48,11 +44,7 @@ import {
 } from "@/features/settings/support/use-support-chat.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
-import {
-  useActiveNostrProfile,
-  useNostrIdentity,
-  useNostrProfile,
-} from "@/hooks/use-nostr-profile.ts"
+import { useNostrIdentity, useNostrProfile } from "@/hooks/use-nostr-profile.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatRelativeDate, formatTime } from "@/lib/format-utils.ts"
@@ -149,9 +141,7 @@ function useSendSupportMessage({
   readonly inbox: DmInbox | undefined
 }) {
   const runToast = useRunToast()
-  const queryClient = useQueryClient()
-  const identity = useNostrIdentity()
-  const profile = useActiveNostrProfile()
+  const deliver = useDeliverSupportMessage()
   const [pending, setPending] = useState<ReadonlyArray<ChatEntry>>([])
 
   const send = async (text: string) => {
@@ -175,25 +165,12 @@ function useSendSupportMessage({
 
     const outcome: { delivered?: SupportMessage } = {}
     await runToast(async (run) => {
-      const result = await run(
-        sendSupportMessage({
-          text,
-          subject: `Payky · ${profile.data?.name ?? shortenNpub(identity.npub)}`,
-          client: {
-            version: __APP_VERSION__,
-            platform: Capacitor.getPlatform(),
-          },
-          team,
-          // Not loaded yet: the own copy goes to the team's relays only.
-          inbox: inbox ?? { relays: [], state: "unverified" },
-        })
-      )
+      const result = await deliver(run, { text, team, inbox })
       // Not delivered is shown on the message itself, with a retry.
       if (result.ok) outcome.delivered = result.value
     })
 
-    const { delivered } = outcome
-    if (delivered === undefined) {
+    if (outcome.delivered === undefined) {
       setPending((current) =>
         current.map((entry) =>
           entry.id === id ? { ...entry, status: "failed" } : entry
@@ -201,12 +178,6 @@ function useSendSupportMessage({
       )
       return
     }
-    // Relays may not serve it back yet, so the cache takes it directly.
-    queryClient.setQueryData(
-      supportMessagesQueryKey(pubkey),
-      (current: ReadonlyArray<SupportMessage> | undefined) =>
-        mergeSupportMessages(current, [delivered])
-    )
     setPending((current) => current.filter((entry) => entry.id !== id))
   }
 

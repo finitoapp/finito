@@ -37,9 +37,8 @@ import {
 import { appBrand } from "../../../core/app-brand.ts"
 import { useRequirePermission } from "../../../core/use-access.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { shareFile } from "../../../platform/share-file"
 import { fontSize } from "../../../theme/tokens.ts"
-import { createExportFolder, evoluExportShareIo } from "./evolu-export-io"
-import { shareEvoluExport } from "./evolu-export-share.ts"
 
 const warningKeys = [
   "settings.evoluExport.warning.businessData",
@@ -74,15 +73,14 @@ export function EvoluExportPage() {
     setHandedOff(false)
     try {
       const bytes = await evolu.exportDatabase()
-      const outcome = await shareEvoluExport({
-        io: evoluExportShareIo,
+      const outcome = await shareFile({
         bytes,
         filename: createEvoluExportFilename({
           brand: appBrand,
           createdAt,
           database: "app",
         }),
-        folder: createExportFolder(),
+        mimeType: "application/vnd.sqlite3",
       })
       if (outcome === "unavailable") {
         setFailed(true)

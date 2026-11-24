@@ -4,6 +4,7 @@ import {
   pinPadAttribute,
   scrubBreadcrumb,
   scrubEvent,
+  scrubText,
 } from "./error-scrubbing.ts"
 
 const masterKey = "000102030405060708090a0b0c0d0e0f"
@@ -33,6 +34,22 @@ describe("sentry scrubbing", () => {
 
     expect(breadcrumb?.message).toBe("s=[redacted]")
     expect(breadcrumb?.data).toEqual({ key: "[redacted]" })
+  })
+
+  test("redacts a cashu token whole, in events too", () => {
+    const token = `cashuA${"eyJ0b2tlbiI6W3sibWludCI6Imh0dHBzOi8vbWludC5leGFtcGxlIn1dfQ".repeat(2)}==`
+
+    expect(scrubText(`got ${token} ok`)).toBe("got [redacted] ok")
+    expect(scrubEvent({ message: token }).message).toBe("[redacted]")
+  })
+
+  test("redacts an IBAN and a recovery phrase in free text", () => {
+    expect(scrubText("to CZ6508000000192000145399")).toBe("to [redacted]")
+    expect(
+      scrubText(
+        "abandon ability able about above absent absorb abstract absurd abuse access accident"
+      )
+    ).toBe("[redacted]")
   })
 
   /** A DOM target sitting inside, or outside, an element with `attribute`. */
