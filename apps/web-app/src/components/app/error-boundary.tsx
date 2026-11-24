@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/collapsible.tsx"
 import { appBrand } from "@/core/app-brand.ts"
 import { captureReportedError } from "@/core/sentry.ts"
+import { useConsole } from "@/hooks/use-console.ts"
 
 /**
  * Deliberately does not use `useTranslation()`/`useDeviceSettings()`: those
@@ -65,6 +66,12 @@ export function AppErrorBoundary({
   React.useEffect(() => {
     captureReportedError(error, info?.componentStack)
   }, [error])
+  const appConsole = useConsole()
+  // biome-ignore lint/correctness/useExhaustiveDependencies: log once per caught error, as above
+  React.useEffect(() => {
+    const stack = info?.componentStack
+    appConsole.child("unhandled").error(error, ...(stack ? [stack] : []))
+  }, [error, appConsole])
   const errorName = error instanceof Error ? error.name : t("appError.unknown")
   const errorMessage =
     error instanceof Error ? error.message : t("appError.nonError")

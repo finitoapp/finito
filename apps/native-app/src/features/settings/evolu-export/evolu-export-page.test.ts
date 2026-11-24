@@ -15,7 +15,7 @@ it("awaits the permission before serializing, then shares", () => {
     'await require("admin", "access.action.exportDatabase")'
   )
   const serialize = page.indexOf("await evolu.exportDatabase()")
-  const share = page.indexOf("await shareEvoluExport(")
+  const share = page.indexOf("await shareFile(")
   expect(require).toBeGreaterThan(-1)
   expect(require).toBeLessThan(serialize)
   expect(serialize).toBeLessThan(share)
@@ -23,7 +23,7 @@ it("awaits the permission before serializing, then shares", () => {
 })
 
 it("keeps the file after a hand-off and reports it neutrally", () => {
-  const share = read("evolu-export-share.ts")
+  const share = read("../../../platform/share-file-flow.ts")
   const afterShare = share.slice(share.indexOf("await io.share("))
   expect(afterShare).not.toMatch(/removeTemp|finally/u)
   expect(share).toMatch(
@@ -32,11 +32,11 @@ it("keeps the file after a hand-off and reports it neutrally", () => {
   const page = read("evolu-export-page.tsx")
   expect(page).toContain("settings.evoluExport.status.handedOff")
   expect(page).not.toMatch(/toast\.success|status\.success|status\.createdAt/u)
-  const io = read("evolu-export-io.ts")
+  const io = read("../../../platform/share-file.ts")
   expect(io).toMatch(/new Directory\(Paths\.cache, folder\)/)
   expect(io).not.toMatch(/Paths\.document|Paths\.bundle|Directory\.pictures/u)
   expect(read("../../../../app/_layout.tsx")).toContain(
-    "removeStaleExportFolders()"
+    "removeStaleSharedFiles()"
   )
   for (const source of [share, io, page]) {
     expect(source).not.toMatch(

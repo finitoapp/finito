@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <cache-path name="evolu_export" path="evolu-export/" />
+    <cache-path name="console_export" path="console-export/" />
 </paths>

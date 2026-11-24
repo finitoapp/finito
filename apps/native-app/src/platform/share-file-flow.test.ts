@@ -1,12 +1,9 @@
 import { describe, expect, it } from "vitest"
-import {
-  type EvoluExportShareIo,
-  shareEvoluExport,
-} from "./evolu-export-share.ts"
+import { type ShareFileIo, shareTempFile } from "./share-file-flow.ts"
 
-const makeIo = (overrides: Partial<EvoluExportShareIo> = {}) => {
+const makeIo = (overrides: Partial<ShareFileIo> = {}) => {
   const calls: string[] = []
-  const io: EvoluExportShareIo = {
+  const io: ShareFileIo = {
     isSharingAvailable: async () => {
       calls.push("available")
       return true
@@ -15,8 +12,8 @@ const makeIo = (overrides: Partial<EvoluExportShareIo> = {}) => {
       calls.push("write")
       return `file:///cache/${folder}/x.sqlite`
     },
-    share: async () => {
-      calls.push("share")
+    share: async ({ mimeType }) => {
+      calls.push(`share ${mimeType}`)
     },
     removeTemp: () => {
       calls.push("remove")
@@ -26,20 +23,27 @@ const makeIo = (overrides: Partial<EvoluExportShareIo> = {}) => {
   return { io, calls }
 }
 
-const input = { bytes: new Uint8Array([1]), filename: "x.sqlite", folder: "f" }
+const input = {
+  bytes: new Uint8Array([1]),
+  filename: "x.sqlite",
+  mimeType: "application/vnd.sqlite3",
+  folder: "f",
+}
 
-describe("shareEvoluExport", () => {
+describe("shareTempFile", () => {
   it("writes and shares, leaving the file for the next cleanup", async () => {
     const { io, calls } = makeIo()
-    await expect(shareEvoluExport({ io, ...input })).resolves.toBe("shared")
-    expect(calls).toEqual(["available", "write", "share"])
+    await expect(shareTempFile({ io, ...input })).resolves.toBe("handedOff")
+    expect(calls).toEqual([
+      "available",
+      "write",
+      "share application/vnd.sqlite3",
+    ])
   })
 
   it("writes nothing when sharing is unavailable", async () => {
     const { io, calls } = makeIo({ isSharingAvailable: async () => false })
-    await expect(shareEvoluExport({ io, ...input })).resolves.toBe(
-      "unavailable"
-    )
+    await expect(shareTempFile({ io, ...input })).resolves.toBe("unavailable")
     expect(calls).toEqual([])
   })
 
@@ -49,7 +53,7 @@ describe("shareEvoluExport", () => {
         throw new Error("boom")
       },
     })
-    await expect(shareEvoluExport({ io, ...input })).rejects.toThrow("boom")
+    await expect(shareTempFile({ io, ...input })).rejects.toThrow("boom")
     expect(calls).not.toContain("remove")
   })
 
@@ -59,9 +63,7 @@ describe("shareEvoluExport", () => {
         throw new Error("disk full")
       },
     })
-    await expect(shareEvoluExport({ io, ...input })).rejects.toThrow(
-      "disk full"
-    )
+    await expect(shareTempFile({ io, ...input })).rejects.toThrow("disk full")
     expect(calls).toEqual(["available", "remove"])
   })
 
@@ -74,8 +76,6 @@ describe("shareEvoluExport", () => {
         throw new Error("busy")
       },
     })
-    await expect(shareEvoluExport({ io, ...input })).rejects.toThrow(
-      "disk full"
-    )
+    await expect(shareTempFile({ io, ...input })).rejects.toThrow("disk full")
   })
 })

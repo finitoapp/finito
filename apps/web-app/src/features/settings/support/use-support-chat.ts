@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core"
+import { shortenNpub } from "@payky/core/integrations/nostr/nostr-client"
 import {
   type DmInbox,
   ensureDmRelayList,
@@ -7,13 +9,18 @@ import {
   publishDmRelayList,
   type SupportMessage,
   type SupportTeam,
+  sendSupportMessage,
   subscribeSupportMessages,
 } from "@payky/core/integrations/nostr/nostr-support-chat"
 import { fetchSupportTeam } from "@payky/core/integrations/nostr/support-team-client"
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { apiUrl } from "@/core/app-env.ts"
 import { useAppRun } from "@/hooks/use-app-run.ts"
+import {
+  useActiveNostrProfile,
+  useNostrIdentity,
+} from "@/hooks/use-nostr-profile.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 
 export const supportMessagesQueryKey = (pubkey: string) =>
@@ -219,4 +226,56 @@ export const useSupportMessages = ({
     // the others kept it, which `onClose` does not report.
     refetchInterval: 2 * 60_000,
   })
+}
+
+/**
+ * `sendSupportMessage` signed as this app signs every message — the account's
+ * name as the subject, the version and platform as the trailer — and, once
+ * sent, the message in the conversation's cache: relays may not serve it back
+ * yet, and the chat shows it from there when it opens. Shared by the chat and
+ * the debug console's "Send to support".
+ */
+export const useDeliverSupportMessage = () => {
+  const queryClient = useQueryClient()
+  const identity = useNostrIdentity()
+  const profile = useActiveNostrProfile()
+  const name = profile.data?.name ?? shortenNpub(identity.npub)
+
+  return useCallback(
+    async (
+      run: ReturnType<ReturnType<typeof useAppRun>>,
+      {
+        text,
+        team,
+        inbox,
+      }: {
+        readonly text: string
+        readonly team: SupportTeam
+        readonly inbox: DmInbox | undefined
+      }
+    ) => {
+      const result = await run(
+        sendSupportMessage({
+          text,
+          subject: `Payky · ${name}`,
+          client: {
+            version: __APP_VERSION__,
+            platform: Capacitor.getPlatform(),
+          },
+          team,
+          // Not loaded yet: the own copy goes to the team's relays only.
+          inbox: inbox ?? { relays: [], state: "unverified" },
+        })
+      )
+      if (result.ok) {
+        queryClient.setQueryData(
+          supportMessagesQueryKey(identity.pubkey),
+          (current: ReadonlyArray<SupportMessage> | undefined) =>
+            mergeSupportMessages(current, [result.value])
+        )
+      }
+      return result
+    },
+    [identity.pubkey, name, queryClient]
+  )
 }

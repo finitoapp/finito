@@ -644,6 +644,18 @@ export const subscribeSupportMessages = (
   }
 }
 
+/**
+ * The longest text, in UTF-8 bytes, a support message is sure to get through
+ * (support/0005). NIP-44 encrypts twice, the rumor into the seal and the seal
+ * into the gift wrap, padding each to a power-of-two step and base64-encoding
+ * it, so the wrap comes out at roughly 2.5 times the text; relays such as
+ * strfry, which the support relays run, refuse an event over 64 KiB. JSON
+ * escaping adds more (a quote or a newline is two bytes): 20 kB of
+ * quote-heavy log text and ten support members still make a wrap of about
+ * 55 kB, while 24 kB already passes 64 KiB.
+ */
+export const SUPPORT_MESSAGE_MAX_BYTES = 20_000
+
 const createSupportNotReachedError = defineError("SupportNotReachedError")<{
   readonly reasons: ReadonlyArray<string>
 }>()

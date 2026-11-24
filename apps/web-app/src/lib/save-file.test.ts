@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { uint8ArrayToBase64 } from "./evolu-export-utils.ts"
+import { uint8ArrayToBase64 } from "./save-file.ts"
 
 describe("uint8ArrayToBase64", () => {
   test("encodes a short byte sequence", () => {

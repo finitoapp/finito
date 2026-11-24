@@ -30,6 +30,7 @@ import {
   loadDmInbox,
   mergeSupportMessages,
   publishDmRelayList,
+  SUPPORT_MESSAGE_MAX_BYTES,
   type SupportClientInfo,
   type SupportMessage,
   type SupportTeam,
@@ -380,6 +381,49 @@ describe("support chat", () => {
       },
     })
     expect(wrapsTo(fake.published, me)).toEqual([])
+  })
+
+  test("wraps a message of the longest text within a relay's 64 KiB event limit", async () => {
+    const memberKeys = Array.from({ length: 10 }, () => generateSecretKey())
+    const bigTeam: SupportTeam = {
+      ...team,
+      pubkeys: memberKeys.map((key) => getPublicKey(key)),
+    }
+    // Log-like and escape-heavy: JSON quotes, newlines and non-ASCII.
+    const line = '  "message": "Připojení selhalo — \\"timeout\\"",\n'
+    const utf8Length = (value: string) => new TextEncoder().encode(value).length
+    const lines = line.repeat(
+      Math.floor(SUPPORT_MESSAGE_MAX_BYTES / utf8Length(line))
+    )
+    const text = lines.padEnd(
+      lines.length + SUPPORT_MESSAGE_MAX_BYTES - utf8Length(lines),
+      '"'
+    )
+    expect(utf8Length(text)).toBe(SUPPORT_MESSAGE_MAX_BYTES)
+    const fake = createFakeNostrDep()
+    await using run = testCreateRun(runDeps(fake.deps))
+
+    const result = await run(
+      sendSupportMessage({
+        text,
+        subject: "Payky · A shop with a rather long profile name",
+        client,
+        team: bigTeam,
+        inbox: linkyInbox,
+      })
+    )
+
+    expect(result.ok).toBe(true)
+    expect(fake.published).toHaveLength(11)
+    for (const { event } of fake.published) {
+      expect(utf8Length(JSON.stringify(event))).toBeLessThanOrEqual(65_536)
+    }
+    const [firstMember = generateSecretKey()] = memberKeys
+    const [wrap] = wrapsTo(fake.published, getPublicKey(firstMember))
+    if (wrap === undefined) throw new Error("No wrap for the first member")
+    expect(unwrapEvent(wrap.event, firstMember).content).toBe(
+      appendClientTrailer(text, client)
+    )
   })
 
   test("reads the account's newest DM relays from the app's relays and the team's indexers and relays", async () => {

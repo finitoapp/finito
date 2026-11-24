@@ -28,6 +28,9 @@ export const nativeConsole = createConsole({
   ]),
 })
 
+/** Errors nothing caught: the global handler's and the root error screen's. */
+export const unhandledConsole = nativeConsole.child("unhandled")
+
 export const nativeRun = createRun({
   ...createEvoluDeps({ console: nativeConsole }),
   lockManager,

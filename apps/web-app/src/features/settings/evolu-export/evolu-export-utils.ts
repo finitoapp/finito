@@ -1,6 +1,6 @@
-import { Capacitor } from "@capacitor/core"
-
 import type { EvoluExportDatabase } from "@payky/app-shared/evolu-export"
+
+import { type SavedFileDestination, saveFile } from "@/lib/save-file.ts"
 
 interface EvoluExportFile {
   readonly database: EvoluExportDatabase
@@ -9,119 +9,29 @@ interface EvoluExportFile {
 }
 
 export interface SavedEvoluExportFile extends EvoluExportFile {
-  readonly destination: EvoluExportDestination
+  readonly destination: { readonly type: SavedFileDestination }
 }
-
-type EvoluExportDestination =
-  | {
-      readonly type: "web"
-    }
-  | {
-      readonly type: "capacitor"
-    }
 
 const evoluExportMimeType = "application/vnd.sqlite3"
 
 /**
  * Resolves to `null` when the user dismisses the native share sheet: nothing
  * left the device, which is neither a success nor a failure.
+ *
+ * The export holds the Spark wallet secret, which is why `saveFile` keeps it
+ * in the app's private cache on native and hands it only to the share sheet.
  */
 export async function saveEvoluExportFile(
   file: EvoluExportFile
 ): Promise<SavedEvoluExportFile | null> {
-  if (Capacitor.isNativePlatform()) {
-    const shared = await shareWithCapacitor(file)
-
-    return shared ? { ...file, destination: { type: "capacitor" } } : null
-  }
-
-  downloadWithBrowser(file)
-
-  return {
-    ...file,
-    destination: {
-      type: "web",
-    },
-  }
-}
-
-function downloadWithBrowser(file: EvoluExportFile): void {
-  const blob = new Blob([file.bytes], { type: evoluExportMimeType })
-  const href = URL.createObjectURL(blob)
-  const link = document.createElement("a")
-
-  link.href = href
-  link.download = file.filename
-  link.rel = "noreferrer"
-  document.body.append(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(href)
-}
-
-/**
- * The export holds the Spark wallet secret, so it is written to the app's
- * private cache — never shared storage such as `Documents/`, which any app
- * with storage access can read — and handed to the system share sheet, where
- * the user picks the one place it goes. The directory matches the only path
- * `android/app/src/main/res/xml/file_paths.xml` lets the FileProvider grant;
- * it is cleared before each export so earlier files do not pile up.
- */
-async function shareWithCapacitor(file: EvoluExportFile): Promise<boolean> {
-  const [{ Directory, Filesystem }, { Share }] = await Promise.all([
-    import("@capacitor/filesystem"),
-    import("@capacitor/share"),
-  ])
-
-  await Filesystem.rmdir({
-    path: evoluExportCacheDirectory,
-    directory: Directory.Cache,
-    recursive: true,
-  }).catch(() => undefined)
-
-  const { uri } = await Filesystem.writeFile({
-    path: `${evoluExportCacheDirectory}/${file.filename}`,
-    data: uint8ArrayToBase64(file.bytes),
-    directory: Directory.Cache,
-    recursive: true,
+  const destination = await saveFile({
+    filename: file.filename,
+    mimeType: evoluExportMimeType,
+    bytes: file.bytes,
+    cacheDirectory: "evolu-export",
   })
 
-  try {
-    await Share.share({ title: file.filename, files: [uri] })
-    return true
-  } catch (error) {
-    if (error instanceof Error && error.message === shareCanceledMessage) {
-      return false
-    }
-    throw error
-  }
-}
-
-const evoluExportCacheDirectory = "evolu-export"
-
-/** The rejection message both native Share implementations use on dismiss. */
-const shareCanceledMessage = "Share canceled"
-
-/**
- * `btoa` wants a binary string, so the bytes go through `String.fromCharCode`
- * one spread at a time. The chunking is the point: spreading a whole database
- * export in one call would blow the argument limit, and 0x8000 is the usual
- * safe width. Exported for its test — the chunk boundary is the only thing
- * here that can break, and nothing else reaches this from outside.
- *
- * `Uint8Array.prototype.toBase64` would replace all of it, but it doesn't
- * exist in this TypeScript target (ES2024) and isn't in the runtimes this app
- * still supports.
- */
-export function uint8ArrayToBase64(bytes: Uint8Array): string {
-  const chunkSize = 0x8000
-  const chunks: string[] = []
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    chunks.push(
-      String.fromCharCode(...bytes.subarray(index, index + chunkSize))
-    )
-  }
-
-  return btoa(chunks.join(""))
+  return destination === null
+    ? null
+    : { ...file, destination: { type: destination } }
 }
