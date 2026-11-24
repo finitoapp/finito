@@ -218,7 +218,7 @@ interface ButtonBaseProps extends FrameProps {
   readonly onPress?: () => void
   /**
    * Recolors the label and icons, for the few web call sites that recolor a
-   * button with a class (the destructive confirm in `ui/alert-dialog`).
+   * button with a class.
    */
   readonly labelColor?: ThemeColor
 }

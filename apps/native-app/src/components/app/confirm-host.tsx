@@ -19,8 +19,8 @@ import {
 
 /**
  * Shows the head of the queue; mount once inside the providers. As web's
- * `ConfirmDialogHost`: Cancel (outline) and Confirm (solid destructive when
- * the request asks for it), both `lg`; back settles with false.
+ * `ConfirmDialogHost`: Cancel (outline) and Confirm (the kit's destructive
+ * when the request asks for it), both `lg`; back settles with false.
  */
 export function ConfirmHost() {
   const head = useAtomValue(confirmQueueAtom)[0]
@@ -62,12 +62,7 @@ export function ConfirmHost() {
               size="lg"
               label={head.confirmLabel}
               onPress={() => settle(true)}
-              {...(head.variant === "destructive"
-                ? {
-                    bg: "destructive hover:destructive-90 press:destructive-90",
-                    labelColor: "destructive-foreground",
-                  }
-                : {})}
+              variant={head.variant ?? "default"}
             />
           </AlertDialogFooter>
         </AlertDialogContent>
