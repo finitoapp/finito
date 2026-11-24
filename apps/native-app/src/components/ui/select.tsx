@@ -23,9 +23,8 @@ import {
  * text-muted-foreground`; item `gap-1.5 rounded-md py-1 pl-1.5 text-sm
  * focus:bg-accent` with a `Check` on the selected one.
  *
- * Native differences: the list opens in `ui/dialog` (a centered sheet on the
- * proven RN `Modal`) rather than a popup anchored to the trigger, as plan
- * fallback to Tamagui `Select`'s untried `Adapt`/`Sheet`; items are at
+ * Native differences: the list opens in `ui/dialog`'s bottom sheet rather
+ * than a popup anchored to the trigger; items are at
  * least 44 high for touch, highlighted by the neutral fill. `SelectContent`
  * takes the translated `title` the sheet shows, usually the field's label.
  */
