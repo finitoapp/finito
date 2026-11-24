@@ -1,9 +1,11 @@
+import { PaymentId } from "@payky/core/modules/payment/payment-types"
 import { Suspense } from "react"
 
 import { FadeHeader } from "@/components/fade-header.tsx"
 import { ActivityHistorySkeleton } from "@/features/activity/activity-history-skeleton.tsx"
 import { BillDetail } from "@/features/activity/bill-detail.tsx"
 import { BillHistory } from "@/features/activity/bill-history.tsx"
+import { PaymentDeleteButton } from "@/features/activity/payment-delete-button.tsx"
 import {
   PaymentDetail,
   PaymentDetailSkeleton,
@@ -35,10 +37,20 @@ export function PaymentDetailPage({
   readonly paymentId: string
 }) {
   const { t } = useTranslation()
+  const parsedPaymentId = PaymentId.safeParse(paymentId)
 
   return (
     <>
-      <FadeHeader title={t("paymentDetail.title")} />
+      <FadeHeader
+        title={t("paymentDetail.title")}
+        endAddon={
+          parsedPaymentId.success ? (
+            <Suspense fallback={null}>
+              <PaymentDeleteButton paymentId={parsedPaymentId.data} />
+            </Suspense>
+          ) : null
+        }
+      />
 
       <section className="pt-16">
         <Suspense fallback={<PaymentDetailSkeleton />}>

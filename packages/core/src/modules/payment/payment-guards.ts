@@ -19,7 +19,13 @@ import {
   createPaymentNotPayableError,
   type PaymentNotPayableError,
 } from "./payment-errors.ts"
-import { paymentClaimsQuery } from "./payment-queries.ts"
+import {
+  paymentCardSwitchioByIdQuery,
+  paymentCashuReceiveQuery,
+  paymentClaimsQuery,
+  paymentQerkoTerminalByIdQuery,
+  qerkoPaymentAttemptsByPaymentIdQuery,
+} from "./payment-queries.ts"
 import { derivePaymentStatus } from "./payment-status-utils.ts"
 import type {
   PaymentAccountKind,
@@ -58,6 +64,30 @@ export const loadPaymentStatus =
         hasActiveClaim,
         now: run.deps.date.now(),
       })
+    )
+  }
+
+/**
+ * Whether money may be on its way to this payment without a claim yet: a
+ * card attempt on SwitchioPay's or Qerko's terminal that has no definite
+ * outcome, a Qerko payment in progress, or a Cashu token being received.
+ */
+export const loadPaymentHasOpenAttempt =
+  (paymentId: PaymentId): Task<boolean, never, EvoluDep> =>
+  async (run) => {
+    const { evolu } = run.deps
+    const [[card], [terminal], qerkoAttempts, [cashu]] = await Promise.all([
+      evolu.loadQuery(paymentCardSwitchioByIdQuery(paymentId)),
+      evolu.loadQuery(paymentQerkoTerminalByIdQuery(paymentId)),
+      evolu.loadQuery(qerkoPaymentAttemptsByPaymentIdQuery(paymentId)),
+      evolu.loadQuery(paymentCashuReceiveQuery(paymentId)),
+    ])
+    return ok(
+      (card?.unresolvedTransactionId ?? null) !== null ||
+        (terminal?.pendingTransactionId ?? null) !== null ||
+        (terminal?.unresolvedTransactionId ?? null) !== null ||
+        qerkoAttempts.some((attempt) => attempt.closedAt === null) ||
+        (cashu?.receiveOperationId ?? null) !== null
     )
   }
 

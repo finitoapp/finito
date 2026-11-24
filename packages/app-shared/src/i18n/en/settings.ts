@@ -1213,6 +1213,7 @@ export const enSettings = {
   "access.action.confirmPaidDespiteCancellation":
     "Mark the canceled payment as paid",
   "access.action.createItem": "Create a catalog item",
+  "access.action.deletePayment": "Delete the payment",
   "access.action.disable": "Turn access control off",
   "access.action.exportDatabase": "Export the app database",
   "access.action.revealRecoveryPhrase": "Reveal the recovery phrase",

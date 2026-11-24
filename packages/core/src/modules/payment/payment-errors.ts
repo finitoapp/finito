@@ -84,6 +84,32 @@ export type PaymentAttemptUnresolvedError = ReturnType<
   typeof createPaymentAttemptUnresolvedError
 >
 
+/**
+ * A payment that is neither pending nor canceled, so it is not deleted
+ * (payment/0029).
+ */
+export const createPaymentNotDeletableError = defineError(
+  "PaymentNotDeletable"
+)<{
+  readonly id: PaymentId
+  readonly status: PaymentStatus
+}>()
+export type PaymentNotDeletableError = ReturnType<
+  typeof createPaymentNotDeletableError
+>
+
+/**
+ * A payment whose money may be on its way — a card attempt not settled, a
+ * Qerko payment in progress, a Cashu token being received — so it is kept
+ * for that money to be recorded on (payment/0029).
+ */
+export const createPaymentAttemptOpenError = defineError("PaymentAttemptOpen")<{
+  readonly id: PaymentId
+}>()
+export type PaymentAttemptOpenError = ReturnType<
+  typeof createPaymentAttemptOpenError
+>
+
 export const createPaymentNotCanceledError = defineError("PaymentNotCanceled")<{
   readonly id: PaymentId
 }>()

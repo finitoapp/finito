@@ -33,14 +33,17 @@ import { fontSize, fontWeight } from "../../theme/tokens.ts"
 /** Header and a scrolling column; `title` is already translated. */
 export function DetailScreen({
   title,
+  endAddon,
   children,
 }: {
   readonly title: string
+  /** The header's trailing control. */
+  readonly endAddon?: ReactNode
   readonly children: ReactNode
 }) {
   return (
     <Screen>
-      <FadeHeader title={title} />
+      <FadeHeader title={title} endAddon={endAddon} />
       {children}
     </Screen>
   )

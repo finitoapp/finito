@@ -51,6 +51,7 @@ import {
   cancelPayment,
   confirmPaymentPaidDespiteCancellation,
   createPayment,
+  deleteUnpaidPayment,
   markPaymentPaidCash,
   markPaymentPaidIban,
 } from "../payment/payment-actions.ts"
@@ -1370,6 +1371,22 @@ describe("signals", () => {
       ])
     )
     expect(await context.load(signalsQuery(june5))).toHaveLength(3)
+  })
+
+  test("a canceled payment stays counted once it is deleted (payment/0029)", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    await using r = context.run()
+    const canceled = await context.createTestPayment({ amount: 300 })
+    await r.orThrow(cancelPayment(canceled))
+    await r.orThrow(deleteUnpaidPayment(canceled))
+    await r.orThrow(
+      deleteUnpaidPayment(await context.createTestPayment({ amount: 200 }))
+    )
+
+    await expect(context.load(signalsQuery(june5))).resolves.toEqual([
+      { signal: "canceledPayment", currency: "CZK", count: 2, amount: 500 },
+    ])
   })
 })
 

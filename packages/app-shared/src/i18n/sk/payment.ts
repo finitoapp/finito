@@ -121,6 +121,17 @@ export const skPayment = {
     "Platbu sa nepodarilo označiť ako zaplatenú. Skúste to znova.",
   "paymentDetail.collision.refund": "Vrátiť platbu",
   "paymentDetail.collision.title": "Zrušené, ale peniaze dorazili",
+  "paymentDetail.delete": "Zmazať platbu",
+  "paymentDetail.delete.confirm.title": "Zmazať platbu?",
+  "paymentDetail.delete.confirm.description":
+    "Platba zmizne z aktivity. Ak ju zákazník napriek tomu zaplatí, peniaze sa k nej nespárujú.",
+  "paymentDetail.delete.confirm.confirm": "Zmazať",
+  "paymentDetail.delete.confirm.cancel": "Ponechať",
+  "paymentDetail.delete.error.generic": "Platbu sa nepodarilo zmazať.",
+  "paymentDetail.delete.error.notDeletable":
+    "Platba už nie je čakajúca ani zrušená, preto ju nie je možné zmazať.",
+  "paymentDetail.delete.error.attemptOpen":
+    "Platba možno ešte prebieha alebo nie je známy jej výsledok, preto ju nie je možné zmazať.",
   "paymentDetail.deviceId": "Zariadenie",
   "paymentDetail.emptyValue": "—",
   "paymentDetail.excessCollision.acknowledge": "Označiť ako vyriešené",

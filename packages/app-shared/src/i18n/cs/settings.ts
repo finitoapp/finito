@@ -1212,6 +1212,7 @@ export const csSettings = {
   "access.action.confirmPaidDespiteCancellation":
     "Označit zrušenou platbu jako zaplacenou",
   "access.action.createItem": "Vytvořit položku katalogu",
+  "access.action.deletePayment": "Smazat platbu",
   "access.action.disable": "Vypnout řízení přístupu",
   "access.action.exportDatabase": "Exportovat databázi aplikace",
   "access.action.revealRecoveryPhrase": "Zobrazit obnovovací frázi",

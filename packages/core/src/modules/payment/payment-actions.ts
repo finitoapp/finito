@@ -97,11 +97,13 @@ import {
   createIbanAccountNotFoundError,
   createNoPayableMethodError,
   createPaymentAlreadyPaidError,
+  createPaymentAttemptOpenError,
   createPaymentAttemptUnresolvedError,
   createPaymentCanceledError,
   createPaymentLightningInvoiceNotFoundError,
   createPaymentNotCanceledError,
   createPaymentNotClaimedError,
+  createPaymentNotDeletableError,
   createPaymentNotFoundError,
   createPaymentNotOverpaidError,
   createSwitchioAttemptOtherDeviceError,
@@ -110,10 +112,12 @@ import {
   type MarkPaymentPaidCashError,
   type MarkPaymentPaidIbanError,
   type PaymentAlreadyPaidError,
+  type PaymentAttemptOpenError,
   type PaymentAttemptUnresolvedError,
   type PaymentCanceledError,
   type PaymentNotCanceledError,
   type PaymentNotClaimedError,
+  type PaymentNotDeletableError,
   type PaymentNotFoundError,
   type PaymentNotOverpaidError,
   type PayPaymentWithBoltCardError,
@@ -124,6 +128,8 @@ import {
 import {
   loadAccountWithCurrencyCheck,
   loadPaymentHasActiveClaim,
+  loadPaymentHasOpenAttempt,
+  loadPaymentStatus,
   requirePayablePayment,
 } from "./payment-guards.ts"
 import {
@@ -1408,6 +1414,67 @@ export const cancelPayment =
         {
           id: paymentId,
           canceledAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
+        },
+        { ...options, owner: evoluOwner }
+      )
+    )
+
+    return ok(paymentId)
+  }
+
+export type DeleteUnpaidPaymentError =
+  | PaymentNotFoundError
+  | PaymentAlreadyPaidError
+  | PaymentNotDeletableError
+  | PaymentAttemptOpenError
+
+/**
+ * Deletes a pending or canceled payment that has taken no money
+ * (payment/0029), for staff; `deletePayment` is the unguarded write behind
+ * the CLI. Its number is not given out again.
+ *
+ * A payment whose money may be on its way is refused: what arrives later is
+ * recorded only on a payment that is still there. A pending payment is
+ * canceled in the same write, so the statistics count it as canceled, which
+ * they do for a deleted payment too.
+ */
+export const deleteUnpaidPayment =
+  (
+    paymentId: PaymentId
+  ): Task<
+    PaymentId,
+    DeleteUnpaidPaymentError,
+    EvoluDep & EvoluOwnerDep & DateDep
+  > =>
+  async (run) => {
+    const paymentResult = await run(loadPayment(paymentId))
+    if (!paymentResult.ok) return paymentResult
+    const payment = paymentResult.value
+
+    // A canceled payment money arrived for reads Canceled, so the status
+    // alone does not say it took none.
+    if (await run.ok(loadPaymentHasActiveClaim(paymentId))) {
+      return err(createPaymentAlreadyPaidError({ id: paymentId }))
+    }
+    const status = await run.ok(loadPaymentStatus(payment))
+    if (status !== "pending" && status !== "canceled") {
+      return err(createPaymentNotDeletableError({ id: paymentId, status }))
+    }
+    if (await run.ok(loadPaymentHasOpenAttempt(paymentId))) {
+      return err(createPaymentAttemptOpenError({ id: paymentId }))
+    }
+
+    const { evoluOwner } = run.deps
+
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.update(
+        "payment",
+        {
+          id: paymentId,
+          canceledAt:
+            payment.canceledAt ??
+            TimestampMsSchema.decode(run.deps.date.now().getTime()),
+          isDeleted: sqliteTrue,
         },
         { ...options, owner: evoluOwner }
       )
