@@ -259,6 +259,7 @@ export const csSettings = {
   "settings.debugConsole.copy": "Kopírovat",
   "settings.debugConsole.copied": "Zkopírováno do schránky",
   "settings.debugConsole.copyFailed": "Kopírování do schránky se nezdařilo",
+  "settings.debugConsole.showPayload": "Zobrazit payload",
   "settings.debugConsole.copyEntry": "Kopírovat záznam",
   "settings.debugConsole.export": "Exportovat",
   "settings.debugConsole.exported": "Výpis exportován",

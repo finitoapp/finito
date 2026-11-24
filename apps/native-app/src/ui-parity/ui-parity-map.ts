@@ -1026,8 +1026,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
-      Badge:
-        "Native uses the existing Badge for console method labels; web styles those labels as inline spans.",
+      Label:
+        "the payload switch's caption: the kit's Switch takes its name as aria-label, so the caption is plain Text",
     },
   },
   {

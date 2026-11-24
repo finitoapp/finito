@@ -11,6 +11,7 @@ import {
   createConsoleOutputHistory,
   filterConsoleEntries,
   formatConsoleEntry,
+  formatConsoleGroup,
   formatConsoleLog,
   formatConsoleLogExcerpt,
   supportLogMaxBytes,
@@ -204,4 +205,12 @@ describe("filterConsoleEntries", () => {
       error: 1,
     })
   })
+})
+
+test("formatConsoleGroup cuts a long group to 24 characters", () => {
+  expect(formatConsoleGroup(["app", "sync"])).toBe("app/sync")
+  expect(formatConsoleGroup(["a".repeat(24)])).toBe("a".repeat(24))
+  const cut = formatConsoleGroup(["background-jobs", "spark-sync", "wallet"])
+  expect(cut).toBe("background-jobs/spark-s…")
+  expect(cut).toHaveLength(24)
 })

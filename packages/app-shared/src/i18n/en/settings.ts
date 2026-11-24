@@ -257,6 +257,7 @@ export const enSettings = {
   "settings.debugConsole.copy": "Copy",
   "settings.debugConsole.copied": "Copied to the clipboard",
   "settings.debugConsole.copyFailed": "Could not copy to the clipboard",
+  "settings.debugConsole.showPayload": "Show payload",
   "settings.debugConsole.copyEntry": "Copy entry",
   "settings.debugConsole.export": "Export",
   "settings.debugConsole.exported": "Log exported",
