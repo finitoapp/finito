@@ -123,6 +123,17 @@ export const viPayment = {
     "Không đánh dấu được là đã trả. Hãy thử lại.",
   "paymentDetail.collision.refund": "Hoàn tiền",
   "paymentDetail.collision.title": "Đã hủy nhưng tiền đã về",
+  "paymentDetail.delete": "Xóa khoản thanh toán",
+  "paymentDetail.delete.confirm.title": "Xóa khoản thanh toán?",
+  "paymentDetail.delete.confirm.description":
+    "Khoản thanh toán sẽ biến mất khỏi mục Hoạt động. Nếu khách vẫn trả, tiền sẽ không được đối chiếu với khoản này.",
+  "paymentDetail.delete.confirm.confirm": "Xóa",
+  "paymentDetail.delete.confirm.cancel": "Giữ lại",
+  "paymentDetail.delete.error.generic": "Không xóa được khoản thanh toán.",
+  "paymentDetail.delete.error.notDeletable":
+    "Đã có tiền về cho khoản thanh toán này nên không thể xóa.",
+  "paymentDetail.delete.error.attemptOpen":
+    "Một lần thanh toán có thể vẫn đang diễn ra hoặc chưa rõ kết quả nên không thể xóa.",
   "paymentDetail.deviceId": "Thiết bị",
   "paymentDetail.emptyValue": "—",
   "paymentDetail.excessCollision.acknowledge": "Đánh dấu là đã xử lý",
