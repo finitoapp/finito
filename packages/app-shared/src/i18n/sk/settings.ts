@@ -259,6 +259,7 @@ export const skSettings = {
   "settings.debugConsole.copy": "Kopírovať",
   "settings.debugConsole.copied": "Skopírované do schránky",
   "settings.debugConsole.copyFailed": "Kopírovanie do schránky zlyhalo",
+  "settings.debugConsole.showPayload": "Zobraziť payload",
   "settings.debugConsole.copyEntry": "Kopírovať záznam",
   "settings.debugConsole.export": "Exportovať",
   "settings.debugConsole.exported": "Výpis exportovaný",

@@ -63,6 +63,19 @@ export function createConsoleOutputHistory({
   }
 }
 
+const consoleGroupMaxLength = 24
+
+/**
+ * `path` as a log line names its group: joined, and cut to an ellipsis past
+ * 24 characters, so a deep group leaves the line room for its message.
+ */
+export function formatConsoleGroup(path: ReadonlyArray<string>): string {
+  const group = path.join("/")
+  return group.length > consoleGroupMaxLength
+    ? `${group.slice(0, consoleGroupMaxLength - 1)}…`
+    : group
+}
+
 export const formatConsoleArgs = (args: ReadonlyArray<unknown>): string =>
   args.map(formatConsoleArg).join(" ")
 

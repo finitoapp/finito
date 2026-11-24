@@ -4,10 +4,12 @@ import {
   filterConsoleEntries,
   formatConsoleArgs,
   formatConsoleEntry,
+  formatConsoleGroup,
 } from "@payky/app-shared/console-history"
 import type { DmInbox } from "@payky/core/integrations/nostr/nostr-support-chat"
 import { useQueryClient } from "@tanstack/react-query"
 import { format } from "date-fns"
+import ChevronRight from "lucide-react-native/icons/chevron-right"
 import Copy from "lucide-react-native/icons/copy"
 import Download from "lucide-react-native/icons/download"
 import Pause from "lucide-react-native/icons/pause"
@@ -17,11 +19,10 @@ import SquareTerminal from "lucide-react-native/icons/square-terminal"
 import Trash from "lucide-react-native/icons/trash"
 import { Suspense, useEffect, useMemo, useState } from "react"
 import { ScrollView } from "react-native"
-import { Text, XStack, YStack } from "tamagui"
+import { Text, View, XStack, YStack } from "tamagui"
 import { EmptyState } from "../../../components/empty-state.tsx"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
-import { Badge } from "../../../components/ui/badge.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
@@ -30,6 +31,13 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../../../components/ui/collapsible.tsx"
+import { Icon } from "../../../components/ui/icon.tsx"
+import { Switch } from "../../../components/ui/switch.tsx"
 import { nativeConsoleHistory } from "../../../core/native-runtime.ts"
 import { useRequirePermission } from "../../../core/use-access.ts"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
@@ -39,7 +47,7 @@ import { useNostrIdentity } from "../../../hooks/use-nostr-profile.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { fontSize, shape } from "../../../theme/tokens.ts"
+import { fontSize } from "../../../theme/tokens.ts"
 import { useDeliverSupportMessage } from "../support/use-send-support-message.ts"
 import {
   dmInboxQueryKey,
@@ -71,15 +79,6 @@ const methodColors = {
   error: "destructive",
 } as const satisfies Record<ConsoleOutputHistoryEntry["method"], string>
 
-const methodBackgrounds = {
-  trace: "info-10",
-  debug: "info-10",
-  log: "muted-20",
-  info: "info-10",
-  warn: "warning-10",
-  error: "destructive-10",
-} as const satisfies Record<ConsoleOutputHistoryEntry["method"], string>
-
 /** The last captured console entries, newest first; in memory only, gone on restart. */
 export function DebugConsolePage() {
   const { t } = useTranslation()
@@ -87,6 +86,7 @@ export function DebugConsolePage() {
   const copyToClipboard = useCopyToClipboard()
   const sendToSupport = useSendToSupport()
   const [paused, setPaused] = useState(false)
+  const [showPayload, setShowPayload] = useState(false)
   const [entries, setEntries] = useState<
     ReadonlyArray<ConsoleOutputHistoryEntry>
   >(() => nativeConsoleHistory.getEntries())
@@ -211,6 +211,16 @@ export function DebugConsolePage() {
                 setEntries([])
               }}
             />
+            <XStack ml="auto" items="center" gap={8}>
+              <Switch
+                aria-label={t("settings.debugConsole.showPayload")}
+                checked={showPayload}
+                onCheckedChange={setShowPayload}
+              />
+              <Text fontSize={fontSize.xs} fontWeight="600">
+                {t("settings.debugConsole.showPayload")}
+              </Text>
+            </XStack>
           </XStack>
           {entries.length === 0 ? (
             <EmptyState
@@ -237,9 +247,19 @@ export function DebugConsolePage() {
                   }
                 />
               ) : (
-                <YStack gap={8} testID="debug-console-entries">
+                // Keyed by the switch, so flipping it resets every row the
+                // user opened or closed by hand, and no row animates.
+                <YStack
+                  key={String(showPayload)}
+                  gap={showPayload ? 2 : 0}
+                  testID="debug-console-entries"
+                >
                   {visibleEntries.map((entry) => (
-                    <ConsoleEntryCard key={entry.id} entry={entry} />
+                    <ConsoleEntryRow
+                      key={entry.id}
+                      entry={entry}
+                      defaultOpen={showPayload}
+                    />
                   ))}
                 </YStack>
               )}
@@ -305,78 +325,112 @@ function useSendToSupport() {
   return { send, sending }
 }
 
-function ConsoleEntryCard({
+/** Web's `ConsoleEntryRow`: a single log line that opens to its payload. */
+function ConsoleEntryRow({
   entry,
+  defaultOpen,
 }: {
   readonly entry: ConsoleOutputHistoryEntry
+  readonly defaultOpen: boolean
 }) {
   const { t } = useTranslation()
   const copyToClipboard = useCopyToClipboard()
+  const [open, setOpen] = useState(defaultOpen)
+  const payload = formatConsoleArgs(entry.args)
+  // Cut on the line, whole once the row opens.
+  const group = open ? entry.path.join("/") : formatConsoleGroup(entry.path)
+
   return (
-    <YStack gap={4} px={12} py={8} rounded={shape.control} bg="neutral-soft">
-      <XStack minW={0} gap={8} items="center">
-        <Text
-          fontSize={fontSize.xs}
-          lineHeight={fontSize.xs}
-          color="muted-foreground"
-          style={{ fontFamily: "monospace" }}
-        >
-          {format(entry.createdAt, "HH:mm:ss.SSS")}
-        </Text>
-        <Badge
-          variant="secondary"
-          label={entry.method.toUpperCase()}
-          labelColor={methodColors[entry.method]}
-          bg={methodBackgrounds[entry.method]}
-        />
-        <Text
-          flex={1}
-          minW={0}
-          fontSize={fontSize.xs}
-          lineHeight={fontSize.xs}
-          color="muted-foreground"
-          style={{ fontFamily: "monospace" }}
-          numberOfLines={1}
-        >
-          {entry.path.join("/")}
-        </Text>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label={t("settings.debugConsole.copyEntry")}
-          iconStart={Copy}
-          onPress={() =>
-            void copyToClipboard(formatConsoleEntry(entry), {
-              copied: t("settings.debugConsole.copied"),
-              failed: t("settings.debugConsole.copyFailed"),
-            })
-          }
-        />
-      </XStack>
-      <YStack
-        maxH={192}
-        overflow="hidden"
-        rounded={shape.control}
-        bg="background"
-      >
-        <ScrollView
-          nestedScrollEnabled
-          style={{ maxHeight: 192 }}
-          contentContainerStyle={{
-            paddingHorizontal: 8,
-            paddingVertical: 6,
-          }}
-        >
-          <Text
-            fontSize={fontSize.xs}
-            lineHeight={fontSize.xs}
-            style={{ fontFamily: "monospace" }}
-            select="text"
+    <Collapsible open={open} onOpenChange={setOpen}>
+      {/* One line of small text, as a plain log reads; open, its payload under it. */}
+      <YStack px={4} py={1} rounded={4} bg={open ? "neutral-soft" : undefined}>
+        <XStack minW={0} gap={6} items="center">
+          <CollapsibleTrigger
+            flex={1}
+            minW={0}
+            flexDirection="row"
+            items="center"
+            gap={6}
           >
-            {formatConsoleArgs(entry.args)}
-          </Text>
-        </ScrollView>
+            <View rotate={open ? "90deg" : "0deg"}>
+              <Icon icon={ChevronRight} size={12} color="muted-foreground" />
+            </View>
+            <Text {...compactText} color="muted-foreground">
+              {format(entry.createdAt, "HH:mm:ss.SSS")}
+            </Text>
+            <Text
+              {...compactText}
+              fontWeight="700"
+              color={methodColors[entry.method]}
+            >
+              {entry.method.toUpperCase()}
+            </Text>
+            {group.length > 0 ? (
+              <Text
+                {...compactText}
+                flex={open ? 1 : undefined}
+                minW={0}
+                color="muted-foreground"
+                numberOfLines={open ? undefined : 1}
+              >
+                {group}
+              </Text>
+            ) : null}
+            {open ? null : (
+              <Text {...compactText} flex={1} minW={0} numberOfLines={1}>
+                {payload.replace(/\s+/g, " ")}
+              </Text>
+            )}
+          </CollapsibleTrigger>
+          {/* Opened rows only, and over the line's height, which it keeps. */}
+          {open ? (
+            <View my={-6}>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label={t("settings.debugConsole.copyEntry")}
+                iconStart={Copy}
+                onPress={() =>
+                  void copyToClipboard(formatConsoleEntry(entry), {
+                    copied: t("settings.debugConsole.copied"),
+                    failed: t("settings.debugConsole.copyFailed"),
+                  })
+                }
+              />
+            </View>
+          ) : null}
+        </XStack>
+        <CollapsibleContent>
+          <YStack
+            mt={2}
+            mb={3}
+            ml={18}
+            maxH={192}
+            overflow="hidden"
+            rounded={4}
+            bg="background"
+          >
+            <ScrollView
+              nestedScrollEnabled
+              style={{ maxHeight: 192 }}
+              contentContainerStyle={{
+                paddingHorizontal: 6,
+                paddingVertical: 4,
+              }}
+            >
+              <Text {...compactText} select="text">
+                {payload}
+              </Text>
+            </ScrollView>
+          </YStack>
+        </CollapsibleContent>
       </YStack>
-    </YStack>
+    </Collapsible>
   )
 }
+
+/** A row's text: smaller than the kit's `xs`, the line height left to the font. */
+const compactText = {
+  fontSize: 10,
+  style: { fontFamily: "monospace" },
+} as const

@@ -95,6 +95,21 @@ test("capture unhandled errors, then filter, copy and export the log", async ({
     await expect(alpha).toBeVisible()
   })
 
+  await test.step("open one line, then show every payload", async () => {
+    await expect(alpha).toContainText("e2e marker alpha")
+    await expect(alpha.locator("pre")).toHaveCount(0)
+    await alpha.getByRole("button", { expanded: false }).click()
+    await expect(alpha.locator("pre")).toBeVisible()
+    await alpha.getByRole("button", { expanded: true }).click()
+    await expect(alpha.locator("pre")).toHaveCount(0)
+    await page
+      .getByRole("switch", {
+        name: translate("en", "settings.debugConsole.showPayload"),
+      })
+      .click()
+    await expect(alpha.locator("pre")).toBeVisible()
+  })
+
   await test.step("copy holds what is shown, redacted log format", async () => {
     await page
       .getByRole("button", {

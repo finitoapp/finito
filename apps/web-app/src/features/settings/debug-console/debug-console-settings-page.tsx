@@ -3,12 +3,21 @@ import {
   filterConsoleEntries,
   formatConsoleArgs,
   formatConsoleEntry,
+  formatConsoleGroup,
 } from "@payky/app-shared/console-history"
 import type { DmInbox } from "@payky/core/integrations/nostr/nostr-support-chat"
 import { useQueryClient } from "@tanstack/react-query"
 import { format } from "date-fns"
-import { Copy, Download, Pause, Play, Send, Trash2 } from "lucide-react"
-import { Suspense, useEffect, useMemo, useState } from "react"
+import {
+  ChevronRight,
+  Copy,
+  Download,
+  Pause,
+  Play,
+  Send,
+  Trash2,
+} from "lucide-react"
+import { Suspense, useEffect, useId, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import type { ConsoleOutputHistoryEntry } from "@/atoms/console.ts"
@@ -21,6 +30,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible.tsx"
+import { Label } from "@/components/ui/label.tsx"
+import { Switch } from "@/components/ui/switch.tsx"
 import { CashuShardDebugCard } from "@/features/settings/debug-console/cashu-shard-debug-card.tsx"
 import {
   DebugConsoleFilters,
@@ -55,6 +71,8 @@ export function DebugConsoleSettingsPage() {
   const formatLog = useFormatConsoleLog()
   const sendToSupport = useSendToSupport()
   const [isPaused, setIsPaused] = useState(false)
+  const [showPayload, setShowPayload] = useState(false)
+  const showPayloadId = useId()
   const [entries, setEntries] = useState<
     ReadonlyArray<ConsoleOutputHistoryEntry>
   >(() => consoleHistory.getEntries())
@@ -183,6 +201,15 @@ export function DebugConsoleSettingsPage() {
               <Trash2 />
               {t("settings.debugConsole.clear")}
             </Button>
+            <Label htmlFor={showPayloadId} className="ml-auto gap-2 text-xs">
+              <Switch
+                id={showPayloadId}
+                size="sm"
+                checked={showPayload}
+                onCheckedChange={setShowPayload}
+              />
+              {t("settings.debugConsole.showPayload")}
+            </Label>
           </div>
           {entries.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
@@ -210,12 +237,22 @@ export function DebugConsoleSettingsPage() {
                   </Button>
                 </div>
               ) : (
+                // Keyed by the switch, so flipping it resets every row the
+                // user opened or closed by hand.
                 <div
-                  className="flex flex-col gap-1.5"
+                  key={String(showPayload)}
+                  className={cn(
+                    "flex flex-col",
+                    showPayload ? "gap-0.5" : "gap-0"
+                  )}
                   data-testid="debug-console-entries"
                 >
                   {visibleEntries.map((entry) => (
-                    <ConsoleEntryCard key={entry.id} entry={entry} />
+                    <ConsoleEntryRow
+                      key={entry.id}
+                      entry={entry}
+                      defaultOpen={showPayload}
+                    />
                   ))}
                 </div>
               )}
@@ -281,56 +318,99 @@ function useSendToSupport() {
   return { send, sending }
 }
 
-function ConsoleEntryCard({
+/**
+ * One entry: a single log line that opens to its payload. The switch above
+ * the log sets whether rows start open; each can still be toggled.
+ */
+function ConsoleEntryRow({
   entry,
+  defaultOpen,
 }: {
   readonly entry: ConsoleOutputHistoryEntry
+  readonly defaultOpen: boolean
 }) {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(defaultOpen)
   const path = entry.path.length > 0 ? entry.path.join("/") : null
+  const payload = formatConsoleArgs(entry.args)
 
   return (
-    <article className="rounded-md border bg-muted/20 px-2.5 py-2">
-      <div className="mb-1.5 flex min-w-0 items-center gap-2">
-        <time
-          className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground"
-          dateTime={new Date(entry.createdAt).toISOString()}
-        >
-          {formatConsoleEntryTime(entry.createdAt)}
-        </time>
-        <span
-          className={cn(
-            "rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase leading-none",
-            methodClassNames[entry.method]
-          )}
-        >
-          {entry.method}
-        </span>
-        {path ? (
-          <span className="truncate font-mono text-[11px] text-muted-foreground">
-            {path}
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      render={<article />}
+      className={cn(
+        "rounded-sm px-1 font-mono text-[10px] leading-4",
+        open ? "bg-muted/40 pb-1" : "hover:bg-muted/40"
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-1.5">
+        <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
+          <ChevronRight
+            aria-hidden
+            className={cn(
+              "size-3 shrink-0 text-muted-foreground transition-transform",
+              open && "rotate-90"
+            )}
+          />
+          <time
+            className="shrink-0 tabular-nums text-muted-foreground"
+            dateTime={new Date(entry.createdAt).toISOString()}
+          >
+            {formatConsoleEntryTime(entry.createdAt)}
+          </time>
+          <span
+            className={cn(
+              "shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase leading-none",
+              methodClassNames[entry.method]
+            )}
+          >
+            {entry.method}
           </span>
+          {path ? (
+            // Cut on the line, whole once the row opens.
+            <span
+              className={cn(
+                "text-muted-foreground",
+                open ? "min-w-0 flex-1 break-all" : "shrink-0"
+              )}
+              title={open ? undefined : path}
+            >
+              {open ? path : formatConsoleGroup(entry.path)}
+            </span>
+          ) : null}
+          {open ? null : (
+            <span className="min-w-0 flex-1 truncate">
+              {payload.replace(/\s+/g, " ")}
+            </span>
+          )}
+        </CollapsibleTrigger>
+        {/* Opened rows only, so a closed one stays a line of text. */}
+        {open ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            // The line's own height, so opening a row does not grow it.
+            className="-my-0.5 size-5 shrink-0"
+            aria-label={t("settings.debugConsole.copyEntry")}
+            onClick={() =>
+              void copyToClipboard(formatConsoleEntry(entry), {
+                copied: t("settings.debugConsole.copied"),
+                failed: t("settings.debugConsole.copyFailed"),
+              })
+            }
+          >
+            <Copy className="size-3" />
+          </Button>
         ) : null}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          className="ml-auto shrink-0"
-          aria-label={t("settings.debugConsole.copyEntry")}
-          onClick={() =>
-            void copyToClipboard(formatConsoleEntry(entry), {
-              copied: t("settings.debugConsole.copied"),
-              failed: t("settings.debugConsole.copyFailed"),
-            })
-          }
-        >
-          <Copy />
-        </Button>
       </div>
-      <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-background px-2 py-1.5 font-mono text-[11px] leading-snug">
-        {formatConsoleArgs(entry.args)}
-      </pre>
-    </article>
+      <CollapsibleContent>
+        <pre className="mt-0.5 ml-4.5 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-background px-1.5 py-1">
+          {payload}
+        </pre>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
