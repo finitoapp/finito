@@ -129,7 +129,7 @@ export const enPayment = {
   "paymentDetail.delete.confirm.cancel": "Keep",
   "paymentDetail.delete.error.generic": "The payment could not be deleted.",
   "paymentDetail.delete.error.notDeletable":
-    "The payment is no longer pending or canceled, so it cannot be deleted.",
+    "Money has already arrived for the payment, so it cannot be deleted.",
   "paymentDetail.delete.error.attemptOpen":
     "A payment may still be in progress or its result is unknown, so it cannot be deleted.",
   "paymentDetail.deviceId": "Device",

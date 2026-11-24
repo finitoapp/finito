@@ -1393,13 +1393,31 @@ describe("payment actions", () => {
       await expect(ctx.run(deleteUnpaidPayment(id))).resolves.toEqual(refused)
     }, 15_000)
 
-    test("an expired payment is refused", async () => {
+    test("an expired payment is deleted, and not counted as canceled", async () => {
       await using ctx = await setUp()
       const id = await ctx.create(TimestampMs(1))
 
+      await ctx.run.orThrow(deleteUnpaidPayment(id))
+
+      expect((await ctx.run(loadPayment(id))).ok).toBe(false)
+      const [row] = await ctx.evolu.loadQuery(paymentWithDetailsByIdQuery(id))
+      expect(row?.canceledAt).toBeNull()
+    }, 15_000)
+
+    test("a payment confirmed as paid is refused without a claim too", async () => {
+      await using ctx = await setUp()
+      const id = await ctx.create()
+      await runMutationWithCompletion((options) =>
+        ctx.evolu.update(
+          "payment",
+          { id, confirmedPaidAt: TimestampMs(1_000) },
+          options
+        )
+      )
+
       await expect(ctx.run(deleteUnpaidPayment(id))).resolves.toEqual({
         ok: false,
-        error: { type: "PaymentNotDeletable", id, status: "expired" },
+        error: { type: "PaymentNotDeletable", id },
       })
     }, 15_000)
   })

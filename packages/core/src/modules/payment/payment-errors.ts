@@ -85,14 +85,13 @@ export type PaymentAttemptUnresolvedError = ReturnType<
 >
 
 /**
- * A payment that is neither pending nor canceled, so it is not deleted
- * (payment/0029).
+ * A payment confirmed as paid, so it is not deleted even when no claim stands
+ * behind it any more (payment/0029).
  */
 export const createPaymentNotDeletableError = defineError(
   "PaymentNotDeletable"
 )<{
   readonly id: PaymentId
-  readonly status: PaymentStatus
 }>()
 export type PaymentNotDeletableError = ReturnType<
   typeof createPaymentNotDeletableError

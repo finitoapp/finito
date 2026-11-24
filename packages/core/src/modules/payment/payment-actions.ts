@@ -1429,14 +1429,15 @@ export type DeleteUnpaidPaymentError =
   | PaymentAttemptOpenError
 
 /**
- * Deletes a pending or canceled payment that has taken no money
+ * Deletes a pending, expired or canceled payment that has taken no money
  * (payment/0029), for staff; `deletePayment` is the unguarded write behind
  * the CLI. Its number is not given out again.
  *
  * A payment whose money may be on its way is refused: what arrives later is
  * recorded only on a payment that is still there. A pending payment is
  * canceled in the same write, so the statistics count it as canceled, which
- * they do for a deleted payment too.
+ * they do for a deleted payment too. An expired one is not: nobody called it
+ * off.
  */
 export const deleteUnpaidPayment =
   (
@@ -1457,8 +1458,8 @@ export const deleteUnpaidPayment =
       return err(createPaymentAlreadyPaidError({ id: paymentId }))
     }
     const status = await run.ok(loadPaymentStatus(payment))
-    if (status !== "pending" && status !== "canceled") {
-      return err(createPaymentNotDeletableError({ id: paymentId, status }))
+    if (status === "paid") {
+      return err(createPaymentNotDeletableError({ id: paymentId }))
     }
     if (await run.ok(loadPaymentHasOpenAttempt(paymentId))) {
       return err(createPaymentAttemptOpenError({ id: paymentId }))
@@ -1471,9 +1472,13 @@ export const deleteUnpaidPayment =
         "payment",
         {
           id: paymentId,
-          canceledAt:
-            payment.canceledAt ??
-            TimestampMsSchema.decode(run.deps.date.now().getTime()),
+          ...(status === "pending"
+            ? {
+                canceledAt: TimestampMsSchema.decode(
+                  run.deps.date.now().getTime()
+                ),
+              }
+            : {}),
           isDeleted: sqliteTrue,
         },
         { ...options, owner: evoluOwner }

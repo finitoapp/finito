@@ -128,7 +128,7 @@ export const csPayment = {
   "paymentDetail.delete.confirm.cancel": "Ponechat",
   "paymentDetail.delete.error.generic": "Platbu se nepodařilo smazat.",
   "paymentDetail.delete.error.notDeletable":
-    "Platba už není čekající ani zrušená, proto ji nelze smazat.",
+    "Na platbu už dorazily peníze, proto ji nelze smazat.",
   "paymentDetail.delete.error.attemptOpen":
     "Platba možná ještě probíhá nebo není znám její výsledek, proto ji nelze smazat.",
   "paymentDetail.deviceId": "Zařízení",
