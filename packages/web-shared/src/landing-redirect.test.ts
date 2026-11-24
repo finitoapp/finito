@@ -1,3 +1,4 @@
+import { paykyBrand } from "@payky/app-shared/brand"
 import { afterEach, describe, expect, test, vi } from "vitest"
 
 import {
@@ -6,6 +7,7 @@ import {
   isLandingPrivacyPath,
   isLandingTechPath,
   isLandingTerminalPath,
+  LandingLanguageSchema,
   landingLanguageFromPath,
   markAppEntered,
   preferredLandingLanguage,
@@ -13,9 +15,20 @@ import {
   rememberInstallLanguage,
   shouldRedirectToLanding,
 } from "./landing-redirect.ts"
+import { languageOptions } from "./language-options.ts"
 
 const paykySite = createLandingSitePaths("/landing")
 const finitoSite = createLandingSitePaths("", { terminal: true })
+
+test("Payky and the landing offer Payky's languages", () => {
+  expect(languageOptions.map(({ value }) => value)).toEqual(
+    paykyBrand.languages
+  )
+  for (const language of paykyBrand.languages) {
+    expect(LandingLanguageSchema.safeParse(language).success).toBe(true)
+  }
+  expect(LandingLanguageSchema.safeParse("vi").success).toBe(false)
+})
 
 describe("shouldRedirectToLanding", () => {
   test("sends a browser tab that never opened the app to the landing page", () => {

@@ -15,12 +15,16 @@
 // PAYKY_GOOGLE_PLAY_SCENARIOS=home,stats only those scenarios (the other
 // screenshots already there stay); PAYKY_GOOGLE_PLAY_SKIP_BUILD=1 reuses the
 // last export.
+
 import { Buffer } from "node:buffer"
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { brandName, finitoBrand } from "@payky/app-shared/brand"
-import { type Language, resources } from "@payky/app-shared/i18n/resources"
 import type { ShotName } from "@payky/doc-mockups/compose-mockup"
+import {
+  type DocumentationLanguage,
+  documentationLanguages,
+} from "@payky/doc-mockups/screenshot-content"
 import type { Page } from "@playwright/test"
 import { createEnv } from "@t3-oss/env-core"
 import sharp from "sharp"
@@ -104,7 +108,7 @@ type DeviceSpec = (typeof devices)[Device]
 const deviceScaleFactor = 3
 
 /** Google Play's listing locale of each app language. */
-const listingLocaleByLanguage: Record<Language, string> = {
+const listingLocaleByLanguage: Record<DocumentationLanguage, string> = {
   en: "en-US",
   cs: "cs-CZ",
   sk: "sk",
@@ -136,7 +140,7 @@ const env = createEnv({
 const appDir = resolve(import.meta.dirname, "..")
 const outputDirectory = join(appDir, ".tmp/google-play")
 const coinSvgPath = join(appDir, "public/pwa-icon.svg")
-const languages = Object.keys(resources) as Language[]
+const languages = documentationLanguages
 const background = appThemes.dark.background
 const gold = appThemes.dark.primary
 
@@ -158,7 +162,7 @@ if (selectedScenarios.length === 0) {
   )
 }
 
-function imagesDirectory(language: Language): string {
+function imagesDirectory(language: DocumentationLanguage): string {
   return join(outputDirectory, listingLocaleByLanguage[language], "images")
 }
 
@@ -213,7 +217,7 @@ function escapeHtml(text: string): string {
  */
 async function renderFeatureGraphic(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<Buffer> {
   const copy = landingResources[language]
   const title = copy["landing.hero.title"]
@@ -313,7 +317,7 @@ async function renderFeatureGraphic(
 
 /** The device's screenshot file of `shot`, numbered in the listing's order. */
 function screenshotPath(
-  language: Language,
+  language: DocumentationLanguage,
   device: DeviceSpec,
   shot: ShotName
 ): string | undefined {

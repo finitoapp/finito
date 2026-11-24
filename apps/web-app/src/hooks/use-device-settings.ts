@@ -11,11 +11,12 @@ import { getPreferredDeviceLanguage } from "@payky/core/modules/device/device-ut
 import { useAtomValue } from "jotai"
 import * as React from "react"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
+import { appBrand } from "@/core/app-brand.ts"
 import { useDeviceEvoluQuery } from "@/hooks/use-device-evolu-query.ts"
 
 function getDefaultDeviceSettings(): DeviceSettings {
   return createDefaultDeviceSettings(
-    getPreferredDeviceLanguage(navigator.language)
+    getPreferredDeviceLanguage(navigator.language, appBrand.languages)
   )
 }
 

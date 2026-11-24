@@ -1,4 +1,4 @@
-import type { Language } from "@payky/app-shared/i18n/resources"
+import type { DocumentationLanguage } from "@payky/doc-mockups/screenshot-content"
 import type { TerminalShotName } from "@payky/doc-mockups/terminal-shots"
 import { expect, type Page } from "@playwright/test"
 import type { E2eSwitchioScenario } from "../../src/e2e/e2e-switchio-presets.ts"
@@ -57,7 +57,7 @@ export interface TerminalScenario {
   readonly bare?: boolean
   readonly capture: (
     page: Page,
-    language: Language,
+    language: DocumentationLanguage,
     shoot: TerminalShoot
   ) => Promise<void>
 }
@@ -69,7 +69,7 @@ export interface TerminalScenario {
 const amount = "249"
 
 /** The tip preset the payments take, so a tip can be refunded on its own. */
-const tipOf = (language: Language) =>
+const tipOf = (language: DocumentationLanguage) =>
   translate(language, "settings.tips.percentages.value", { value: 10 })
 
 /** Part of the payment, typed on the refund screen. */
@@ -78,7 +78,7 @@ const partialRefund = "100"
 /** Onboarding on the keypad, then card payments on, ending on home. */
 export async function prepareCardTerminal(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await completeOnboarding(page, language)
   await openSettings(page, language)
@@ -101,7 +101,7 @@ const settle = (page: Page) => page.waitForTimeout(500)
 /** Waits out the toast `key` a screen left behind, so it covers nothing. */
 const toastGone = async (
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   key: Parameters<typeof translate>[1]
 ) => {
   // A toast is the one alert that says so aloud (ui/toast.tsx).

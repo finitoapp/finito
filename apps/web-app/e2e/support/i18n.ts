@@ -1,8 +1,6 @@
-import type {
-  TranslationKey as AppTranslationKey,
-  Language,
-} from "@payky/app-shared/i18n/resources"
+import type { TranslationKey as AppTranslationKey } from "@payky/app-shared/i18n/resources"
 import { createBrandedResources } from "@payky/app-shared/i18n/translate"
+import type { Language } from "@payky/web-shared/landing-redirect"
 import {
   createLandingResources,
   landingSites,

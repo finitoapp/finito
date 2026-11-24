@@ -1,3 +1,4 @@
+import { libraryLanguage } from "@payky/core/integrations/product-library/product-library-client"
 import Unlink from "lucide-react-native/icons/unlink"
 import { Text, XStack, YStack } from "tamagui"
 import {
@@ -56,7 +57,9 @@ export function ItemLibraryPicture({
           color="muted-foreground"
           numberOfLines={2}
         >
-          {t("catalog.library.linked", { name: product.names[language] })}
+          {t("catalog.library.linked", {
+            name: product.names[libraryLanguage(language)],
+          })}
         </Text>
         <Button
           variant="outline"

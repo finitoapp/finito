@@ -4,11 +4,13 @@
  * (`@fontsource/manrope`, OFL, the files the landing loads), regular,
  * semibold and bold, one file per script. Metro's CSS cannot load the
  * files a stylesheet points at, so the faces go into the page's head with
- * the files required as Metro assets. Only Latin and Latin Extended, which
- * the app's languages need; `unicode-range` has the browser fetch the
- * extended file only for a page that uses it. `tamagui.config.ts` names the
+ * the files required as Metro assets. Only Latin, Latin Extended and
+ * Vietnamese, which the app's languages need; `unicode-range` has the browser
+ * fetch the latter two only for a page that uses them. `tamagui.config.ts` names the
  * family.
  */
+const vietnameseRange =
+  "U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB"
 const latinExtRange =
   "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF"
 const latinRange =
@@ -20,6 +22,11 @@ const manropeFaces: ReadonlyArray<{
   readonly unicodeRange: string
 }> = [
   {
+    file: require("@fontsource/manrope/files/manrope-vietnamese-400-normal.woff2"),
+    weight: 400,
+    unicodeRange: vietnameseRange,
+  },
+  {
     file: require("@fontsource/manrope/files/manrope-latin-ext-400-normal.woff2"),
     weight: 400,
     unicodeRange: latinExtRange,
@@ -30,6 +37,11 @@ const manropeFaces: ReadonlyArray<{
     unicodeRange: latinRange,
   },
   {
+    file: require("@fontsource/manrope/files/manrope-vietnamese-600-normal.woff2"),
+    weight: 600,
+    unicodeRange: vietnameseRange,
+  },
+  {
     file: require("@fontsource/manrope/files/manrope-latin-ext-600-normal.woff2"),
     weight: 600,
     unicodeRange: latinExtRange,
@@ -38,6 +50,11 @@ const manropeFaces: ReadonlyArray<{
     file: require("@fontsource/manrope/files/manrope-latin-600-normal.woff2"),
     weight: 600,
     unicodeRange: latinRange,
+  },
+  {
+    file: require("@fontsource/manrope/files/manrope-vietnamese-700-normal.woff2"),
+    weight: 700,
+    unicodeRange: vietnameseRange,
   },
   {
     file: require("@fontsource/manrope/files/manrope-latin-ext-700-normal.woff2"),

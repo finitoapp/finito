@@ -1,6 +1,18 @@
 import type { Language } from "@payky/app-shared/i18n/resources"
 
 /**
+ * The languages the documentation, the landing and the store listings come
+ * in; Finito also speaks Vietnamese, which none of them does (brand/0007).
+ */
+export const documentationLanguages = [
+  "en",
+  "cs",
+  "sk",
+] as const satisfies ReadonlyArray<Language>
+
+export type DocumentationLanguage = (typeof documentationLanguages)[number]
+
+/**
  * The café every app's documentation screenshots show, per language: the
  * catalog, the carts, the tables and the amounts the scenarios type, so the
  * apps' screenshots and mockups tell the same story.
@@ -21,7 +33,7 @@ export interface CartItem extends CatalogItem {
  * `billCartByLanguage`); the rest just fill out the grid.
  */
 export const billCatalogByLanguage: Record<
-  Language,
+  DocumentationLanguage,
   ReadonlyArray<CatalogItem>
 > = {
   en: [
@@ -50,7 +62,10 @@ export const billCatalogByLanguage: Record<
   ],
 }
 
-export const billCartByLanguage: Record<Language, ReadonlyArray<CartItem>> = {
+export const billCartByLanguage: Record<
+  DocumentationLanguage,
+  ReadonlyArray<CartItem>
+> = {
   en: [
     { name: "Coffee", price: "4.5", quantity: 2 },
     { name: "Croissant", price: "3.25", quantity: 1 },
@@ -66,7 +81,7 @@ export const billCartByLanguage: Record<Language, ReadonlyArray<CartItem>> = {
 }
 
 export const tableNamesByLanguage: Record<
-  Language,
+  DocumentationLanguage,
   readonly [string, string, string, string, string, string]
 > = {
   en: ["Table 1", "Table 2", "Table 3", "Table 4", "Table 5", "Table 6"],
@@ -74,14 +89,18 @@ export const tableNamesByLanguage: Record<
   sk: ["Stôl 1", "Stôl 2", "Stôl 3", "Stôl 4", "Stôl 5", "Stôl 6"],
 }
 
-export const tablesCartItemByLanguage: Record<Language, CartItem> = {
-  en: { name: "Coffee", price: "4.5", quantity: 1 },
-  cs: { name: "Káva", price: "65", quantity: 1 },
-  sk: { name: "Káva", price: "2.5", quantity: 1 },
-}
+export const tablesCartItemByLanguage: Record<DocumentationLanguage, CartItem> =
+  {
+    en: { name: "Coffee", price: "4.5", quantity: 1 },
+    cs: { name: "Káva", price: "65", quantity: 1 },
+    sk: { name: "Káva", price: "2.5", quantity: 1 },
+  }
 
 /** The split screenshot moves one of each brick off a bill holding all of them. */
-export const splitCartByLanguage: Record<Language, ReadonlyArray<CartItem>> = {
+export const splitCartByLanguage: Record<
+  DocumentationLanguage,
+  ReadonlyArray<CartItem>
+> = {
   en: [...billCartByLanguage.en, { name: "Sandwich", price: "6", quantity: 1 }],
   cs: [...billCartByLanguage.cs, { name: "Sendvič", price: "89", quantity: 1 }],
   sk: [
@@ -94,7 +113,7 @@ export const splitCartByLanguage: Record<Language, ReadonlyArray<CartItem>> = {
 export const statsHistoryDays = 8
 
 // A koruna amount reads as a real sale; the euro and dollar defaults already do.
-export const paymentAmountByLanguage: Record<Language, string> = {
+export const paymentAmountByLanguage: Record<DocumentationLanguage, string> = {
   en: "5.9",
   cs: "249",
   sk: "5.9",

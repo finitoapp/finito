@@ -1,4 +1,5 @@
-import type { Language, TranslationKey } from "@payky/app-shared/i18n/resources"
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import type { Language } from "@payky/web-shared/landing-redirect"
 import type { Page } from "@playwright/test"
 import { translate } from "./i18n.ts"
 

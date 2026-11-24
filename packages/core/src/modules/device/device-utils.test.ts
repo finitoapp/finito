@@ -5,22 +5,29 @@ import {
   getPreferredDeviceLanguage,
 } from "./device-utils.ts"
 
+const offered = ["en", "cs", "sk"] as const
+
 describe("getPreferredDeviceLanguage", () => {
   test("matches Czech locale variants", () => {
-    expect(getPreferredDeviceLanguage("cs")).toBe("cs")
-    expect(getPreferredDeviceLanguage("cs-CZ")).toBe("cs")
+    expect(getPreferredDeviceLanguage("cs", offered)).toBe("cs")
+    expect(getPreferredDeviceLanguage("cs-CZ", offered)).toBe("cs")
   })
 
   test("matches Slovak locale variants", () => {
-    expect(getPreferredDeviceLanguage("sk")).toBe("sk")
-    expect(getPreferredDeviceLanguage("sk-SK")).toBe("sk")
+    expect(getPreferredDeviceLanguage("sk", offered)).toBe("sk")
+    expect(getPreferredDeviceLanguage("sk-SK", offered)).toBe("sk")
+  })
+
+  test("matches a language only where the app offers it", () => {
+    expect(getPreferredDeviceLanguage("vi-VN", [...offered, "vi"])).toBe("vi")
+    expect(getPreferredDeviceLanguage("vi-VN", offered)).toBe("en")
   })
 
   test("falls back to English for any other locale", () => {
-    expect(getPreferredDeviceLanguage("en")).toBe("en")
-    expect(getPreferredDeviceLanguage("en-US")).toBe("en")
-    expect(getPreferredDeviceLanguage("de-DE")).toBe("en")
-    expect(getPreferredDeviceLanguage("")).toBe("en")
+    expect(getPreferredDeviceLanguage("en", offered)).toBe("en")
+    expect(getPreferredDeviceLanguage("en-US", offered)).toBe("en")
+    expect(getPreferredDeviceLanguage("de-DE", offered)).toBe("en")
+    expect(getPreferredDeviceLanguage("", offered)).toBe("en")
   })
 })
 

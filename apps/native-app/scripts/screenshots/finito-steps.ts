@@ -1,8 +1,9 @@
-import type { Language, TranslationKey } from "@payky/app-shared/i18n/resources"
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { createBrandedResources } from "@payky/app-shared/i18n/translate"
 import type {
   CartItem,
   CatalogItem,
+  DocumentationLanguage,
 } from "@payky/doc-mockups/screenshot-content"
 import { expect, type Page } from "@playwright/test"
 import { appBrand } from "../../src/core/app-brand.ts"
@@ -22,7 +23,7 @@ const resources = {
 
 /** The copy as Finito shows it, its `{name}`-style params filled from `params`. */
 export function translate(
-  language: Language,
+  language: DocumentationLanguage,
   key: TranslationKey,
   params: Readonly<Record<string, string | number>> = {}
 ): string {
@@ -34,7 +35,7 @@ export function translate(
 /** Onboarding through its screens, as the Maestro `complete-onboarding` subflow. */
 export async function completeOnboarding(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   mode: "numpad" | "pos" = "numpad"
 ): Promise<void> {
   await page.goto("/")
@@ -74,7 +75,7 @@ export async function completeOnboarding(
 /** A catalog item through its form, as the `add-catalog-item` subflow. */
 export async function addCatalogItem(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   item: CatalogItem
 ): Promise<void> {
   await page.goto("/settings/items")
@@ -107,7 +108,7 @@ export async function addCatalogItem(
 /** A four-seat table through its form, as the `add-table` subflow. */
 export async function addTable(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   name: string
 ): Promise<void> {
   await page.goto("/settings/tables")
@@ -140,7 +141,7 @@ export async function addTable(
 /** Taps `amount` on home's keypad, as the `enter-amount` subflow. */
 export async function enterAmount(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   amount = "5.9"
 ): Promise<void> {
   for (const key of amount) {
@@ -156,7 +157,7 @@ export async function enterAmount(
 /** From home's keypad to the payment's QR, the tip skipped. */
 export async function createPayment(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   amount?: string
 ): Promise<void> {
   await enterAmount(page, language, amount)
@@ -178,7 +179,7 @@ export async function createPayment(
 /** The payment's cash tab, marked paid, as the `mark-cash-paid` subflow. */
 export async function markCashPaid(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await page
     .getByRole("tab", { name: translate(language, "paymentWait.method.cash") })
@@ -196,7 +197,7 @@ export async function markCashPaid(
 /** Home → the menu → its Settings tab, as the `open-menu-tab` subflow. */
 export async function openSettings(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await hamburger(page, language).click()
   await page
@@ -210,7 +211,7 @@ export async function openSettings(
 /** A new bill without a table, from the bills home, as the `new-bill` subflow. */
 export async function startNewBill(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await page
     .getByTestId("no-table-tile")
@@ -222,7 +223,7 @@ export async function startNewBill(
 /** A new bill at `tableName`, from its tile on the bills home. */
 export async function startTableBill(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   tableName: string
 ): Promise<void> {
   await page
@@ -233,7 +234,10 @@ export async function startTableBill(
   await waitForBill(page, language)
 }
 
-async function waitForBill(page: Page, language: Language): Promise<void> {
+async function waitForBill(
+  page: Page,
+  language: DocumentationLanguage
+): Promise<void> {
   await page
     .getByRole("button", { name: translate(language, "bill.table.aria") })
     .waitFor()
@@ -242,7 +246,7 @@ async function waitForBill(page: Page, language: Language): Promise<void> {
 /** Taps each item's brick its quantity's times and waits for the bill to exist. */
 export async function addCart(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   cart: ReadonlyArray<CartItem>
 ): Promise<void> {
   for (const item of cart) {
@@ -266,7 +270,7 @@ export async function openBillSummary(page: Page): Promise<void> {
 /** Seats the open bill at `tableName` through its table dialog. */
 export async function assignTable(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   tableName: string
 ): Promise<void> {
   await page
@@ -280,7 +284,10 @@ export async function assignTable(
 }
 
 /** Back from the bill to the bills home. */
-export async function leaveBill(page: Page, language: Language): Promise<void> {
+export async function leaveBill(
+  page: Page,
+  language: DocumentationLanguage
+): Promise<void> {
   await page
     .getByRole("button", { name: translate(language, "nav.back") })
     .first()
@@ -289,7 +296,7 @@ export async function leaveBill(page: Page, language: Language): Promise<void> {
 }
 
 /** Matches `demoData.running.progress`, capturing `{done}`. */
-function demoProgressPattern(language: Language): RegExp {
+function demoProgressPattern(language: DocumentationLanguage): RegExp {
   const [before = "", after = ""] = escapeRegExp(
     translate(language, "demoData.running.progress")
   ).split("\\{done\\}")
@@ -305,7 +312,7 @@ function demoProgressPattern(language: Language): RegExp {
  */
 export async function generateDemoData(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   days: number
 ): Promise<void> {
   await page.goto("/settings/demo-data")
@@ -434,7 +441,10 @@ export async function returnToForeground(page: Page): Promise<void> {
  * Back to home's keypad through the menu bar's Home, a button there, from a
  * screen the bar is on or one opened from it.
  */
-export async function openHome(page: Page, language: Language): Promise<void> {
+export async function openHome(
+  page: Page,
+  language: DocumentationLanguage
+): Promise<void> {
   await backToMenu(page, language)
   await page
     .getByRole("navigation", { name: translate(language, "nav.menu") })
@@ -448,7 +458,7 @@ export async function openHome(page: Page, language: Language): Promise<void> {
 /** A row of a settings list, by its title. */
 export async function openSettingsRow(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   title: TranslationKey
 ): Promise<void> {
   await page.getByRole("link", { name: translate(language, title) }).click()
@@ -461,7 +471,7 @@ export async function openSettingsRow(
 /** Settings › Payment methods, from the settings. */
 export async function openPaymentMethods(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await openSettingsRow(page, language, "settings.paymentAccounts.title")
   await page
@@ -472,7 +482,10 @@ export async function openPaymentMethods(
 }
 
 /** Back one screen through the header's back button. */
-export async function goBack(page: Page, language: Language): Promise<void> {
+export async function goBack(
+  page: Page,
+  language: DocumentationLanguage
+): Promise<void> {
   await page
     .getByRole("button", { name: translate(language, "nav.back") })
     .last()
@@ -488,7 +501,7 @@ export async function goBack(page: Page, language: Language): Promise<void> {
  */
 export async function enableCardPayments(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   const enabled = page.getByRole("switch", {
     name: translate(language, "settings.cardSwitchioAccount.enabled.label"),
@@ -548,7 +561,7 @@ export async function enableCardPayments(
  */
 export async function startCardPayment(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   {
     amount,
     tip,
@@ -635,7 +648,7 @@ const cardTaps = new WeakMap<Page, number>()
  */
 export async function tapPayByCard(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   const button = page.getByRole("button", {
     name: translate(language, "paymentWait.cardPaid.action"),
@@ -653,7 +666,7 @@ export async function tapPayByCard(
 /** Waits for the paid screen. */
 export async function waitForPaid(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await page
     .getByRole("heading", { name: translate(language, "paymentWait.paid") })
@@ -663,7 +676,7 @@ export async function waitForPaid(
 /** A card payment from home's keypad, approved, ending on the paid screen. */
 export async function payByCard(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   options: { readonly amount: string; readonly tip?: string }
 ): Promise<void> {
   await startCardPayment(page, language, options)
@@ -674,7 +687,7 @@ export async function payByCard(
 /** The paid screen's way to the payment's detail. */
 export async function openPaymentDetail(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await page
     .getByRole("button", { name: translate(language, "paymentWait.detail") })
@@ -684,7 +697,7 @@ export async function openPaymentDetail(
 
 async function waitForPaymentDetail(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await page
     .getByRole("heading", { name: translate(language, "paymentDetail.title") })
@@ -694,7 +707,7 @@ async function waitForPaymentDetail(
 }
 
 /** Home's hamburger, named after the notifications while one is unread. */
-function hamburger(page: Page, language: Language) {
+function hamburger(page: Page, language: DocumentationLanguage) {
   return page.getByRole("button", {
     name: new RegExp(
       `^(${escapeRegExp(translate(language, "nav.menu"))}|${escapeRegExp(translate(language, "nav.notificationsUnread"))})$`,
@@ -706,7 +719,7 @@ function hamburger(page: Page, language: Language) {
 /** Back through the screens until the menu bar shows. */
 export async function backToMenu(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   const menu = page.getByRole("navigation", {
     name: translate(language, "nav.menu"),
@@ -726,7 +739,7 @@ export async function backToMenu(
 /** The newest payment in Activity, from home or a screen the bar is on. */
 export async function openNewestPayment(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   const menu = hamburger(page, language)
   if (await menu.isVisible()) await menu.click()
@@ -749,7 +762,7 @@ export async function openNewestPayment(
 /** The payment detail's "Refund money", to the refund screen. */
 export async function openRefund(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await page
     .getByRole("button", {
@@ -768,7 +781,7 @@ export async function openRefund(
 /** Picks what the refund screen refunds. */
 export async function chooseRefund(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   choice: "whole" | "part" | "tip"
 ): Promise<void> {
   await page
@@ -781,7 +794,10 @@ export async function chooseRefund(
 }
 
 /** The refund screen's confirm, "Refund {amount}". */
-export function refundConfirmButton(page: Page, language: Language) {
+export function refundConfirmButton(
+  page: Page,
+  language: DocumentationLanguage
+) {
   const [before = "", after = ""] = translate(
     language,
     "refund.dialog.confirm"
@@ -797,7 +813,7 @@ export function refundConfirmButton(page: Page, language: Language) {
  */
 export async function confirmRefund(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await reseedRandomness(page)
   await refundConfirmButton(page, language).click()
@@ -810,7 +826,7 @@ export async function confirmRefund(
  */
 export async function runClosure(
   page: Page,
-  language: Language,
+  language: DocumentationLanguage,
   {
     onPage,
     onConfirm,
@@ -835,7 +851,7 @@ export async function runClosure(
 /** The closure screen's "Run the closure", up to its confirmation. */
 export async function startClosure(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   await page
     .getByRole("button", {
@@ -851,7 +867,7 @@ export async function startClosure(
 /** Confirms the closure in its dialog. */
 export async function confirmClosure(
   page: Page,
-  language: Language
+  language: DocumentationLanguage
 ): Promise<void> {
   const dialog = alertDialog(
     page,

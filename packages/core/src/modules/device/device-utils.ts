@@ -1,17 +1,15 @@
 import type { DeviceLanguage } from "../../evolu/device-client.ts"
 
+/**
+ * The language a new device starts in: the browser's or system's when
+ * `offered`, what the brand's app offers (brand/0007), has it, else English.
+ */
 export function getPreferredDeviceLanguage(
-  navigatorLanguage: string
+  navigatorLanguage: string,
+  offered: ReadonlyArray<DeviceLanguage>
 ): DeviceLanguage {
-  if (navigatorLanguage.startsWith("cs")) {
-    return "cs"
-  }
-
-  if (navigatorLanguage.startsWith("sk")) {
-    return "sk"
-  }
-
-  return "en"
+  const [primary] = navigatorLanguage.split("-")
+  return offered.find((language) => language === primary) ?? "en"
 }
 
 const firstLetterUpper = (value: string) =>

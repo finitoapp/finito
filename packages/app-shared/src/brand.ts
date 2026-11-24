@@ -22,6 +22,8 @@ export interface BrandNameForms {
 export interface Brand {
   readonly id: BrandId
   readonly names: Readonly<Record<Language, BrandNameForms>>
+  /** The UI languages the brand's app offers and starts in (brand/0007). */
+  readonly languages: ReadonlyArray<Language>
   /** The production origin of the app's API, which the native app calls. */
   readonly apiBaseUrl: string
   /**
@@ -44,7 +46,8 @@ const payky = { nominative: "Payky" } as const satisfies BrandNameForms
 
 export const paykyBrand = {
   id: "payky",
-  names: { en: payky, cs: payky, sk: payky },
+  names: { en: payky, cs: payky, sk: payky, vi: payky },
+  languages: ["en", "cs", "sk"],
   apiBaseUrl: "https://payky.me",
   websiteUrl: "https://payky.me/landing",
   donateLightningAddress: "donate@payky.me",
@@ -67,7 +70,9 @@ export const finitoBrand = {
       dative: "Finitu",
       locative: "Finite",
     },
+    vi: { nominative: "Finito" },
   },
+  languages: ["en", "cs", "sk", "vi"],
   apiBaseUrl: "https://app.finito.fit",
   websiteUrl: "https://finito.fit",
   // Served by the landing on finito.fit, which forwards the LNURL request to

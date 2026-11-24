@@ -1,4 +1,4 @@
-import type { Language } from "@payky/app-shared/i18n/resources"
+import type { Language } from "@payky/web-shared/landing-redirect"
 import { expect, type Page } from "@playwright/test"
 import { nameParam, translate } from "./i18n.ts"
 import {

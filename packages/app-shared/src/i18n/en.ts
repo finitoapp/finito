@@ -7,7 +7,7 @@ import { enWithdraw } from "./en/withdraw.ts"
 
 /**
  * English is the source of truth for translation keys: `TranslationKey`
- * is derived from it, and `cs`/`sk` are checked against it per namespace
+ * is derived from it, and the other languages are checked against it per namespace
  * file as well as as a whole.
  */
 export const en = {

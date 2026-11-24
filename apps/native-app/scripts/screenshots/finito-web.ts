@@ -1,5 +1,5 @@
 import { rm } from "node:fs/promises"
-import type { Language } from "@payky/app-shared/i18n/resources"
+import type { DocumentationLanguage } from "@payky/doc-mockups/screenshot-content"
 import { type Browser, type BrowserContext, chromium } from "@playwright/test"
 import { $ } from "bun"
 import { serveMocks } from "../../e2e/scripts/mock-server.ts"
@@ -17,14 +17,14 @@ export interface FinitoWeb extends AsyncDisposable {
   readonly browser: Browser
   /** A fresh app, in `language`, dark, at `viewport` and `deviceScaleFactor`. */
   readonly newContext: (options: {
-    readonly language: Language
+    readonly language: DocumentationLanguage
     readonly viewport: { readonly width: number; readonly height: number }
     readonly deviceScaleFactor: number
   }) => Promise<BrowserContext>
 }
 
 // The app picks its first language from the browser's.
-const localeByLanguage: Record<Language, string> = {
+const localeByLanguage: Record<DocumentationLanguage, string> = {
   en: "en-US",
   cs: "cs-CZ",
   sk: "sk-SK",

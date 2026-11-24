@@ -6,9 +6,10 @@ import {
   TaxRatePercentage,
 } from "../../modules/tax-rate/tax-rate-types.ts"
 import { findActiveTaxRateByPercentage } from "../../modules/tax-rate/tax-rate-utils.ts"
-import type {
-  LibraryProduct,
-  ProductLibrary,
+import {
+  type LibraryProduct,
+  libraryLanguage,
+  type ProductLibrary,
 } from "./product-library-client.ts"
 
 /**
@@ -79,7 +80,7 @@ export const libraryCategoryName = (
   language: DeviceLanguage
 ): string | undefined =>
   library.categories.find((category) => category.id === product.category)
-    ?.names[language]
+    ?.names[libraryLanguage(language)]
 
 /**
  * The products a starter pack offers, in its order, without the ones the

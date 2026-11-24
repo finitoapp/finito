@@ -4,6 +4,7 @@ import type {
   ProductLibrary,
   StarterPack,
 } from "@payky/core/integrations/product-library/product-library-client"
+import { libraryLanguage } from "@payky/core/integrations/product-library/product-library-client"
 import {
   libraryCategoryName,
   starterPackProducts,
@@ -145,7 +146,9 @@ export const starterPackOffer = (
   language: DeviceLanguage
 ): ReadonlyArray<StarterPackProduct> =>
   starterPackProducts(library, packId).flatMap((product) => {
-    const name = NonEmptyString255Schema.safeParse(product.names[language])
+    const name = NonEmptyString255Schema.safeParse(
+      product.names[libraryLanguage(language)]
+    )
     return name.success ? [{ product, name: name.data }] : []
   })
 

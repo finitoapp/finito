@@ -14,7 +14,7 @@ const searchIds = (
     limit = 10,
     library = testProductLibrary,
   }: {
-    readonly language?: "cs" | "sk" | "en"
+    readonly language?: "cs" | "sk" | "en" | "vi"
     readonly limit?: number
     readonly library?: ProductLibrary
   } = {}
@@ -119,6 +119,15 @@ describe("searchLibraryProducts", () => {
     expect(searchIds("kfa")).toEqual([])
     expect(searchIds("esprso")).toEqual([])
     expect(searchIds("expresso")).toEqual(["espresso"])
+  })
+
+  test("a Vietnamese device searches the library's Czech names", () => {
+    expect(searchIds("kapucino", { language: "vi" })).toEqual(
+      searchIds("kapucino", { language: "cs" })
+    )
+    expect(searchIds("plzen", { language: "vi" })).toEqual([
+      "draft-lager-large",
+    ])
   })
 
   test("never suggests a retired product", () => {

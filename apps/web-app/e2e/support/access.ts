@@ -1,5 +1,6 @@
-import type { Language, TranslationKey } from "@payky/app-shared/i18n/resources"
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import type { AccessPreset } from "@payky/core/modules/access/access-types"
+import type { Language } from "@payky/web-shared/landing-redirect"
 import type { Page } from "@playwright/test"
 import { accessPresetLabelKeys } from "../../src/i18n/access-labels.ts"
 import { translate } from "./i18n.ts"

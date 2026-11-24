@@ -695,6 +695,7 @@ export const csSettings = {
     "Vyberte regionální formát pro data, čísla a měny.",
   "settings.language.locale.english.title": "Spojené státy",
   "settings.language.locale.slovak.title": "Slovensko",
+  "settings.language.locale.vietnamese.title": "Vietnam",
   "settings.language.locale.title": "Regionální formát",
   "settings.language.mode.description":
     "Vyberte jazyk, který má aplikace používat.",

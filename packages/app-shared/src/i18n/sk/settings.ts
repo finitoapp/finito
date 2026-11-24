@@ -699,6 +699,7 @@ export const skSettings = {
     "Vyberte regionálny formát pre dátumy, čísla a meny.",
   "settings.language.locale.english.title": "Spojené štáty",
   "settings.language.locale.slovak.title": "Slovensko",
+  "settings.language.locale.vietnamese.title": "Vietnam",
   "settings.language.locale.title": "Regionálny formát",
   "settings.language.mode.description":
     "Vyberte jazyk, ktorý má aplikácia používať.",

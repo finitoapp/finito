@@ -1,10 +1,11 @@
-import type { Language, TranslationKey } from "@payky/app-shared/i18n/resources"
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import type { TerminalHomeMode } from "@payky/core/modules/app-settings/app-settings-types"
 import {
   createMasterKey,
   masterKeyToMnemonic,
 } from "@payky/core/modules/shared/key-derivation"
 import type { FiatCurrency } from "@payky/core/modules/shared/schema"
+import type { Language } from "@payky/web-shared/landing-redirect"
 import type { Page } from "@playwright/test"
 import { translate } from "./i18n.ts"
 
