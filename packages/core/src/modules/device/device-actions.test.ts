@@ -1,7 +1,16 @@
-import { createIdFromString, testCreateRun } from "@evolu/common"
+import { createIdFromString, ok, testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
+import { removeAccountFromDevice } from "../../evolu/account-wipe.ts"
+import { createAppEvolu } from "../../evolu/client.ts"
+import {
+  createDefaultEvoluTransportUrls,
+  createOrSelectAccount,
+} from "../../evolu/device-account.ts"
+import { createDeviceEvolu } from "../../evolu/device-client.ts"
+import { setupRunWithEvoluDeps } from "../../runtime/node-evolu.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
+import { createMasterKey } from "../shared/key-derivation.ts"
 import { NonEmptyString255 } from "../shared/schema.ts"
 import {
   registerDevice,
@@ -104,5 +113,39 @@ describe("device rows", () => {
         defaultPermissions: '["sell"]',
       },
     ])
+  })
+})
+
+describe("a removed device signing out", () => {
+  test("keeps no data of the account once it has signed out", async () => {
+    await using env = await setupRunWithEvoluDeps("memory")
+    await using deviceEvolu = await env.run.ok(createDeviceEvolu)
+    const masterKey = createMasterKey()
+    const openAppEvolu = () =>
+      env.run.ok(createAppEvolu({ masterKey, transports: [] }))
+    const { accountId } = await createOrSelectAccount(deviceEvolu, masterKey, {
+      defaultTransports: createDefaultEvoluTransportUrls("relay.example"),
+      deleteLocalData: () => Promise.resolve(ok()),
+    })
+    await using evolu = await openAppEvolu()
+    await using run = testCreateRun(evoluTestDeps(evolu))
+    await run.ok(register("Till", true))
+    // Another device's removal, as it syncs in.
+    await run.ok(removeDevice(deviceId))
+    expect(await run.ok(register("Till"))).toBe("removed")
+
+    // What `DeviceRegistration` signs out with (access/0014).
+    await using signOutRun = env.run.create({ ...env.run.deps, deviceEvolu })
+    const signedOut = await signOutRun(
+      removeAccountFromDevice({
+        accountId,
+        leaveAccount: () => {},
+        closeApp: () => {},
+      })
+    )
+
+    expect(signedOut).toEqual({ ok: true, value: "deviceDeleted" })
+    await using reopened = await openAppEvolu()
+    expect(await reopened.loadQuery(deviceByIdQuery(deviceId))).toEqual([])
   })
 })

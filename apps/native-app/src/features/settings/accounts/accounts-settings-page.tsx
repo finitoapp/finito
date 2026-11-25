@@ -8,7 +8,6 @@ import {
   createAccountMasterKey,
   createOrSelectAccount,
   deviceAccountDisplayName,
-  removeDeviceAccount,
   selectAccount,
   storableNostrName,
 } from "@payky/core/evolu/device-account"
@@ -36,7 +35,12 @@ import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNav } from "../../../components/vertical-nav.tsx"
 import { appDefaultTransports } from "../../../core/app-brand.ts"
 import { showMenuRoot } from "../../../core/menu-navigation.ts"
+import { nativeConsole } from "../../../core/native-runtime.ts"
 import { useRequirePermission } from "../../../core/use-access.ts"
+import {
+  useDeleteAccountLocalData,
+  useRemoveAccountFromDevice,
+} from "../../../hooks/use-account-removal.ts"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import {
   useDeviceEvoluQuery,
@@ -67,6 +71,8 @@ export function AccountsSettingsPage() {
   const activeAccount = useAtomValue(accountAtom)
   const accountVersion = useAtomValue(evoluCounterAtom)
   const reload = useSetAtom(reloadAppEvoluAtom)
+  const removeAccountFromDevice = useRemoveAccountFromDevice()
+  const deleteLocalData = useDeleteAccountLocalData()
   const setOnboardingForm = useSetAtom(onboardingFormAtom)
   const { data: accounts } = useDeviceEvoluQuery(accountListQuery)
   const [settings] = useEvoluQuery(settingsQuery).data
@@ -126,13 +132,29 @@ export function AccountsSettingsPage() {
       variant: "destructive",
     })
     if (!confirmed || stale()) return
-    removeDeviceAccount(deviceEvolu, accountId)
-    if (!active) return
-    // The most recently used account left takes over; with none left, a new
-    // empty one does, and onboarding starts on its welcome screen.
-    setOnboardingForm(initialOnboardingFormState)
-    showMenuRoot("/")
-    reload()
+    // Deletes the account's data from this device as well (access/0014).
+    setBusy(true)
+    try {
+      const removed = await removeAccountFromDevice({
+        accountId,
+        active,
+        leaveAccount: () => {
+          if (!active) return
+          // The most recently used account left takes over; with none left,
+          // the device database goes too and the app reloads into onboarding.
+          setOnboardingForm(initialOnboardingFormState)
+          showMenuRoot("/")
+          reload()
+        },
+      })
+      // The start-up sweep tries again (access/0014).
+      if (!removed.ok)
+        nativeConsole.warn("Deleting the removed account's data failed.", {
+          error: removed.error.type,
+        })
+    } finally {
+      setBusy(false)
+    }
   }
 
   const addAccount = async () => {
@@ -141,6 +163,7 @@ export function AccountsSettingsPage() {
     try {
       await createOrSelectAccount(deviceEvolu, createAccountMasterKey(), {
         defaultTransports: appDefaultTransports,
+        deleteLocalData,
       })
       setOnboardingForm(initialOnboardingFormState)
       reload()

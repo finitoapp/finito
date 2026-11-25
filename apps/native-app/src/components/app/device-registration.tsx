@@ -3,7 +3,6 @@ import {
   deviceRegisteredQuery,
   loadActiveAccountRow,
   markDeviceRegistered,
-  removeDeviceAccount,
 } from "@payky/core/evolu/device-account"
 import { applyPinUnblock } from "@payky/core/modules/access/access-actions"
 import { registerDevice } from "@payky/core/modules/device/device-actions"
@@ -16,6 +15,7 @@ import { evoluAtom } from "../../atoms/evolu.ts"
 import { reloadAppEvoluAtom } from "../../atoms/evolu-counter.ts"
 import { showMenuRoot } from "../../core/menu-navigation.ts"
 import { nativeConsole, nativeRun } from "../../core/native-runtime.ts"
+import { useRemoveAccountFromDevice } from "../../hooks/use-account-removal.ts"
 import {
   useDeviceEvoluQuery,
   useEvoluQuery,
@@ -39,6 +39,7 @@ export function DeviceRegistration() {
   const token = data[0]?.pinUnblockToken ?? null
   const removedHere = data[0]?.isDeleted === 1
   const reload = useSetAtom(reloadAppEvoluAtom)
+  const removeAccountFromDevice = useRemoveAccountFromDevice()
   const toast = useToast()
   const { t } = useTranslation()
   // The account this session's registration was written in; a removal seen
@@ -53,14 +54,26 @@ export function DeviceRegistration() {
   const joiningRef = useRef(flag?.deviceRegistered !== 1)
   joiningRef.current = flag?.deviceRegistered !== 1
 
+  // Stops syncing, forgets the account and deletes its data (access/0014).
   const signOut = async () => {
     // Read again: the account may have been switched or removed meanwhile.
     const active = await loadActiveAccountRow(deviceEvolu)
     if (active?.id !== accountId) return
-    removeDeviceAccount(deviceEvolu, accountId)
     toast.error(t("devices.removedHere", { name: active.name }))
-    showMenuRoot("/")
-    reload()
+    const removed = await removeAccountFromDevice({
+      accountId,
+      active: true,
+      leaveAccount: () => {
+        showMenuRoot("/")
+        reload()
+      },
+    })
+    // The start-up sweep tries again (access/0014), as after a
+    // `DatabaseHeldError` from a runtime a reload replaced.
+    if (!removed.ok)
+      nativeConsole.warn("Deleting the removed account's data failed.", {
+        error: removed.error.type,
+      })
   }
 
   // Nothing on screen waits for these, so a failure is logged, as on web,

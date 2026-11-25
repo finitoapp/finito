@@ -30,6 +30,7 @@ import { ScanCodeScanner } from "@/components/scan-code-scanner.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import { appDefaultTransports } from "@/core/app-brand.ts"
 import { appEnv } from "@/core/app-env.ts"
+import { useDeleteAccountLocalData } from "@/hooks/use-account-removal.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useReloadAppEvolu } from "@/hooks/use-reload-app-evolu.ts"
 import { useScreenWakeLock } from "@/hooks/use-screen-wake-lock.ts"
@@ -84,6 +85,7 @@ export function AccountTransferTarget({
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const activeAccount = useAtomValue(accountAtom)
   const reloadAppEvolu = useReloadAppEvolu()
+  const deleteLocalData = useDeleteAccountLocalData()
   const setRestoredAccount = useSetAtom(restoredAccountAtom)
   const [view, setView] = useState<View>({ phase: "scan", error: null })
   const cancelRef = useRef<(() => void) | null>(null)
@@ -118,6 +120,7 @@ export function AccountTransferTarget({
         defaultTransports: appDefaultTransports,
         name: payload.accountName,
         transports: payload.transports,
+        deleteLocalData,
       }
     )
     setRestoredAccount({ created, previous })

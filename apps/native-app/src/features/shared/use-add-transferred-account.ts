@@ -11,6 +11,7 @@ import {
 } from "../../atoms/evolu-counter.ts"
 import { appDefaultTransports } from "../../core/app-brand.ts"
 import { useRequirePermission } from "../../core/use-access.ts"
+import { useDeleteAccountLocalData } from "../../hooks/use-account-removal.ts"
 import { useConfirm } from "../../hooks/use-confirm.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
@@ -38,6 +39,7 @@ export function useAddTransferredAccount({
   const activeAccount = useAtomValue(accountAtom)
   const accountVersion = useAtomValue(evoluCounterAtom)
   const reloadAppEvolu = useSetAtom(reloadAppEvoluAtom)
+  const deleteLocalData = useDeleteAccountLocalData()
   const setRestoredAccount = useSetAtom(restoredAccountAtom)
 
   return async (payload: TransferPayload): Promise<boolean> => {
@@ -68,6 +70,7 @@ export function useAddTransferredAccount({
         defaultTransports: appDefaultTransports,
         name: payload.accountName,
         transports: payload.transports,
+        deleteLocalData,
       }
     )
     setRestoredAccount({ created, previous })

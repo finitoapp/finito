@@ -26,6 +26,7 @@ import {
 import { deriveBillSummaryTotal } from "@payky/core/modules/bill-line/bill-line-utils"
 import {
   registerDevice,
+  removeDevice,
   setDevicePinBlocked,
   unblockDevice,
 } from "@payky/core/modules/device/device-actions"
@@ -107,6 +108,7 @@ declare global {
       id: string
     ) => Promise<{ readonly pinUnblockToken: string | null } | null>
     __e2eUnblockThisDevice?: () => Promise<void>
+    __e2eRemoveThisDevice?: () => Promise<void>
     __e2eDeviceAccountIds?: () => Promise<ReadonlyArray<string>>
     __e2eSimulateAccountShareRequest?: (options: {
       readonly callerLabel: string
@@ -216,6 +218,8 @@ interface E2eAccountShareAnswer {
  * `window.__e2eUnblockThisDevice` for access control (access/0006): a second
  * device of the account, and the unblock another device would sync to this
  * one — e2e runs without a relay, so a second device cannot sync for real.
+ * `window.__e2eRemoveThisDevice` is likewise the removal of this device
+ * another device would sync to it (access/0013, access/0014).
  * And `window.__e2eDeviceAccountIds`, the ids a typed `/restore-account` URL
  * must not be able to remove (account/0005).
  *
@@ -663,6 +667,11 @@ export function E2eTestBridge() {
       await run.ok(unblockDevice(deviceId))
     }
 
+    window.__e2eRemoveThisDevice = async () => {
+      await using run = appRun()
+      await run.ok(removeDevice(deviceId))
+    }
+
     const accountShareAnswers: E2eAccountShareAnswer[] = []
     window.__e2eAccountShareAnswers = () => [...accountShareAnswers]
     window.__e2eSimulateAccountShareRequest = async ({
@@ -711,6 +720,7 @@ export function E2eTestBridge() {
       delete window.__e2eDeviceAccountIds
       delete window.__e2eReadDevice
       delete window.__e2eUnblockThisDevice
+      delete window.__e2eRemoveThisDevice
       delete window.__e2eSeedOnboarding
       delete window.__e2eMarkSparkPaid
       delete window.__e2eMarkIbanPaid

@@ -1,4 +1,4 @@
-import { sqliteFalse, sqliteTrue } from "@evolu/common"
+import { ok, sqliteFalse, sqliteTrue } from "@evolu/common"
 import { describe, expect, test, vi } from "vitest"
 import { MasterKey } from "../modules/shared/key-derivation.ts"
 import { NonEmptyString255, WssUrl } from "../modules/shared/schema.ts"
@@ -31,6 +31,9 @@ import {
   type DeviceEvolu,
   deviceSettingsId,
 } from "./device-client.ts"
+
+/** Revival deletes nothing here: these tests keep no app database. */
+const deleteLocalData = () => Promise.resolve(ok())
 
 // Shaped like a real one: 22 Base64Url characters.
 const appOwnerId = "Vu6kLCCtCCwfgw5M7Kq6Fg"
@@ -149,6 +152,7 @@ describe("createOrSelectAccount", () => {
 
     const result = await createOrSelectAccount(deviceEvolu, masterKey, {
       defaultTransports,
+      deleteLocalData,
       name: NonEmptyString255("Shop"),
       transports,
     })
@@ -170,12 +174,14 @@ describe("createOrSelectAccount", () => {
     const { deviceEvolu } = test
     const first = await createOrSelectAccount(deviceEvolu, masterKey, {
       defaultTransports,
+      deleteLocalData,
       name: NonEmptyString255("Old"),
     })
     await expect.poll(() => loadAccountRows(deviceEvolu)).toHaveLength(1)
 
     const second = await createOrSelectAccount(deviceEvolu, masterKey, {
       defaultTransports,
+      deleteLocalData,
       name: NonEmptyString255("Shop"),
       transports: [WssUrl("wss://custom.example")],
     })
@@ -194,8 +200,14 @@ describe("createOrSelectAccount", () => {
     const { deviceEvolu } = test
 
     await Promise.all([
-      createOrSelectAccount(deviceEvolu, masterKey, { defaultTransports }),
-      createOrSelectAccount(deviceEvolu, masterKey, { defaultTransports }),
+      createOrSelectAccount(deviceEvolu, masterKey, {
+        defaultTransports,
+        deleteLocalData,
+      }),
+      createOrSelectAccount(deviceEvolu, masterKey, {
+        defaultTransports,
+        deleteLocalData,
+      }),
     ])
 
     await expect.poll(() => loadAccountRows(deviceEvolu)).toHaveLength(1)
@@ -206,6 +218,7 @@ describe("createOrSelectAccount", () => {
     const { deviceEvolu } = test
     const { accountId } = await createOrSelectAccount(deviceEvolu, masterKey, {
       defaultTransports,
+      deleteLocalData,
       name: NonEmptyString255("Shop"),
       transports: [WssUrl("wss://custom.example")],
     })
@@ -216,6 +229,7 @@ describe("createOrSelectAccount", () => {
 
     const readded = await createOrSelectAccount(deviceEvolu, masterKey, {
       defaultTransports,
+      deleteLocalData,
       name: NonEmptyString255("Other"),
     })
 
@@ -256,6 +270,7 @@ describe("the account list's names", () => {
     const { deviceEvolu } = test
     const { accountId } = await createOrSelectAccount(deviceEvolu, masterKey, {
       defaultTransports,
+      deleteLocalData,
       name: NonEmptyString255("windy-tiger-567"),
     })
     const listed = async () =>
@@ -292,7 +307,10 @@ describe("insertDemoAccount", () => {
   test("adds an active demo account whose relays are all switched off", async () => {
     await using test = await createTestDeviceEvolu()
     const { deviceEvolu } = test
-    await createOrSelectAccount(deviceEvolu, masterKey, { defaultTransports })
+    await createOrSelectAccount(deviceEvolu, masterKey, {
+      defaultTransports,
+      deleteLocalData,
+    })
 
     // The active account is the latest used; in the same millisecond the
     // two would tie and SQLite could return either.

@@ -12,6 +12,7 @@ import { useState } from "react"
 import { accountAtom } from "@/atoms/account.ts"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
 import { appDefaultTransports } from "@/core/app-brand.ts"
+import { useDeleteAccountLocalData } from "@/hooks/use-account-removal.ts"
 import { useReloadAppEvolu } from "@/hooks/use-reload-app-evolu.ts"
 import { useSettingsForm } from "@/hooks/use-settings-form.ts"
 
@@ -37,6 +38,7 @@ export function useRestoreAccount(): RestoreAccount {
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const activeAccount = useAtomValue(accountAtom)
   const reloadAppEvolu = useReloadAppEvolu()
+  const deleteLocalData = useDeleteAccountLocalData()
   const setRestoredAccount = useSetAtom(restoredAccountAtom)
   const [words, setWordsValue] = useState(emptyRestoreWords)
   const { pending, error, setError, submit } = useSettingsForm()
@@ -64,6 +66,7 @@ export function useRestoreAccount(): RestoreAccount {
         created = (
           await createOrSelectAccount(deviceEvolu, masterKey, {
             defaultTransports: appDefaultTransports,
+            deleteLocalData,
           })
         ).created
         reloadAppEvolu()

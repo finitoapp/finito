@@ -8,9 +8,10 @@ import {
 } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
-import { createStore, Provider } from "jotai"
+import { createStore, Provider, useAtomValue } from "jotai"
 import {
   type ComponentType,
+  type ReactNode,
   Suspense,
   useEffect,
   useLayoutEffect,
@@ -19,6 +20,7 @@ import {
 } from "react"
 import { useColorScheme, useWindowDimensions } from "react-native"
 import { TamaguiProvider, Theme, useTheme, View, XStack } from "tamagui"
+import { appClosingAtom } from "../src/atoms/app-closing.ts"
 import { AccessGate } from "../src/components/app/access-gate.tsx"
 import {
   AppEvoluConsumers,
@@ -162,12 +164,23 @@ export default function RootLayout() {
     <WindowSafeArea>
       <Provider store={store}>
         <EvoluStartupError />
-        <Suspense fallback={<AppLoader />}>
-          <ThemedApp />
-        </Suspense>
+        <UnlessClosing>
+          <Suspense fallback={<AppLoader />}>
+            <ThemedApp />
+          </Suspense>
+        </UnlessClosing>
       </Provider>
     </WindowSafeArea>
   )
+}
+
+/**
+ * Renders the loader instead of the app while it reloads after deleting its
+ * databases (access/0014): their clients are disposed, and a screen reading
+ * one would throw.
+ */
+function UnlessClosing({ children }: { readonly children: ReactNode }) {
+  return useAtomValue(appClosingAtom) ? <AppLoader /> : children
 }
 
 /**

@@ -2,7 +2,6 @@ import {
   deviceRegisteredQuery,
   loadActiveAccountRow,
   markDeviceRegistered,
-  removeDeviceAccount,
 } from "@payky/core/evolu/device-account"
 import { applyPinUnblock } from "@payky/core/modules/access/access-actions"
 import { registerDevice } from "@payky/core/modules/device/device-actions"
@@ -12,6 +11,7 @@ import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { accountAtom } from "@/atoms/account.ts"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
+import { useRemoveAccountFromDevice } from "@/hooks/use-account-removal.ts"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useConsole } from "@/hooks/use-console.ts"
 import { useDeviceEvoluQuery } from "@/hooks/use-device-evolu-query.ts"
@@ -36,6 +36,7 @@ export function DeviceRegistration() {
   const removedHere = data[0]?.isDeleted === 1
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const reloadAppEvolu = useReloadAppEvolu()
+  const removeAccountFromDevice = useRemoveAccountFromDevice()
   const { t } = useTranslation()
   // The account this session's registration was written in; a removal seen
   // before it may be an old one the registration rejoins over.
@@ -49,15 +50,26 @@ export function DeviceRegistration() {
   const joiningRef = useRef(flag?.deviceRegistered !== 1)
   joiningRef.current = flag?.deviceRegistered !== 1
 
+  // Stops syncing, forgets the account and deletes its data (access/0014).
   const signOut = async () => {
     // Read again: the account may have been switched or removed meanwhile.
     const active = await loadActiveAccountRow(deviceEvolu)
     if (active?.id !== accountId) return
-    removeDeviceAccount(deviceEvolu, accountId)
     toast.error(t("devices.removedHere", { name: active.name }))
-    // Mounted outside the `RouterProvider`, like `AccountShareRequestHost`.
-    void router.navigate({ to: "/" })
-    reloadAppEvolu()
+    const removed = await removeAccountFromDevice({
+      accountId,
+      active: true,
+      leaveAccount: () => {
+        // Mounted outside the `RouterProvider`, like `AccountShareRequestHost`.
+        void router.navigate({ to: "/" })
+        reloadAppEvolu()
+      },
+    })
+    // The start-up sweep tries again (access/0014).
+    if (!removed.ok)
+      console.warn("Deleting the removed account's data failed.", {
+        error: removed.error.type,
+      })
   }
 
   // Nothing on screen waits for these, so a failure is logged, as

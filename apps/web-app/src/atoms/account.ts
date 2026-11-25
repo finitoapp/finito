@@ -13,6 +13,7 @@ import { UAParser } from "ua-parser-js"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
 import { deviceMigrationsAtom } from "@/atoms/device-migrations.ts"
 import { evoluCounterAtom } from "@/atoms/evolu-counter.ts"
+import { removedAccountDataAtom } from "@/atoms/removed-account-data.ts"
 import { appDefaultTransports } from "@/core/app-brand.ts"
 
 const toOptionalDeviceLabel = (value: string | undefined) =>
@@ -38,6 +39,8 @@ const activeAccountRowAtom = atom(async (get) => {
   // The account is read from migrated device data, never from rows a pending
   // migration is about to rewrite.
   await get(deviceMigrationsAtom)
+  // Removed accounts' leftover databases go before any account opens.
+  await get(removedAccountDataAtom)
   const activeAccountRow = await loadActiveAccountRow(deviceEvolu)
 
   return (

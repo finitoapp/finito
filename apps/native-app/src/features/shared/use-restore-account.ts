@@ -10,6 +10,7 @@ import { accountAtom } from "../../atoms/account.ts"
 import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
 import { reloadAppEvoluAtom } from "../../atoms/evolu-counter.ts"
 import { appDefaultTransports } from "../../core/app-brand.ts"
+import { useDeleteAccountLocalData } from "../../hooks/use-account-removal.ts"
 
 /**
  * Validates a recovery phrase, selects (or adds) its device account, then
@@ -20,6 +21,7 @@ export function useRestoreAccount(source: "onboarding" | "settings") {
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const activeAccount = useAtomValue(accountAtom)
   const reloadAppEvolu = useSetAtom(reloadAppEvoluAtom)
+  const deleteLocalData = useDeleteAccountLocalData()
   const setRestoredAccount = useSetAtom(restoredAccountAtom)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<TranslationKey | null>(null)
@@ -37,6 +39,7 @@ export function useRestoreAccount(source: "onboarding" | "settings") {
       const masterKey = await mnemonicToMasterKey(checked.mnemonic)
       const { created } = await createOrSelectAccount(deviceEvolu, masterKey, {
         defaultTransports: appDefaultTransports,
+        deleteLocalData,
       })
       reloadAppEvolu()
       setRestoredAccount({ created, previous: activeAccount.id })

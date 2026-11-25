@@ -1,9 +1,11 @@
 import {
   createIdFromString,
+  type DeleteDatabaseError,
   evoluJsonArrayFrom,
   evoluJsonObjectFrom,
   type KyselyNotNull,
   type MutationOptions,
+  type Result,
   sqliteFalse,
   sqliteTrue,
   type WebSocketUrl,
@@ -115,7 +117,7 @@ const accountByIdQuery = (id: DeviceAccountId) =>
   createDeviceQuery((db) =>
     db
       .selectFrom("account")
-      .select(["account.id", "account.isDeleted"])
+      .select(["account.id", "account.isDeleted", "account.localDataDeletedAt"])
       .where("account.id", "=", id)
       .where("account.name", "is not", null)
   )
@@ -236,6 +238,8 @@ export const upsertAccountEvoluWebsocketTransport = (
       accountId,
       type: "WebSocket",
       isActive,
+      // Brings back a transport the account's removal deleted.
+      isDeleted: sqliteFalse,
     },
     options
   )
@@ -244,6 +248,7 @@ export const upsertAccountEvoluWebsocketTransport = (
     {
       id,
       url,
+      isDeleted: sqliteFalse,
     },
     options
   )
@@ -317,16 +322,20 @@ export const deriveDeviceAccountId = (masterKey: MasterKey): DeviceAccountId =>
     `payky-device-account:${deriveEvoluOwnerId(masterKey)}`
   )
 
+const accountTransportUrls = (
+  options: NewAccountOptions
+): ReadonlyArray<WssUrl> =>
+  options.transports !== undefined && options.transports.length > 0
+    ? options.transports
+    : options.defaultTransports
+
 export const insertAccount = (
   deviceEvolu: DeviceEvolu,
   masterKey: MasterKey,
   options: NewAccountOptions
 ): DeviceAccount => {
   const name = options.name ?? createRandomAccountName()
-  const transportUrls =
-    options.transports !== undefined && options.transports.length > 0
-      ? options.transports
-      : options.defaultTransports
+  const transportUrls = accountTransportUrls(options)
   const accountId = deriveDeviceAccountId(masterKey)
   deviceEvolu.upsert("account", {
     id: accountId,
@@ -435,16 +444,31 @@ export async function loadActiveAccountRow(deviceEvolu: DeviceEvolu) {
 }
 
 /**
+ * Deletes an account's app database from this device: `deleteAccountLocalData`
+ * (`account-wipe.ts`) on the caller's run, which has the Evolu platform deps
+ * the device database's writes do not need.
+ */
+export type DeleteAccountLocalData = (
+  masterKey: MasterKey
+) => Promise<Result<void, DeleteDatabaseError>>
+
+/**
  * Selects the account `masterKey` belongs to, reviving it if it was removed,
- * or adds it. An account already stored keeps its name and transports; one
- * that was removed counts as `created`, since it was not on the device.
+ * or adds it. An account already stored keeps its name; one that was removed
+ * counts as `created`, since it was not on the device, and gets its
+ * transports again when the removal deleted them (access/0014). Its app
+ * database, when the removal did not get to delete it, is deleted first, so
+ * the account does not come back with changes this device made before it
+ * was removed; the start-up sweep no longer looks at a revived account.
  * Every account sits at its derived id, rows from before moved there by
  * `deviceAccountDerivedIdMigration`.
  */
 export async function createOrSelectAccount(
   deviceEvolu: DeviceEvolu,
   masterKey: MasterKey,
-  options: NewAccountOptions
+  options: NewAccountOptions & {
+    readonly deleteLocalData: DeleteAccountLocalData
+  }
 ): Promise<{ readonly accountId: DeviceAccountId; readonly created: boolean }> {
   const [existingAccount] = await deviceEvolu.loadQuery(
     accountByIdQuery(deriveDeviceAccountId(masterKey))
@@ -452,11 +476,34 @@ export async function createOrSelectAccount(
 
   if (existingAccount !== undefined) {
     const removed = existingAccount.isDeleted === sqliteTrue
+    if (removed && existingAccount.localDataDeletedAt === null) {
+      // A failure leaves the database to the account it belongs to: what
+      // syncs from it is this account's own data.
+      await options.deleteLocalData(masterKey)
+    }
     deviceEvolu.update("account", {
       id: existingAccount.id,
       lastUseAt: Date.now(),
-      ...(removed ? { isDeleted: sqliteFalse, deviceRegistered: null } : {}),
+      ...(removed
+        ? {
+            isDeleted: sqliteFalse,
+            deviceRegistered: null,
+            localDataDeletedAt: null,
+          }
+        : {}),
     })
+    const keptTransports = removed
+      ? await deviceEvolu.loadQuery(accountTransportsQuery(existingAccount.id))
+      : []
+    if (removed && keptTransports.length === 0) {
+      for (const url of accountTransportUrls(options)) {
+        upsertAccountEvoluWebsocketTransport(deviceEvolu, {
+          accountId: existingAccount.id,
+          isActive: sqliteTrue,
+          url,
+        })
+      }
+    }
     return { accountId: existingAccount.id, created: removed }
   }
 
@@ -612,8 +659,10 @@ export const deviceAccountDisplayName = (account: {
 }): string => account.nostrName ?? account.name
 
 /**
- * Removes the account from this device. Added again later, the device joins
- * the account anew (`deviceRegistered` cleared, access/0013).
+ * Marks the account removed from this device. Added again later, the device
+ * joins the account anew (`deviceRegistered` cleared, access/0013). Its app
+ * database stays until `removeAccountFromDevice` or the start-up sweep
+ * deletes it (access/0014).
  */
 export function removeDeviceAccount(
   deviceEvolu: DeviceEvolu,
@@ -622,7 +671,12 @@ export function removeDeviceAccount(
 ) {
   deviceEvolu.update(
     "account",
-    { id: accountId, isDeleted: sqliteTrue, deviceRegistered: null },
+    {
+      id: accountId,
+      isDeleted: sqliteTrue,
+      deviceRegistered: null,
+      localDataDeletedAt: null,
+    },
     options
   )
 }
