@@ -513,6 +513,66 @@ test("Settings → Devices edits, renames and removes devices", async ({
   })
 })
 
+test("a device removed from another one deletes the account's data and starts over", async ({
+  seededPage: page,
+}) => {
+  // The files in the origin's private storage, where Evolu keeps every
+  // database: the account's app database is named after its owner.
+  const storedFiles = () =>
+    page.evaluate(async () => {
+      const names: string[] = []
+      // `entries` is missing from TypeScript's DOM types.
+      type Directory = FileSystemDirectoryHandle & {
+        readonly entries: () => AsyncIterable<[string, FileSystemHandle]>
+      }
+      const walk = async (dir: Directory, path: string) => {
+        for await (const [name, handle] of dir.entries()) {
+          names.push(`${path}${name}`)
+          if (handle.kind === "directory")
+            await walk(handle as Directory, `${path}${name}/`)
+        }
+      }
+      await walk((await navigator.storage.getDirectory()) as Directory, "")
+      return names
+    })
+  const [removedAccount] = await deviceAccountIds(page)
+  if (removedAccount === undefined) throw new Error("No device account")
+  const filesBefore = await storedFiles()
+
+  await test.step("the removal syncs in, and the device goes to onboarding", async () => {
+    // e2e runs without a relay: the removal another device would sync here.
+    await page.evaluate(async () => {
+      await window.__e2eRemoveThisDevice?.()
+    })
+    await expect(
+      page.getByRole("heading", { name: translate("en", "onboarding.title") })
+    ).toBeVisible({ timeout: 20_000 })
+  })
+
+  await test.step("after a reload, nothing of the account is left", async () => {
+    await page.reload({ waitUntil: "domcontentloaded" })
+    await expect(
+      page.getByRole("heading", { name: translate("en", "onboarding.title") })
+    ).toBeVisible()
+    await expect
+      .poll(() => deviceAccountIds(page))
+      .not.toContain(removedAccount)
+    const filesAfter = await storedFiles()
+    const appDatabases = filesBefore.filter(
+      (name) => name.startsWith(".Payky-") && !name.includes("/")
+    )
+    expect(appDatabases).toHaveLength(1)
+    expect(filesAfter).not.toContain(appDatabases[0])
+    // No account was left, so the device database went too and started
+    // anew: none of the files it had is left (access/0014).
+    expect(
+      filesBefore.filter(
+        (name) => name.includes("/.opaque/") && filesAfter.includes(name)
+      )
+    ).toEqual([])
+  })
+})
+
 test("a typed URL neither removes an account nor reopens onboarding", async ({
   seededPage: page,
 }) => {

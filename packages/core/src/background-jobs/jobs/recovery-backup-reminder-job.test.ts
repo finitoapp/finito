@@ -1,4 +1,4 @@
-import { testCreateConsole, testCreateRun } from "@evolu/common"
+import { ok, testCreateConsole, testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 import type { FetchDep } from "../../deps.ts"
 import {
@@ -30,6 +30,9 @@ import { evoluTestDeps } from "../../testing/evolu-deps.ts"
 import { createNotificationStore } from "../notifications.ts"
 import { startRecoveryBackupReminderJob } from "./recovery-backup-reminder-job.ts"
 
+/** Revival deletes nothing here: these tests keep no app database. */
+const deleteLocalData = () => Promise.resolve(ok())
+
 const day = 24 * 60 * 60 * 1000
 const backup = { type: "recoveryPhraseBackup" } as const
 
@@ -46,7 +49,10 @@ const setup = async () => {
   const { accountId } = await createOrSelectAccount(
     deviceEvolu,
     MasterKey("000102030405060708090a0b0c0d0e0f"),
-    { defaultTransports: createDefaultEvoluTransportUrls("relay.example") }
+    {
+      defaultTransports: createDefaultEvoluTransportUrls("relay.example"),
+      deleteLocalData,
+    }
   )
   expect(accountId).toBe(testDeviceAccountId)
 

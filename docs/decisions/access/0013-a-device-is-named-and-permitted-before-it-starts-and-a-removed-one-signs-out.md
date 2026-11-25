@@ -78,6 +78,8 @@ where devices were.
   with no permissions, as before.
 - The QR transfer's `hello` carries one more field; the two sides stay
   compatible with older builds that do not send or read it.
+- A removed device also deletes the account's data it holds, as access/0014
+  extends this decision.
 
 ## Enforced by
 

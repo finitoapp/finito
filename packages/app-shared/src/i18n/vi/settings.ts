@@ -97,7 +97,7 @@ Cập nhật lần cuối: tháng 10 năm 2026`,
   "settings.accounts.remove.confirm.cancel": "Giữ tài khoản",
   "settings.accounts.remove.confirm.confirm": "Xóa tài khoản",
   "settings.accounts.remove.confirm.description":
-    "Thiết bị này sẽ quên tài khoản và dữ liệu của nó. Chỉ cụm từ khôi phục mới lấy lại được — nếu không có, mọi thứ trong tài khoản sẽ mất vĩnh viễn.",
+    "Thiết bị này sẽ quên tài khoản và xóa dữ liệu của nó. Những thay đổi chưa được gửi đi sẽ không bao giờ được gửi. Chỉ cụm từ khôi phục mới lấy lại được — nếu không có, mọi thứ trong tài khoản sẽ mất vĩnh viễn.",
   "settings.accounts.remove.confirm.title": "Xóa {name}?",
   "settings.accounts.restore.failed":
     "Không khôi phục được tài khoản. Vui lòng thử lại.",
@@ -1327,7 +1327,7 @@ Cập nhật lần cuối: tháng 10 năm 2026`,
   "access.device.remove": "Xóa",
   "access.device.remove.confirm": "Xóa thiết bị",
   "access.device.remove.description":
-    "Thiết bị sẽ bị đăng xuất khỏi tài khoản ngay khi kết nối lại và các quyền của nó bị xóa.",
+    "Ngay khi kết nối lại, thiết bị sẽ bị đăng xuất khỏi tài khoản và xóa dữ liệu của tài khoản. Những thay đổi chưa được gửi đi từ thiết bị sẽ không đến được tài khoản. Các quyền của nó bị xóa.",
   "access.device.remove.title": "Xóa {name}?",
   "access.device.rename": "Đổi tên",
   "access.device.this": "Thiết bị này",
@@ -1542,7 +1542,8 @@ Cập nhật lần cuối: tháng 10 năm 2026`,
   "devices.title": "Thiết bị",
   "devices.nav.description":
     "Các thiết bị của tài khoản này và những gì mỗi thiết bị được làm mà không cần mã PIN",
-  "devices.removedHere": "Thiết bị này đã bị xóa khỏi {name}.",
+  "devices.removedHere":
+    "Thiết bị này đã bị xóa khỏi {name}. Dữ liệu của tài khoản đang được xóa khỏi thiết bị.",
   "access.action.removeDevice": "Xóa thiết bị",
   "settings.backup.title": "Sao lưu",
   "settings.backup.description": "Cụm từ khôi phục của tài khoản này",
@@ -1551,7 +1552,7 @@ Cập nhật lần cuối: tháng 10 năm 2026`,
   "settings.accounts.add.description":
     "Mở cửa hàng mới hoặc mở tài khoản bạn đã có",
   "settings.accounts.remove.confirm.otherDevices":
-    "Thiết bị này sẽ quên tài khoản. Tài khoản vẫn còn trên các thiết bị khác.",
+    "Thiết bị này sẽ quên tài khoản và xóa dữ liệu của nó. Những thay đổi chưa được gửi đi sẽ không bao giờ được gửi. Tài khoản vẫn còn trên các thiết bị khác.",
   "settings.accounts.remove.backupFirst.title":
     "Hãy sao lưu cụm từ khôi phục trước",
   "settings.accounts.remove.backupFirst.description":

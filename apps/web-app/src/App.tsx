@@ -1,8 +1,9 @@
 import { QueryClientProvider } from "@tanstack/react-query"
 import { CatchBoundary, RouterProvider } from "@tanstack/react-router"
-import { Provider } from "jotai"
+import { Provider, useAtomValue } from "jotai"
 import { LoaderCircleIcon } from "lucide-react"
-import { Suspense, useEffect } from "react"
+import { type ReactNode, Suspense, useEffect } from "react"
+import { appClosingAtom } from "@/atoms/app-closing.ts"
 import { jotaiStore } from "@/atoms/store.ts"
 import { AccountShareRequestHost } from "@/components/app/account-share-request-host.tsx"
 import {
@@ -59,94 +60,105 @@ function AppEvoluConsumersFailed({ error }: { readonly error: unknown }) {
   return null
 }
 
+/**
+ * Renders the loader instead of the app while it reloads after deleting its
+ * databases (access/0014): their clients are disposed, and a screen reading
+ * one would throw.
+ */
+function UnlessClosing({ children }: { readonly children: ReactNode }) {
+  return useAtomValue(appClosingAtom) ? <AppLoadingFallback /> : children
+}
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Provider store={jotaiStore}>
-        {/*
-         * Sits above the Suspense boundary, so it also catches what the
-         * components below suspend on: device Evolu (`ThemeProvider`), the
-         * active account and app Evolu (`AppBackgroundJobs`). Those reads
-         * happen outside the router, so the root route's own
-         * `errorComponent` never saw them — a failing one threw with no
-         * boundary above it, React unmounted the root, and the app was left
-         * showing index.html's boot spinner forever (or a blank page, once
-         * the spinner had already been removed).
-         */}
-        <CatchBoundary
-          getResetKey={() => "app"}
-          errorComponent={AppErrorBoundary}
-        >
-          {/* Outside the Suspense below, so it listens from the first render. */}
-          <UnhandledErrorsToConsole />
-          <Suspense fallback={<AppLoadingFallback />}>
-            <AppLoaderCleanup />
-            <ThemeProvider disableTransitionOnChange>
-              <SentryController />
-              <NativeBackButtonHandler />
-              {/*
-               * Isolated, because both read the active account's app Evolu
-               * client: one that throws would otherwise take the shell
-               * down with it, and one that never finishes opening would
-               * suspend the shell forever. Both of these are best-effort;
-               * losing them costs sync, not the UI.
-               */}
-              <CatchBoundary
-                getResetKey={() => "app-evolu-consumers"}
-                errorComponent={AppEvoluConsumersFailed}
-              >
-                <Suspense fallback={null}>
-                  {/*
-                   * Background jobs start behind the migrations, so no job
-                   * ever reads a half-migrated database. The test bridge
-                   * stays outside: it is how a test seeds the database in
-                   * the first place.
-                   */}
-                  <AppMigrations>
-                    <DemoDataSeed />
-                    <AppBackgroundJobs />
-                    <SwitchioRestoredResult />
-                    <AccountShareRequestHost />
-                    <DeviceRegistration />
+        <UnlessClosing>
+          {/*
+           * Sits above the Suspense boundary, so it also catches what the
+           * components below suspend on: device Evolu (`ThemeProvider`), the
+           * active account and app Evolu (`AppBackgroundJobs`). Those reads
+           * happen outside the router, so the root route's own
+           * `errorComponent` never saw them — a failing one threw with no
+           * boundary above it, React unmounted the root, and the app was left
+           * showing index.html's boot spinner forever (or a blank page, once
+           * the spinner had already been removed).
+           */}
+          <CatchBoundary
+            getResetKey={() => "app"}
+            errorComponent={AppErrorBoundary}
+          >
+            {/* Outside the Suspense below, so it listens from the first render. */}
+            <UnhandledErrorsToConsole />
+            <Suspense fallback={<AppLoadingFallback />}>
+              <AppLoaderCleanup />
+              <ThemeProvider disableTransitionOnChange>
+                <SentryController />
+                <NativeBackButtonHandler />
+                {/*
+                 * Isolated, because both read the active account's app Evolu
+                 * client: one that throws would otherwise take the shell
+                 * down with it, and one that never finishes opening would
+                 * suspend the shell forever. Both of these are best-effort;
+                 * losing them costs sync, not the UI.
+                 */}
+                <CatchBoundary
+                  getResetKey={() => "app-evolu-consumers"}
+                  errorComponent={AppEvoluConsumersFailed}
+                >
+                  <Suspense fallback={null}>
                     {/*
-                     * The Cashu job waits on and can fail with the shared
-                     * Cashu wallet alone: under its own boundary and
-                     * Suspense, it holds up nothing beside it.
+                     * Background jobs start behind the migrations, so no job
+                     * ever reads a half-migrated database. The test bridge
+                     * stays outside: it is how a test seeds the database in
+                     * the first place.
                      */}
-                    <CatchBoundary
-                      getResetKey={() => "cashu-background-jobs"}
-                      errorComponent={AppEvoluConsumersFailed}
-                    >
-                      <Suspense fallback={null}>
-                        <CashuBackgroundJobs />
-                      </Suspense>
-                    </CatchBoundary>
-                    {/*
-                     * The Fio and MONETA jobs wait on the device's consent to
-                     * the service proxy and start and stop with it: under
-                     * their own boundary and Suspense, as the Cashu job, so
-                     * neither the wait nor that switch touches the others.
-                     */}
-                    <CatchBoundary
-                      getResetKey={() => "bank-background-jobs"}
-                      errorComponent={AppEvoluConsumersFailed}
-                    >
-                      <Suspense fallback={null}>
-                        <BankBackgroundJobs />
-                      </Suspense>
-                    </CatchBoundary>
-                  </AppMigrations>
-                  <E2eTestBridge />
-                </Suspense>
-              </CatchBoundary>
-              <RouterProvider router={router} />
-              <PwaUpdateToast />
-              <Toaster />
-              <ConfirmDialogHost />
-              <PinPromptHost />
-            </ThemeProvider>
-          </Suspense>
-        </CatchBoundary>
+                    <AppMigrations>
+                      <DemoDataSeed />
+                      <AppBackgroundJobs />
+                      <SwitchioRestoredResult />
+                      <AccountShareRequestHost />
+                      <DeviceRegistration />
+                      {/*
+                       * The Cashu job waits on and can fail with the shared
+                       * Cashu wallet alone: under its own boundary and
+                       * Suspense, it holds up nothing beside it.
+                       */}
+                      <CatchBoundary
+                        getResetKey={() => "cashu-background-jobs"}
+                        errorComponent={AppEvoluConsumersFailed}
+                      >
+                        <Suspense fallback={null}>
+                          <CashuBackgroundJobs />
+                        </Suspense>
+                      </CatchBoundary>
+                      {/*
+                       * The Fio and MONETA jobs wait on the device's consent to
+                       * the service proxy and start and stop with it: under
+                       * their own boundary and Suspense, as the Cashu job, so
+                       * neither the wait nor that switch touches the others.
+                       */}
+                      <CatchBoundary
+                        getResetKey={() => "bank-background-jobs"}
+                        errorComponent={AppEvoluConsumersFailed}
+                      >
+                        <Suspense fallback={null}>
+                          <BankBackgroundJobs />
+                        </Suspense>
+                      </CatchBoundary>
+                    </AppMigrations>
+                    <E2eTestBridge />
+                  </Suspense>
+                </CatchBoundary>
+                <RouterProvider router={router} />
+                <PwaUpdateToast />
+                <Toaster />
+                <ConfirmDialogHost />
+                <PinPromptHost />
+              </ThemeProvider>
+            </Suspense>
+          </CatchBoundary>
+        </UnlessClosing>
       </Provider>
     </QueryClientProvider>
   )

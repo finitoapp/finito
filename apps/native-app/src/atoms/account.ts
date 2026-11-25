@@ -16,6 +16,7 @@ import {
 import { deviceEvoluAtom } from "./device-evolu.ts"
 import { deviceMigrationsAtom } from "./device-migrations.ts"
 import { evoluCounterAtom } from "./evolu-counter.ts"
+import { removedAccountDataAtom } from "./removed-account-data.ts"
 
 const activeAccountRowAtom = atom(async (get) => {
   // Bumped by `reloadAppEvoluAtom` after a switch, so the account is read again.
@@ -23,6 +24,8 @@ const activeAccountRowAtom = atom(async (get) => {
   const deviceEvolu = await get(deviceEvoluAtom)
   // Read the account only from migrated device data.
   await get(deviceMigrationsAtom)
+  // Removed accounts' leftover databases go before any account opens.
+  await get(removedAccountDataAtom)
   const activeAccountRow = await loadActiveAccountRow(deviceEvolu)
 
   return (

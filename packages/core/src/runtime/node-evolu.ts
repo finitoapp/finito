@@ -1,6 +1,8 @@
 import { rmSync } from "node:fs"
 import { resolve } from "node:path"
 import {
+  type CreateSqliteDriver,
+  type CreateWebSocket,
   constVoid,
   createConsole,
   createConsoleStoreOutput,
@@ -11,6 +13,7 @@ import {
   createWorker,
   Name,
   ok,
+  type SqliteDriver,
   testCreateBroadcastChannel,
   testCreateLockManager,
   testCreateMessageChannel,
@@ -49,7 +52,15 @@ const deleteDatabaseFiles: DeleteDatabaseFiles = (name) => () => {
   return ok()
 }
 
-export const setupRunWithEvoluDeps = async (mode: NodeEvoluMode) => {
+export const setupRunWithEvoluDeps = async (
+  mode: NodeEvoluMode,
+  {
+    createWebSocket = testCreateWebSocket({ throwOnCreate: true }),
+  }: {
+    /** The relays' sockets; by default none opens, so nothing syncs. */
+    readonly createWebSocket?: CreateWebSocket
+  } = {}
+) => {
   await using disposer = new AsyncDisposableStack()
 
   const consoleStoreOutput = createConsoleStoreOutput()
@@ -66,7 +77,7 @@ export const setupRunWithEvoluDeps = async (mode: NodeEvoluMode) => {
       createBroadcastChannel: testCreateBroadcastChannel,
       createMessageChannel: testCreateMessageChannel,
       createMessagePort: createMessagePort,
-      createWebSocket: testCreateWebSocket({ throwOnCreate: true }),
+      createWebSocket,
       lockManager,
       // What the shared worker may promise about stored databases: a file
       // persists, memory does not.
@@ -87,6 +98,10 @@ export const setupRunWithEvoluDeps = async (mode: NodeEvoluMode) => {
     )
   )
 
+  // Each memory database by its name, as a browser keeps one per owner.
+  const memoryDrivers = new Map<string, SqliteDriver>()
+  let primaryName: string | null = null
+
   const workerRun = disposer.use(
     createRun({
       console,
@@ -94,7 +109,39 @@ export const setupRunWithEvoluDeps = async (mode: NodeEvoluMode) => {
       createBroadcastChannel: testCreateBroadcastChannel,
       createMessagePort,
       lockManager,
-      createSqliteDriver: () => () => ok(driver),
+      createSqliteDriver: ((name) => async (run) => {
+        // `sqlite` below and the first database Evolu opens share the one
+        // connection, so a test can read what that database holds.
+        if (mode === "file" || name === databaseName) return ok(driver)
+        const open = memoryDrivers.get(name)
+        if (open !== undefined) return ok(open)
+        const opened =
+          primaryName === null
+            ? driver
+            : await run.ok(createNodeJsSqliteDriver(name, { mode: "memory" }))
+        primaryName ??= name
+        const forget = () => {
+          // A closed memory database is gone, as a deleted one is: opening
+          // its name again starts empty, on a connection of its own.
+          memoryDrivers.delete(name)
+        }
+        const tracked: SqliteDriver = {
+          exec: opened.exec,
+          prepare: opened.prepare,
+          iterate: opened.iterate,
+          deleteDatabase: () => {
+            forget()
+            opened.deleteDatabase()
+          },
+          export: opened.export,
+          [Symbol.dispose]: () => {
+            forget()
+            opened[Symbol.dispose]()
+          },
+        }
+        memoryDrivers.set(name, tracked)
+        return ok(tracked)
+      }) satisfies CreateSqliteDriver,
       deleteDatabaseFiles,
     })
   )

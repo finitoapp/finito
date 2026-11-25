@@ -1,4 +1,4 @@
-import { sqliteTrue, testCreateRun } from "@evolu/common"
+import { ok, sqliteTrue, testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 
 import {
@@ -28,6 +28,9 @@ import {
   loadPendingMigrations,
   runMigrations,
 } from "./migrations.ts"
+
+/** Revival deletes nothing here: these tests keep no app database. */
+const deleteLocalData = () => Promise.resolve(ok())
 
 const shopKey = MasterKey("000102030405060708090a0b0c0d0e0f")
 const cafeKey = MasterKey("0f0e0d0c0b0a09080706050403020100")
@@ -199,6 +202,7 @@ describe("device account derived id migration", () => {
 
     const readded = await createOrSelectAccount(deviceEvolu, shopKey, {
       defaultTransports,
+      deleteLocalData,
     })
     expect(readded).toEqual({
       accountId: deriveDeviceAccountId(shopKey),
@@ -212,7 +216,10 @@ describe("device account derived id migration", () => {
   test("has no work for accounts already at their derived ids", async () => {
     await using testDevice = await createTestDeviceEvolu()
     const { deviceEvolu } = testDevice
-    await createOrSelectAccount(deviceEvolu, shopKey, { defaultTransports })
+    await createOrSelectAccount(deviceEvolu, shopKey, {
+      defaultTransports,
+      deleteLocalData,
+    })
     await expect.poll(() => loadLiveAccountRows(deviceEvolu)).toHaveLength(1)
 
     expect(await hasWork(deviceEvolu)).toBe(false)

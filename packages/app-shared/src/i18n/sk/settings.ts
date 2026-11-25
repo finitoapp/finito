@@ -32,7 +32,7 @@ export const skSettings = {
   "settings.accounts.remove.confirm.cancel": "Ponechať účet",
   "settings.accounts.remove.confirm.confirm": "Odobrať účet",
   "settings.accounts.remove.confirm.description":
-    "Zariadenie tento účet aj jeho údaje zabudne. Vrátiť ho späť ide len pomocou jeho recovery phrase — bez nej je všetko v účte nadobro stratené.",
+    "Zariadenie tento účet zabudne a zmaže jeho údaje. Zmeny, ktoré z neho ešte neodišli, sa už neodošlú. Vrátiť ho späť ide len pomocou jeho recovery phrase — bez nej je všetko v účte nadobro stratené.",
   "settings.accounts.remove.confirm.title": "Odobrať účet {name}?",
   "settings.accounts.restore.failed":
     "Účet sa nepodarilo obnoviť. Skúste to prosím znova.",
@@ -1283,7 +1283,7 @@ export const skSettings = {
   "access.device.remove": "Odobrať",
   "access.device.remove.confirm": "Odobrať zariadenie",
   "access.device.remove.description":
-    "Zariadenie sa z účtu odhlási, hneď ako sa nabudúce pripojí, a jeho oprávnenia sa zmažú.",
+    "Hneď ako sa zariadenie nabudúce pripojí, odhlási sa z účtu a zmaže si jeho údaje. Zmeny, ktoré z neho ešte neodišli, sa do účtu nedostanú. Jeho oprávnenia sa zmažú.",
   "access.device.remove.title": "Odobrať {name}?",
   "access.device.rename": "Premenovať",
   "access.device.this": "Toto zariadenie",
@@ -1498,7 +1498,8 @@ export const skSettings = {
   "settings.cardSwitchioAccount.closureLink": "Uzávierky terminálov",
   "devices.title": "Zariadenia",
   "devices.nav.description": "Zariadenia tohto účtu a čo každé smie bez PINu",
-  "devices.removedHere": "Toto zariadenie bolo odobraté z účtu {name}.",
+  "devices.removedHere":
+    "Toto zariadenie bolo odobraté z účtu {name}. Údaje účtu sa z neho mažú.",
   "access.action.removeDevice": "Odobrať zariadenie",
   "settings.backup.title": "Záloha",
   "settings.backup.description": "Recovery phrase tohto účtu",
@@ -1507,7 +1508,7 @@ export const skSettings = {
   "settings.accounts.add.description":
     "Založte nový podnik alebo otvorte účet, ktorý už máte",
   "settings.accounts.remove.confirm.otherDevices":
-    "Toto zariadenie účet zabudne. Na ostatných zariadeniach účtu zostane.",
+    "Toto zariadenie účet zabudne a zmaže jeho údaje. Zmeny, ktoré z neho ešte neodišli, sa už neodošlú. Na ostatných zariadeniach účtu zostane.",
   "settings.accounts.remove.backupFirst.title":
     "Najprv zálohujte recovery phrase",
   "settings.accounts.remove.backupFirst.description":

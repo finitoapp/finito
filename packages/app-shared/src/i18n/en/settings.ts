@@ -31,7 +31,7 @@ export const enSettings = {
   "settings.accounts.remove.confirm.cancel": "Keep account",
   "settings.accounts.remove.confirm.confirm": "Remove account",
   "settings.accounts.remove.confirm.description":
-    "This device forgets the account and its data. Only its recovery phrase can bring it back — without it, everything in the account is gone for good.",
+    "This device forgets the account and deletes its data, and changes it has not sent yet are never sent. Only its recovery phrase can bring it back — without it, everything in the account is gone for good.",
   "settings.accounts.remove.confirm.title": "Remove {name}?",
   "settings.accounts.restore.failed":
     "Could not restore the account. Please try again.",
@@ -1280,7 +1280,7 @@ export const enSettings = {
   "access.device.remove": "Remove",
   "access.device.remove.confirm": "Remove device",
   "access.device.remove.description":
-    "It is signed out of the account as soon as it next connects, and its permissions are cleared.",
+    "As soon as it next connects, it is signed out of the account and deletes the account's data. Changes it has not sent yet never reach the account. Its permissions are cleared.",
   "access.device.remove.title": "Remove {name}?",
   "access.device.rename": "Rename",
   "access.device.this": "This device",
@@ -1497,7 +1497,8 @@ export const enSettings = {
   "devices.title": "Devices",
   "devices.nav.description":
     "Devices of this account and what each may do without the PIN",
-  "devices.removedHere": "This device was removed from {name}.",
+  "devices.removedHere":
+    "This device was removed from {name}. The account's data is deleted from it.",
   "access.action.removeDevice": "Remove a device",
   "settings.backup.title": "Backup",
   "settings.backup.description": "The recovery phrase of this account",
@@ -1506,7 +1507,7 @@ export const enSettings = {
   "settings.accounts.add.description":
     "Start a new business or open an account you already have",
   "settings.accounts.remove.confirm.otherDevices":
-    "This device forgets the account. It stays on the account's other devices.",
+    "This device forgets the account and deletes its data, and changes it has not sent yet are never sent. It stays on the account's other devices.",
   "settings.accounts.remove.backupFirst.title":
     "Back up the recovery phrase first",
   "settings.accounts.remove.backupFirst.description":

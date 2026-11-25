@@ -139,6 +139,13 @@ const deviceEvoluSchema = {
      * old removal the device rejoins over.
      */
     deviceRegistered: SqliteBoolSchema.nullable(),
+    /**
+     * When this device deleted the removed account's app database
+     * (access/0014). `null` on a removed account means its database may
+     * still be here, which the start-up sweep deletes; reviving the account
+     * clears it again.
+     */
+    localDataDeletedAt: TimestampMsSchema.nullable(),
   },
   accountEvoluTransport: {
     id: AccountEvoluTransportId,
