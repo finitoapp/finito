@@ -344,6 +344,12 @@ const createSparkAccountSyncSession = ({
   let lastFullSweepAt: number | undefined
   let fullSweepRequested = true
   let pendingHistorySync = false
+  // Whether the stream announced a transfer since the balance last settled,
+  // and which announced transfers the incoming work has not recorded yet. A
+  // claim that ends with none left needs no sweep: it would find only
+  // duplicates (payment/0031).
+  let incomingAnnouncedSinceSettle = false
+  const unrecordedIncomingTransferIds = new Set<string>()
   const pendingTransferIds = new Set<string>()
   const queue = createKeyedTaskQueue<
     "history" | "withdrawals" | `transfer:${string}`
@@ -795,10 +801,26 @@ const createSparkAccountSyncSession = ({
           // JS thread from the claim. The claim ends in another update, with
           // nothing incoming, and a claim that fails is the history timer's.
           if (incoming > 0n) return
+          const claimOfRecordedTransfers =
+            incomingAnnouncedSinceSettle &&
+            unrecordedIncomingTransferIds.size === 0
+          // A sweep covers the unrecorded ones; none may linger and keep the
+          // next claim from skipping its sweep.
+          incomingAnnouncedSinceSettle = false
+          unrecordedIncomingTransferIds.clear()
+          if (claimOfRecordedTransfers) {
+            run.deps.console.debug(
+              "Skipped the Spark sweep after a claim of recorded transfers.",
+              { accountId: account.id }
+            )
+            return
+          }
           syncHistorySoon()
         },
         "transfer:incoming": (transferId, transfer) => {
           const incomingEventAt = run.deps.date.now()
+          incomingAnnouncedSinceSettle = true
+          unrecordedIncomingTransferIds.add(transferId)
           // Handled here too: a queue disposed before the work runs never
           // awaits it.
           transfer.catch(() => undefined)
@@ -806,8 +828,25 @@ const createSparkAccountSyncSession = ({
             accountId: account.id,
             sparkTransferId: transferId,
           })
-          incomingQueue.enqueue(`incoming:${transferId}`, async () => {
-            await recordTransfer(await transfer, { incomingEventAt })
+          const recordIncomingTransfer = async (): Promise<void> => {
+            const result = await recordTransfer(await transfer, {
+              incomingEventAt,
+            })
+            if (result === "created" || result === "duplicate")
+              unrecordedIncomingTransferIds.delete(transferId)
+          }
+          // Settles once the record ends; the wallet holds the SDK's claim
+          // until then (payment/0031), as its signing would otherwise take
+          // the JS thread from the record. A queue disposed before the work
+          // runs leaves it to the wallet's time limit.
+          return new Promise<void>((resolve) => {
+            incomingQueue.enqueue(`incoming:${transferId}`, async () => {
+              try {
+                await recordIncomingTransfer()
+              } finally {
+                resolve()
+              }
+            })
           })
         },
         "deposit:confirmed": () => {
