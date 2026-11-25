@@ -5,10 +5,17 @@ import type {
   SparkWalletEvents,
 } from "@buildonspark/spark-sdk"
 import type {
+  SubscribeToEventsResponse,
+  Transfer,
+  TransferStatus,
+  TransferType,
+} from "@buildonspark/spark-sdk/proto/spark"
+import type {
   ExitSpeed,
   SparkCoopExitRequestStatus,
   WalletTransfer,
 } from "@buildonspark/spark-sdk/types"
+import { equalBytes } from "@noble/curves/utils.js"
 import { mnemonicToBip39Seed } from "../modules/shared/bip39-seed.ts"
 import {
   type SparkSecret,
@@ -191,6 +198,73 @@ const catchRejection = async <T>(
   }
 }
 
+/** The SDK's private `SparkWallet` methods the incoming announcement uses (SDK 0.14.0). */
+interface SparkWalletPrivates {
+  handleStreamEvent: (data: SubscribeToEventsResponse) => Promise<void>
+  readonly constructTransfersWithUserRequest: (
+    transfers: ReadonlyArray<Transfer>
+  ) => Promise<ReadonlyArray<WalletTransfer>>
+}
+
+type IncomingTransferHandler = NonNullable<
+  SharedSparkSyncWalletEventHandlers["transfer:incoming"]
+>
+
+/**
+ * The SDK's proto `TransferType` and `TransferStatus` values, as literals
+ * (verified against `@buildonspark/spark-sdk/proto/spark`, SDK 0.14.0) for
+ * the same reason `exitSpeedToSdk` mirrors `ExitSpeed`. Only a payment is
+ * announced, which leaves out counter swaps, and only in a status the SDK
+ * claims it in (its `partitionClaimablePendingTransfers`).
+ */
+const ANNOUNCED_TRANSFER_TYPES: ReadonlySet<TransferType> = new Set([
+  0, // PREIMAGE_SWAP
+  2, // TRANSFER
+])
+const CLAIMABLE_TRANSFER_STATUSES: ReadonlySet<TransferStatus> = new Set([
+  2, // TRANSFER_STATUS_SENDER_KEY_TWEAKED
+  3, // TRANSFER_STATUS_RECEIVER_KEY_TWEAKED
+  4, // TRANSFER_STATUS_RECEIVER_REFUND_SIGNED
+  9, // TRANSFER_STATUS_RECEIVER_KEY_TWEAK_LOCKED
+  10, // TRANSFER_STATUS_RECEIVER_KEY_TWEAK_APPLIED
+])
+
+/** The transfer to this wallet a stream event carries, when `transfer:incoming` announces it. */
+const announcedIncomingTransferOf = ({
+  event,
+}: SubscribeToEventsResponse): Transfer | undefined => {
+  const transfer =
+    event?.$case === "receiverTransfer"
+      ? event.receiverTransfer.transfer
+      : undefined
+  return transfer !== undefined &&
+    !equalBytes(
+      transfer.senderIdentityPublicKey,
+      transfer.receiverIdentityPublicKey
+    ) &&
+    ANNOUNCED_TRANSFER_TYPES.has(transfer.type) &&
+    CLAIMABLE_TRANSFER_STATUSES.has(transfer.status)
+    ? transfer
+    : undefined
+}
+
+/**
+ * One SSP call, which brings a Lightning transfer's user request. SDK 0.14.0
+ * makes it, with no ids, for a plain transfer too.
+ */
+const transferWithUserRequest = async (
+  wallet: SparkWalletPrivates,
+  transfer: Transfer
+): Promise<SparkWalletTransfer> => {
+  const [walletTransfer] = await wallet.constructTransfersWithUserRequest([
+    transfer,
+  ])
+  if (walletTransfer === undefined) {
+    throw new Error(`The SDK did not convert transfer ${transfer.id}.`)
+  }
+  return walletTransfer
+}
+
 /**
  * Instances are keyed by mnemonic + network and shared across every consumer
  * (domain actions, direct UI reads, and the Spark account sync job — all of
@@ -223,9 +297,43 @@ const catchRejection = async <T>(
  * a wallet reconnecting and polling in the background, and the sync job
  * retries a failed start. `initialize` builds the wallet with `new this`, so
  * it builds this subclass and runs its `initWallet`.
+ *
+ * It also announces an incoming transfer the moment the stream delivers it,
+ * before the SDK's claim (about 5 s of signing on a PAX A920Pro), so the
+ * transfer can be recorded at once (payment/0031).
  */
 const pooledWallet = (Wallet: typeof SparkWallet) =>
   class extends Wallet {
+    /** What `subscribe` registered for `transfer:incoming`. */
+    readonly incomingTransferHandlers = new Set<IncomingTransferHandler>()
+
+    constructor(...args: ConstructorParameters<typeof SparkWallet>) {
+      super(...args)
+      // Runs before `initWallet` starts the stream, so it sees every event.
+      // ponytail: wraps a private SDK method (SDK 0.14.0);
+      // spark-wallet-sdk-contract.test.ts fails once an upgrade renames it.
+      const sdk = this as unknown as SparkWalletPrivates
+      const handleStreamEvent = sdk.handleStreamEvent.bind(this)
+      sdk.handleStreamEvent = (data) => {
+        try {
+          const transfer =
+            this.incomingTransferHandlers.size === 0
+              ? undefined
+              : announcedIncomingTransferOf(data)
+          if (transfer !== undefined) {
+            const withUserRequest = transferWithUserRequest(sdk, transfer)
+            for (const handler of this.incomingTransferHandlers) {
+              handler(transfer.id, withUserRequest)
+            }
+          }
+        } catch {
+          // A failing subscriber must not hold up the SDK's claim; the
+          // sweep after the claim still records the transfer.
+        }
+        return handleStreamEvent(data)
+      }
+    }
+
     /**
      * The claims this wallet started, by transfer id. The SDK claims an
      * incoming transfer once the stream delivers it, and its 10 s claim poll
@@ -276,8 +384,10 @@ interface SparkWalletPoolKey {
   readonly mnemonic: string
 }
 
+type PooledSparkWallet = InstanceType<ReturnType<typeof pooledWallet>>
+
 const sparkWalletPool = createRefCountedResourcePool<
-  SparkWallet,
+  PooledSparkWallet,
   SparkWalletPoolKey
 >({
   // Loaded via a dynamic import rather than a static one so that merely
@@ -312,7 +422,17 @@ const SUPPORTED_SYNC_EVENTS = [
 
 export type SharedSparkSyncWalletEventHandlers = Partial<
   Pick<SparkWalletEvents, (typeof SUPPORTED_SYNC_EVENTS)[number]>
->
+> & {
+  /**
+   * A transfer to this wallet the stream delivered, before the SDK claims it
+   * (payment/0031). The promise resolves to that transfer with its SSP user
+   * request, or rejects when the SSP call fails; the subscriber handles it.
+   */
+  readonly "transfer:incoming"?: (
+    transferId: string,
+    transfer: Promise<SparkWalletTransfer>
+  ) => void
+}
 
 /**
  * A transfer as `SharedSparkSyncWallet.getTransfers` returns it. Named here
@@ -361,10 +481,17 @@ export const createSharedSparkSyncWallet = async (
       for (const [event, listener] of entries) {
         wallet.on(event, listener as never)
       }
+      const onIncomingTransfer = handlers["transfer:incoming"]
+      if (onIncomingTransfer) {
+        wallet.incomingTransferHandlers.add(onIncomingTransfer)
+      }
 
       return () => {
         for (const [event, listener] of entries) {
           wallet.off(event, listener as never)
+        }
+        if (onIncomingTransfer) {
+          wallet.incomingTransferHandlers.delete(onIncomingTransfer)
         }
       }
     },

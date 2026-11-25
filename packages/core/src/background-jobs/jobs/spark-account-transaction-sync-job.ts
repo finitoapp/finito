@@ -82,6 +82,19 @@ const SPARK_RECENT_SWEEP_LOOKBACK_MS = 60 * 60 * 1000
 // hour behind only widens the next window by that hour (payment/0026).
 const SPARK_SYNC_POINTER_STEP_MS = 60 * 60 * 1000
 const OUTGOING_TRANSFER_DIRECTION = "OUTGOING"
+// What a transfer the stream announces may be in to be recorded before the
+// SDK finishes claiming it (payment/0031): the states its claim starts from
+// (the SDK's `partitionClaimablePendingTransfers`), or already done.
+const BEFORE_COMPLETION_RECORDABLE_STATUSES: ReadonlySet<
+  SparkWalletTransfer["status"]
+> = new Set<SparkWalletTransfer["status"]>([
+  "TRANSFER_STATUS_SENDER_KEY_TWEAKED",
+  "TRANSFER_STATUS_RECEIVER_KEY_TWEAKED",
+  "TRANSFER_STATUS_RECEIVER_REFUND_SIGNED",
+  "TRANSFER_STATUS_RECEIVER_KEY_TWEAK_LOCKED",
+  "TRANSFER_STATUS_RECEIVER_KEY_TWEAK_APPLIED",
+  SPARK_TRANSFER_STATUS_COMPLETED,
+])
 
 interface SparkTransfer {
   readonly id: string
@@ -149,6 +162,12 @@ interface RecordTransferOptions {
    * skipping such transfers.
    */
   readonly allowWithoutInvoice?: boolean
+  /**
+   * When the stream announced this transfer, which the SDK is still claiming
+   * (`transfer:incoming`, payment/0031). Set, it is recorded in any state its
+   * claim starts from, not only once `COMPLETED`.
+   */
+  readonly incomingEventAt?: Date
 }
 
 export const createSparkAccountTransactionSyncJob =
@@ -331,6 +350,11 @@ const createSparkAccountSyncSession = ({
   >({
     onError: (error) => run.deps.onError(error),
   })
+  // A transfer the stream announces has a queue of its own, so it is
+  // recorded while a sweep, a withdrawal check or a `transfer:` sync runs.
+  const incomingQueue = createKeyedTaskQueue<`incoming:${string}`>({
+    onError: (error) => run.deps.onError(error),
+  })
 
   const bufferTransferSync = (transferId: string, message: string): void => {
     pendingTransferIds.add(transferId)
@@ -358,9 +382,14 @@ const createSparkAccountSyncSession = ({
 
   const recordTransfer = async (
     transfer: SparkTransfer,
-    { allowWithoutInvoice = false }: RecordTransferOptions = {}
+    { allowWithoutInvoice = false, incomingEventAt }: RecordTransferOptions = {}
   ): Promise<RecordTransferResult> => {
-    if (!shouldRecordTransfer(transfer)) {
+    const beforeCompletion = incomingEventAt !== undefined
+    if (
+      !(beforeCompletion
+        ? shouldRecordBeforeCompletion(transfer)
+        : shouldRecordTransfer(transfer))
+    ) {
       run.deps.console.debug("Ignored Spark transfer.", {
         accountId: account.id,
         sparkTransferId: transfer.id,
@@ -441,6 +470,7 @@ const createSparkAccountSyncSession = ({
                 })
               )
 
+        // ponytail: recorded before the claim; a claim that never completes stays recorded (payment/0031), reversal is a future change
         await runMutationWithCompletion((options) => {
           upsertAccountTransactionRows(run.deps.evolu, accountTransaction, {
             ...options,
@@ -461,6 +491,11 @@ const createSparkAccountSyncSession = ({
           amount: getTransferAmount(transfer),
           paymentId,
           sparkTransferId,
+          beforeCompletion,
+          sinceIncomingEventMs:
+            incomingEventAt === undefined
+              ? null
+              : run.deps.date.now().getTime() - incomingEventAt.getTime(),
         })
         return "created"
       }
@@ -528,6 +563,21 @@ const createSparkAccountSyncSession = ({
         transferId,
         "Buffered Spark transfer sync before wallet init."
       )
+      return
+    }
+
+    // Usually recorded already by `transfer:incoming`, before the claim: then
+    // it needs no call to the operators or the SSP.
+    const sparkTransferId = NonEmptyStringSchema.decode(transferId)
+    const [recorded] = await run.deps.evolu.loadQuery(
+      accountTransactionSparkByTransferIdQuery(sparkTransferId)
+    )
+    if (recorded !== undefined) {
+      run.deps.console.debug("Skipped fetching a recorded Spark transfer.", {
+        accountId: account.id,
+        sparkTransferId,
+      })
+      await run.ok(reconcileAccountTransaction(recorded.id))
       return
     }
 
@@ -747,6 +797,19 @@ const createSparkAccountSyncSession = ({
           if (incoming > 0n) return
           syncHistorySoon()
         },
+        "transfer:incoming": (transferId, transfer) => {
+          const incomingEventAt = run.deps.date.now()
+          // Handled here too: a queue disposed before the work runs never
+          // awaits it.
+          transfer.catch(() => undefined)
+          run.deps.console.debug("Received Spark incoming transfer event.", {
+            accountId: account.id,
+            sparkTransferId: transferId,
+          })
+          incomingQueue.enqueue(`incoming:${transferId}`, async () => {
+            await recordTransfer(await transfer, { incomingEventAt })
+          })
+        },
         "deposit:confirmed": () => {
           run.deps.console.debug("Received Spark deposit confirmed event.", {
             accountId: account.id,
@@ -795,7 +858,10 @@ const createSparkAccountSyncSession = ({
       unsubscribeEvents?.()
       unsubscribeEvents = undefined
 
-      await queue[Symbol.asyncDispose]()
+      await Promise.all([
+        queue[Symbol.asyncDispose](),
+        incomingQueue[Symbol.asyncDispose](),
+      ])
 
       const walletToCleanup = wallet
       wallet = undefined
@@ -897,6 +963,12 @@ const createSparkTransactionInput = (
 
 const shouldRecordTransfer = (transfer: SparkTransfer): boolean =>
   transfer.status === SPARK_TRANSFER_STATUS_COMPLETED &&
+  getTransferAmount(transfer) !== 0
+
+const shouldRecordBeforeCompletion = (transfer: SparkTransfer): boolean =>
+  transfer.transferDirection === "INCOMING" &&
+  (transfer.type === "TRANSFER" || transfer.type === "PREIMAGE_SWAP") &&
+  BEFORE_COMPLETION_RECORDABLE_STATUSES.has(transfer.status) &&
   getTransferAmount(transfer) !== 0
 
 const getTransferAmount = (transfer: SparkTransfer): number =>
