@@ -1,6 +1,6 @@
 # 0030 The Spark sweep waits for an incoming claim
 
-Status: accepted
+Status: superseded by payment/0031
 Date: 2026-11-25
 
 ## Context

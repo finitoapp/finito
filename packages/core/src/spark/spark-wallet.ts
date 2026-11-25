@@ -12,6 +12,7 @@ import type {
 } from "@buildonspark/spark-sdk/proto/spark"
 import type {
   ExitSpeed,
+  mapTransferToWalletTransfer,
   SparkCoopExitRequestStatus,
   WalletTransfer,
 } from "@buildonspark/spark-sdk/types"
@@ -211,15 +212,35 @@ type IncomingTransferHandler = NonNullable<
 >
 
 /**
+ * The longest the SDK's claim of an announced transfer waits for its
+ * subscribers to record it (payment/0031). A record took 1.4 s on a PAX
+ * A920Pro while the claim signed beside it; a stuck one must not leave the
+ * money unclaimed for long. A tuning knob, not a protocol limit.
+ */
+const CLAIM_HOLD_MAX_MS = 3000
+
+/** Settles once `work` does, or after `ms`, whichever comes first; never rejects. */
+const settledWithin = (work: Promise<unknown>, ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms)
+    const done = () => {
+      clearTimeout(timer)
+      resolve()
+    }
+    work.then(done, done)
+  })
+
+/**
  * The SDK's proto `TransferType` and `TransferStatus` values, as literals
  * (verified against `@buildonspark/spark-sdk/proto/spark`, SDK 0.14.0) for
  * the same reason `exitSpeedToSdk` mirrors `ExitSpeed`. Only a payment is
  * announced, which leaves out counter swaps, and only in a status the SDK
  * claims it in (its `partitionClaimablePendingTransfers`).
  */
+const SPARK_TRANSFER_TYPE: TransferType = 2 // TRANSFER
 const ANNOUNCED_TRANSFER_TYPES: ReadonlySet<TransferType> = new Set([
   0, // PREIMAGE_SWAP
-  2, // TRANSFER
+  SPARK_TRANSFER_TYPE,
 ])
 const CLAIMABLE_TRANSFER_STATUSES: ReadonlySet<TransferStatus> = new Set([
   2, // TRANSFER_STATUS_SENDER_KEY_TWEAKED
@@ -249,8 +270,8 @@ const announcedIncomingTransferOf = ({
 }
 
 /**
- * One SSP call, which brings a Lightning transfer's user request. SDK 0.14.0
- * makes it, with no ids, for a plain transfer too.
+ * A Lightning transfer (PREIMAGE_SWAP) with its user request, which takes one
+ * SSP call: about 610 ms on a PAX A920Pro.
  */
 const transferWithUserRequest = async (
   wallet: SparkWalletPrivates,
@@ -264,6 +285,20 @@ const transferWithUserRequest = async (
   }
   return walletTransfer
 }
+
+/**
+ * A Spark transfer (TRANSFER) as `getTransfers` maps it, without the SSP call
+ * of {@link transferWithUserRequest}: it has no user request, and its Spark
+ * invoice is in the transfer itself. SDK 0.14.0's
+ * `constructTransfersWithUserRequest` would still send the SSP a request,
+ * with no ids.
+ */
+const sparkTransfer = async (
+  wallet: Pick<SparkWallet, "getIdentityPublicKey">,
+  mapTransfer: typeof mapTransferToWalletTransfer,
+  transfer: Transfer
+): Promise<SparkWalletTransfer> =>
+  mapTransfer(transfer, await wallet.getIdentityPublicKey())
 
 /**
  * Instances are keyed by mnemonic + network and shared across every consumer
@@ -302,7 +337,10 @@ const transferWithUserRequest = async (
  * before the SDK's claim (about 5 s of signing on a PAX A920Pro), so the
  * transfer can be recorded at once (payment/0031).
  */
-const pooledWallet = (Wallet: typeof SparkWallet) =>
+const pooledWallet = (
+  Wallet: typeof SparkWallet,
+  mapTransfer: typeof mapTransferToWalletTransfer
+) =>
   class extends Wallet {
     /** What `subscribe` registered for `transfer:incoming`. */
     readonly incomingTransferHandlers = new Set<IncomingTransferHandler>()
@@ -321,9 +359,20 @@ const pooledWallet = (Wallet: typeof SparkWallet) =>
               ? undefined
               : announcedIncomingTransferOf(data)
           if (transfer !== undefined) {
-            const withUserRequest = transferWithUserRequest(sdk, transfer)
+            const walletTransfer =
+              transfer.type === SPARK_TRANSFER_TYPE
+                ? sparkTransfer(this, mapTransfer, transfer)
+                : transferWithUserRequest(sdk, transfer)
+            const records: Promise<void>[] = []
             for (const handler of this.incomingTransferHandlers) {
-              handler(transfer.id, withUserRequest)
+              const recorded = handler(transfer.id, walletTransfer)
+              if (recorded !== undefined) records.push(recorded)
+            }
+            if (records.length > 0) {
+              this.claimHolds.set(
+                transfer.id,
+                settledWithin(Promise.all(records), CLAIM_HOLD_MAX_MS)
+              )
             }
           }
         } catch {
@@ -350,13 +399,25 @@ const pooledWallet = (Wallet: typeof SparkWallet) =>
       ReturnType<SparkWallet["claimTransfer"]>
     >()
 
+    /**
+     * What the claim of an announced transfer waits for: its subscribers'
+     * records, at most `CLAIM_HOLD_MAX_MS`. Measured on a PAX A920Pro, a
+     * record beside the claim's signing took 1.4 s for the JS thread.
+     */
+    readonly claimHolds = new Map<string, Promise<void>>()
+
     protected override claimTransfer(
       params: Parameters<SparkWallet["claimTransfer"]>[0]
     ): ReturnType<SparkWallet["claimTransfer"]> {
       const { id } = params.transfer
       const existing = this.claimsByTransferId.get(id)
       if (existing !== undefined) return existing
-      const claim = super.claimTransfer(params)
+      const hold = this.claimHolds.get(id)
+      this.claimHolds.delete(id)
+      const claim =
+        hold === undefined
+          ? super.claimTransfer(params)
+          : hold.then(() => super.claimTransfer(params))
       this.claimsByTransferId.set(id, claim)
       // A claim that failed is tried again, as the SDK would.
       claim.catch(() => this.claimsByTransferId.delete(id))
@@ -395,8 +456,17 @@ const sparkWalletPool = createRefCountedResourcePool<
   // useAppRun) doesn't pull the Spark SDK's own dependency graph into the
   // shared app bundle — it's fetched only once a wallet is actually acquired.
   create: async ({ mnemonic, network }) => {
-    const { SparkWallet } = await import("@buildonspark/spark-sdk")
-    const { wallet } = await pooledWallet(SparkWallet).initialize({
+    const [{ SparkWallet }, { mapTransferToWalletTransfer }] =
+      await Promise.all([
+        import("@buildonspark/spark-sdk"),
+        // Its own build of the SDK's proto code (~660 KB on React Native)
+        // initializes with the wallet, not on the first incoming payment.
+        import("@buildonspark/spark-sdk/types"),
+      ])
+    const { wallet } = await pooledWallet(
+      SparkWallet,
+      mapTransferToWalletTransfer
+    ).initialize({
       // The seed, not the mnemonic: the SDK would derive the same seed in
       // pure JS (~1.6 s of blocked JS on Hermes), where this one can come
       // from the platform's native PBKDF2 (`installBip39Pbkdf2`).
@@ -425,13 +495,16 @@ export type SharedSparkSyncWalletEventHandlers = Partial<
 > & {
   /**
    * A transfer to this wallet the stream delivered, before the SDK claims it
-   * (payment/0031). The promise resolves to that transfer with its SSP user
-   * request, or rejects when the SSP call fails; the subscriber handles it.
+   * (payment/0031). The promise resolves to that transfer, a Lightning one
+   * with its SSP user request, or rejects when the SSP call fails; the
+   * subscriber handles it. A promise the handler returns holds the SDK's
+   * claim of the transfer until it settles, at most `CLAIM_HOLD_MAX_MS`:
+   * the claim's signing would otherwise take the JS thread from the record.
    */
   readonly "transfer:incoming"?: (
     transferId: string,
     transfer: Promise<SparkWalletTransfer>
-  ) => void
+  ) => Promise<void> | undefined
 }
 
 /**

@@ -213,6 +213,15 @@ class FakeSparkWallet {
       listener(...args)
     }
   }
+
+  /** `transfer:incoming` as the wallet delivers it: what the handlers return holds its claim. */
+  announce(transfer: FakeTransfer): Promise<ReadonlyArray<unknown>> {
+    return Promise.all(
+      [...(this.listeners.get("transfer:incoming") ?? [])].map((listener) =>
+        listener(transfer.id, Promise.resolve(transfer))
+      )
+    )
+  }
 }
 
 /** `balance:update`'s balance: once a claim ended, and before it starts. */
@@ -531,6 +540,128 @@ describe("spark account transaction sync job", () => {
 
     wallet.emit("balance:update", settledBalance)
     await expect.poll(() => wallet.getTransfersCalls.length).toBe(2)
+  })
+
+  test("skips the sweep after a claim once its announced transfer is recorded", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun(evoluTestDeps(evolu))
+    const errors: unknown[] = []
+    const secret = createUniqueSecret()
+    const accountId = await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255("Spark account"),
+        spark: { secret },
+      })
+    )
+    const transfer = createCompletedTransfer({
+      id: `spark-transfer-recorded-before-claim-${accountId}`,
+      status: "TRANSFER_STATUS_SENDER_KEY_TWEAKED",
+    })
+    const wallet = new FakeSparkWallet([])
+    await using jobRun = testCreateRun({
+      console: testCreateConsole(),
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(testFixedDate),
+      fetch: unimplementedFetch,
+      lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
+      onError: (error: unknown) => {
+        errors.push(error)
+      },
+    })
+    await using _job = await jobRun.ok(
+      createSparkAccountTransactionSyncJob({
+        walletFactory: createFakeWalletFactory(secret, wallet),
+        recheckIntervalMs: 60_000,
+      })
+    )
+    await expect.poll(() => wallet.getTransfersCalls.length).toBe(1)
+
+    wallet.emit("transfer:incoming", transfer.id, Promise.resolve(transfer))
+    await expect
+      .poll(() => evolu.loadQuery(sparkTransactionsByAccountIdQuery(accountId)))
+      .toMatchObject([{ sparkTransferId: transfer.id }])
+    wallet.emit("balance:update", incomingBalance)
+    wallet.emit("balance:update", settledBalance)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(wallet.getTransfersCalls).toHaveLength(1)
+
+    // With no announcement since that claim, a balance update sweeps again.
+    wallet.emit("balance:update", settledBalance)
+    await expect.poll(() => wallet.getTransfersCalls.length).toBe(2)
+    expect(errors).toEqual([])
+  })
+
+  test("sweeps after a claim whose announced transfer was not recorded", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun(evoluTestDeps(evolu))
+    const errors: unknown[] = []
+    const console = testCreateConsole()
+    const secret = createUniqueSecret()
+    const accountId = await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255("Spark account"),
+        spark: { secret },
+      })
+    )
+    // A Lightning transfer announced before the SSP returns its request.
+    const unrecorded = createCompletedTransfer({
+      id: `spark-transfer-unrecorded-before-claim-${accountId}`,
+      status: "TRANSFER_STATUS_SENDER_KEY_TWEAKED",
+      sparkInvoice: undefined,
+      userRequest: undefined,
+    })
+    const recorded = createCompletedTransfer({
+      id: `spark-transfer-recorded-after-sweep-${accountId}`,
+      status: "TRANSFER_STATUS_SENDER_KEY_TWEAKED",
+    })
+    const wallet = new FakeSparkWallet([])
+    await using jobRun = testCreateRun({
+      console,
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(testFixedDate),
+      fetch: unimplementedFetch,
+      lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
+      onError: (error: unknown) => {
+        errors.push(error)
+      },
+    })
+    await using _job = await jobRun.ok(
+      createSparkAccountTransactionSyncJob({
+        walletFactory: createFakeWalletFactory(secret, wallet),
+        recheckIntervalMs: 60_000,
+      })
+    )
+    await expect.poll(() => wallet.getTransfersCalls.length).toBe(1)
+
+    wallet.emit("transfer:incoming", unrecorded.id, Promise.resolve(unrecorded))
+    await expect
+      .poll(() =>
+        console
+          .getEntriesSnapshot()
+          .some(
+            (entry) => entry.args[0] === "Ignored incomplete Spark transfer."
+          )
+      )
+      .toBe(true)
+    wallet.emit("balance:update", settledBalance)
+    await expect.poll(() => wallet.getTransfersCalls.length).toBe(2)
+
+    // That sweep covered it, so it does not keep the next claim, of a
+    // transfer that is recorded, from skipping its sweep.
+    wallet.emit("transfer:incoming", recorded.id, Promise.resolve(recorded))
+    await expect
+      .poll(() => evolu.loadQuery(sparkTransactionsByAccountIdQuery(accountId)))
+      .toMatchObject([{ sparkTransferId: recorded.id }])
+    wallet.emit("balance:update", settledBalance)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(wallet.getTransfersCalls).toHaveLength(2)
+    expect(errors).toEqual([])
   })
 
   test("checks a page of recorded transfers in one query, without taking each transfer's lock", async () => {
@@ -1174,6 +1305,53 @@ describe("spark account transaction sync job", () => {
     ).toEqual([])
     expect(errors).toEqual([])
   })
+  test("settles what the wallet holds the claim for once the announced transfer is recorded", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun({
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    })
+    const secret = createUniqueSecret()
+    const accountId = await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255("Spark account"),
+        spark: { secret },
+      })
+    )
+    const paymentId = await run.orThrow(createSparkLightningPayment(accountId))
+    const transfer = createCompletedTransfer({
+      id: `spark-transfer-held-claim-${accountId}`,
+      status: "TRANSFER_STATUS_SENDER_KEY_TWEAKED",
+      sparkInvoice: undefined,
+    })
+    const wallet = new FakeSparkWallet([])
+    await using jobRun = testCreateRun({
+      console: testCreateConsole(),
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+      fetch: unimplementedFetch,
+      lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
+      onError: () => undefined,
+    })
+    await using _job = await jobRun.ok(
+      createSparkAccountTransactionSyncJob({
+        walletFactory: createFakeWalletFactory(secret, wallet),
+        recheckIntervalMs: 60_000,
+      })
+    )
+    await expect.poll(() => wallet.listenerCount("transfer:incoming")).toBe(1)
+
+    await wallet.announce(transfer)
+
+    // Settled only once the record is written, so the claim follows it.
+    expect(
+      await evolu.loadQuery(reconciliationClaimsByAccountIdQuery(accountId))
+    ).toEqual([{ paymentId }])
+  })
+
   test("records an incoming transfer as soon as it arrives, before its claim", async () => {
     await using testEvolu = await createEvoluTest()
     const { evolu } = testEvolu

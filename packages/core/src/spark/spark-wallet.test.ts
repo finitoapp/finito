@@ -13,6 +13,7 @@ const {
   sdkClaimTransferMock,
   sdkHandleStreamEventMock,
   constructTransfersWithUserRequestMock,
+  mapTransferToWalletTransferMock,
   initializeMock,
   failedInitCleanupMock,
   FakeUUID,
@@ -28,6 +29,12 @@ const {
   const constructTransfersWithUserRequestMock = vi.fn(
     async (transfers: ReadonlyArray<{ readonly id: string }>) =>
       transfers.map(({ id }) => ({ id, userRequest: { id: `request-${id}` } }))
+  )
+  const mapTransferToWalletTransferMock = vi.fn(
+    (transfer: { readonly id: string }, identityPublicKey: string) => ({
+      id: transfer.id,
+      identityPublicKey,
+    })
   )
   /**
    * The SDK's `SparkWallet` as far as the wrapper sees it: a class the
@@ -51,6 +58,9 @@ const {
     ) {
       return constructTransfersWithUserRequestMock(transfers)
     }
+    async getIdentityPublicKey() {
+      return "identity-public-key"
+    }
     cleanup = failedInitCleanupMock
   }
   class FakeUUID {
@@ -67,6 +77,7 @@ const {
     sdkClaimTransferMock,
     sdkHandleStreamEventMock,
     constructTransfersWithUserRequestMock,
+    mapTransferToWalletTransferMock,
     initializeMock,
     failedInitCleanupMock,
     FakeUUID,
@@ -84,6 +95,11 @@ vi.mock("@buildonspark/spark-sdk", () => ({
     BalanceUpdate: "balance:update",
     DepositConfirmed: "deposit:confirmed",
   },
+}))
+
+vi.mock("@buildonspark/spark-sdk/types", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@buildonspark/spark-sdk/types")>()),
+  mapTransferToWalletTransfer: mapTransferToWalletTransferMock,
 }))
 
 beforeEach(() => {
@@ -563,6 +579,7 @@ describe("Spark wallet incoming transfers", () => {
     readonly handleStreamEvent: (
       data: SubscribeToEventsResponse
     ) => Promise<unknown>
+    readonly claimTransfer: (params: object) => Promise<unknown>
   }
   const createStreamWallet = async () => {
     const built: { wallet?: StreamWallet } = {}
@@ -600,6 +617,7 @@ describe("Spark wallet incoming transfers", () => {
   beforeEach(() => {
     sdkHandleStreamEventMock.mockClear()
     constructTransfersWithUserRequestMock.mockClear()
+    mapTransferToWalletTransferMock.mockClear()
   })
 
   test("announces an incoming transfer before the SDK claims it", async () => {
@@ -632,10 +650,82 @@ describe("Spark wallet incoming transfers", () => {
     expect(constructTransfersWithUserRequestMock).toHaveBeenCalledWith([
       expect.objectContaining({ id: "transfer-1" }),
     ])
+    expect(mapTransferToWalletTransferMock).not.toHaveBeenCalled()
 
     unsubscribe()
     await wallet.handleStreamEvent(receiverTransferEvent({ id: "transfer-2" }))
     expect(onIncomingTransfer).toHaveBeenCalledTimes(1)
+  })
+
+  test("announces a Spark transfer without asking the SSP", async () => {
+    const { syncWallet, wallet } = await createStreamWallet()
+    await using _syncWallet = syncWallet
+    const onIncomingTransfer = vi.fn()
+    syncWallet.subscribe({ "transfer:incoming": onIncomingTransfer })
+
+    await wallet.handleStreamEvent(
+      receiverTransferEvent({ id: "transfer-1", type: TransferType.TRANSFER })
+    )
+
+    expect(onIncomingTransfer).toHaveBeenCalledTimes(1)
+    const [transferId, transfer] = onIncomingTransfer.mock.calls[0] ?? []
+    expect(transferId).toBe("transfer-1")
+    expect(await transfer).toEqual({
+      id: "transfer-1",
+      identityPublicKey: "identity-public-key",
+    })
+    expect(mapTransferToWalletTransferMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "transfer-1" }),
+      "identity-public-key"
+    )
+    expect(constructTransfersWithUserRequestMock).not.toHaveBeenCalled()
+  })
+
+  test("holds the SDK's claim of an announced transfer until its subscriber recorded it", async () => {
+    const { syncWallet, wallet } = await createStreamWallet()
+    await using _syncWallet = syncWallet
+    let recorded = () => {}
+    syncWallet.subscribe({
+      "transfer:incoming": () =>
+        new Promise<void>((resolve) => {
+          recorded = resolve
+        }),
+    })
+    sdkClaimTransferMock.mockClear()
+    await wallet.handleStreamEvent(receiverTransferEvent({ id: "transfer-1" }))
+
+    // The claim the SDK's stream handler starts.
+    const claim = wallet.claimTransfer({ transfer: { id: "transfer-1" } })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(sdkClaimTransferMock).not.toHaveBeenCalled()
+
+    recorded()
+    await claim
+    expect(sdkClaimTransferMock.mock.calls).toEqual([["transfer-1"]])
+  })
+
+  test("claims an announced transfer after 3 s when its subscriber has not recorded it", async () => {
+    const { syncWallet, wallet } = await createStreamWallet()
+    await using _syncWallet = syncWallet
+    syncWallet.subscribe({
+      "transfer:incoming": () => new Promise<void>(() => {}),
+    })
+    sdkClaimTransferMock.mockClear()
+    vi.useFakeTimers()
+    try {
+      await wallet.handleStreamEvent(
+        receiverTransferEvent({ id: "transfer-1" })
+      )
+      const claim = wallet.claimTransfer({ transfer: { id: "transfer-1" } })
+
+      await vi.advanceTimersByTimeAsync(2999)
+      expect(sdkClaimTransferMock).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      await claim
+      expect(sdkClaimTransferMock.mock.calls).toEqual([["transfer-1"]])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   test("does not announce a self transfer or a counter swap", async () => {
@@ -661,5 +751,6 @@ describe("Spark wallet incoming transfers", () => {
     expect(sdkHandleStreamEventMock).toHaveBeenCalledTimes(events.length)
     expect(onIncomingTransfer).not.toHaveBeenCalled()
     expect(constructTransfersWithUserRequestMock).not.toHaveBeenCalled()
+    expect(mapTransferToWalletTransferMock).not.toHaveBeenCalled()
   })
 })

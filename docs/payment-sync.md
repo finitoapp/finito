@@ -81,11 +81,13 @@ the daily limit (`moneta/0006`).
 
 Spark records an incoming transfer before its claim (`payment/0031`). The
 wallet wrapper announces `transfer:incoming` the moment the stream delivers
-a claimable transfer to this wallet, with its SSP user request, and the job
-records it at once: the same rows as a completed one, on a queue of its own
-so it never waits behind a sweep. A Lightning transfer whose invoice and
-preimage the SSP does not return yet is left to the sweep after
-`COMPLETED`; every other path records `COMPLETED` transfers only. On
+a claimable transfer to this wallet (a Lightning one with its SSP user
+request, a Spark one mapped on the device), and the job records it at
+once: the same rows as a completed one, on a queue of its own so it never
+waits behind a sweep. A Lightning transfer whose invoice and preimage the
+SSP does not return yet is left to the sweep after `COMPLETED`; every other
+path records `COMPLETED` transfers only. The `balance:update` that ends the
+claim of announced transfers, all recorded, starts no sweep. On
 `transfer:claimed` the job checks Evolu first and fetches only a transfer
 it has not recorded. A transfer whose claim never completes stays recorded
 (`payment/0031`).
