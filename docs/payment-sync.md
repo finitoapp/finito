@@ -48,13 +48,13 @@ repair rows created before this batching existed.
 
 | | FIO | MONETA | Spark |
 |---|---|---|---|
-| Trigger | per-plugin timer | per-plugin timer + the payment-wait screen | account-wide timer + wallet events (`transfer:claimed`, `balance:update`, `deposit:confirmed`) |
+| Trigger | per-plugin timer | per-plugin timer + the payment-wait screen | account-wide timer + wallet events (`transfer:incoming`, `transfer:claimed`, `balance:update`, `deposit:confirmed`) |
 | Default interval | 30s (`numberOfSecondsBetweenChecks`) | 300s (`numberOfSecondsBetweenChecks`, at least 60s); 4s per page read on the payment-wait screen for its first 10 minutes (`moneta/0010`) | 60s (`DEFAULT_RECHECK_INTERVAL_MS`) |
 | Sync pointer | `fioPluginSyncPointer.lastSyncedDate` | `monetaPluginSyncPointer.lastSyncedDate` (the job only) | `sparkAccountSyncPointer.lastSyncedAt` |
 | Lookback overlap | `syncLookbackDays`, default **1 day**, per-plugin | none — the job reads from the pointer's day, the screen from the payment's day; the bank filters by `bookingDate`, whole days in Prague's time zone sent as bare dates (`moneta/0004`, `moneta/0008`) | **72h** before the pointer (`SPARK_SYNC_LOOKBACK_HOURS`) on the first sweep, every 30 minutes and after `deposit:confirmed`; the **last hour** on the sweeps in between (`payment/0027`) |
 | Cold-start scan | 2 months back (`FIO_FIRST_SYNC_LOOKBACK_MONTHS`) | 2 months back (`monetaFirstSyncStartDate`), read a week per call, narrowed to a day when the bank lists more (`MONETA_SYNC_WINDOWS`), a day still too long passed and logged (`moneta/0006`), never past the two years a token reads (`earliestMonetaReadableDay`) | unbounded (full history) |
 | Advisory lock key | `fio-transaction-{accountId}-{bankReference}` | none — deterministic ids only | `spark-transfer-{id}` |
-| Queue keys per session | `"sync"` (single) | `"sync"` (single) | `"history"` + `` `transfer:${id}` `` (multi) |
+| Queue keys per session | `"sync"` (single) | `"sync"` (single) | `"history"`, `"withdrawals"` + `` `transfer:${id}` `` (multi); `` `incoming:${id}` `` on a queue of its own |
 | Manual pointer edit | Settings UI only | Settings UI + CLI (`apps/cli/src/cli-moneta-plugins.ts set/reset-sync-pointer`) | Settings UI + CLI (`apps/cli/src/cli-accounts.ts set/reset-spark-sync-pointer`) |
 
 The FIO and Spark locks use `{ ifAvailable: true }` — skip on contention,
@@ -78,6 +78,17 @@ week again (`moneta/0007`). The bank filters by
 date alone, so no narrower request reads more of a day: one still too long
 is passed with what was read of it and logged, rather than retried against
 the daily limit (`moneta/0006`).
+
+Spark records an incoming transfer before its claim (`payment/0031`). The
+wallet wrapper announces `transfer:incoming` the moment the stream delivers
+a claimable transfer to this wallet, with its SSP user request, and the job
+records it at once: the same rows as a completed one, on a queue of its own
+so it never waits behind a sweep. A Lightning transfer whose invoice and
+preimage the SSP does not return yet is left to the sweep after
+`COMPLETED`; every other path records `COMPLETED` transfers only. On
+`transfer:claimed` the job checks Evolu first and fetches only a transfer
+it has not recorded. A transfer whose claim never completes stays recorded
+(`payment/0031`).
 
 Neither bank answers a browser's CORS preflight, so FIO and MONETA
 (`bankBackgroundJobs`) run natively and in the CLI, and in a browser (web,
