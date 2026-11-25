@@ -210,6 +210,10 @@ class FakeSparkWallet {
   }
 }
 
+/** `balance:update`'s balance: once a claim ended, and before it starts. */
+const settledBalance = { available: 1234n, owned: 1234n, incoming: 0n }
+const incomingBalance = { available: 0n, owned: 0n, incoming: 1234n }
+
 const createCompletedTransfer = (
   override: Partial<FakeTransfer> = {}
 ): FakeTransfer => ({
@@ -445,7 +449,7 @@ describe("spark account transaction sync job", () => {
     )
     await expect.poll(() => wallet.getTransfersCalls.length).toBe(1)
 
-    wallet.emit("balance:update")
+    wallet.emit("balance:update", settledBalance)
     await expect.poll(() => wallet.getTransfersCalls.length).toBe(2)
     wallet.emit("deposit:confirmed")
     await expect.poll(() => wallet.getTransfersCalls.length).toBe(3)
@@ -458,6 +462,44 @@ describe("spark account transaction sync job", () => {
       subHours(testFixedDate, 72),
     ])
     expect(errors).toEqual([])
+  })
+
+  test("sweeps on a balance update only once nothing is incoming, after the claim", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun(evoluTestDeps(evolu))
+    const secret = createUniqueSecret()
+    await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255("Spark account"),
+        spark: { secret },
+      })
+    )
+    const wallet = new FakeSparkWallet([])
+    await using jobRun = testCreateRun({
+      console: testCreateConsole(),
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(testFixedDate),
+      fetch: unimplementedFetch,
+      lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
+      onError: () => undefined,
+    })
+    await using _job = await jobRun.ok(
+      createSparkAccountTransactionSyncJob({
+        walletFactory: createFakeWalletFactory(secret, wallet),
+        recheckIntervalMs: 60_000,
+      })
+    )
+    await expect.poll(() => wallet.getTransfersCalls.length).toBe(1)
+
+    wallet.emit("balance:update", incomingBalance)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(wallet.getTransfersCalls).toHaveLength(1)
+
+    wallet.emit("balance:update", settledBalance)
+    await expect.poll(() => wallet.getTransfersCalls.length).toBe(2)
   })
 
   test("checks a page of recorded transfers in one query, without taking each transfer's lock", async () => {
@@ -524,7 +566,7 @@ describe("spark account transaction sync job", () => {
     await expect.poll(finishedSweeps).toBe(1)
     expect(transferLocks).toHaveLength(3)
 
-    wallet.emit("balance:update")
+    wallet.emit("balance:update", settledBalance)
     await expect.poll(finishedSweeps).toBe(2)
 
     expect(wallet.getTransfersCalls[1]).toMatchObject({

@@ -1,6 +1,6 @@
 # 0027 The Spark sweep reaches back 72 hours every half hour
 
-Status: accepted
+Status: superseded by payment/0030
 Date: 2026-11-17
 
 ## Context
