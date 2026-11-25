@@ -213,7 +213,8 @@ const catchRejection = async <T>(
  * pool exclusively owns, which avoids that race entirely.
  */
 /**
- * `Wallet` whose failed initialization tears down what it started. The SDK
+ * `Wallet` that claims a transfer once, and whose failed initialization
+ * tears down what it started. The SDK
  * opens its connections, its background stream and, on React Native, a
  * 10-second claim timer before the wallet's first sync
  * (`createClientsAndSyncWallet`, SDK 0.14.0). When that sync throws —
@@ -223,8 +224,37 @@ const catchRejection = async <T>(
  * retries a failed start. `initialize` builds the wallet with `new this`, so
  * it builds this subclass and runs its `initWallet`.
  */
-const cleaningUpFailedInit = (Wallet: typeof SparkWallet) =>
+const pooledWallet = (Wallet: typeof SparkWallet) =>
   class extends Wallet {
+    /**
+     * The claims this wallet started, by transfer id. The SDK claims an
+     * incoming transfer once the stream delivers it, and its 10 s claim poll
+     * on React Native lists the same transfer as pending while that claim
+     * still runs: the poll's claim then waits for the first and redoes all
+     * of it, about 5 s of signing on a PAX A920Pro, holding up the balance
+     * and the payment behind it (SDK 0.14.0). A transfer claimed, or being
+     * claimed, shares that claim instead.
+     */
+    // ponytail: one entry per incoming transfer for the wallet's lifetime;
+    // evict settled ones if a wallet ever lives through thousands.
+    readonly claimsByTransferId = new Map<
+      string,
+      ReturnType<SparkWallet["claimTransfer"]>
+    >()
+
+    protected override claimTransfer(
+      params: Parameters<SparkWallet["claimTransfer"]>[0]
+    ): ReturnType<SparkWallet["claimTransfer"]> {
+      const { id } = params.transfer
+      const existing = this.claimsByTransferId.get(id)
+      if (existing !== undefined) return existing
+      const claim = super.claimTransfer(params)
+      this.claimsByTransferId.set(id, claim)
+      // A claim that failed is tried again, as the SDK would.
+      claim.catch(() => this.claimsByTransferId.delete(id))
+      return claim
+    }
+
     protected override async initWallet(
       mnemonicOrSeed?: Uint8Array | string,
       accountNumber?: number,
@@ -256,7 +286,7 @@ const sparkWalletPool = createRefCountedResourcePool<
   // shared app bundle — it's fetched only once a wallet is actually acquired.
   create: async ({ mnemonic, network }) => {
     const { SparkWallet } = await import("@buildonspark/spark-sdk")
-    const { wallet } = await cleaningUpFailedInit(SparkWallet).initialize({
+    const { wallet } = await pooledWallet(SparkWallet).initialize({
       // The seed, not the mnemonic: the SDK would derive the same seed in
       // pure JS (~1.6 s of blocked JS on Hermes), where this one can come
       // from the platform's native PBKDF2 (`installBip39Pbkdf2`).

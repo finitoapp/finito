@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest"
 import { SparkSecret } from "../modules/shared/key-derivation.ts"
 
 const {
+  sdkClaimTransferMock,
   initializeMock,
   failedInitCleanupMock,
   FakeUUID,
@@ -12,6 +13,9 @@ const {
 } = vi.hoisted(() => {
   const initializeMock = vi.fn()
   const failedInitCleanupMock = vi.fn(async () => undefined)
+  const sdkClaimTransferMock = vi.fn(
+    async (_transferId: string): Promise<ReadonlyArray<string>> => []
+  )
   /**
    * The SDK's `SparkWallet` as far as the wrapper sees it: a class the
    * wrapper subclasses, whose `initialize` is the mock above. Its own
@@ -22,6 +26,9 @@ const {
     static initialize = initializeMock
     protected async initWallet(): Promise<never> {
       throw new Error("Spark wallet sync failed")
+    }
+    protected claimTransfer({ transfer }: { transfer: { id: string } }) {
+      return sdkClaimTransferMock(transfer.id)
     }
     cleanup = failedInitCleanupMock
   }
@@ -36,6 +43,7 @@ const {
   }
   class FakeSparkValidationError extends Error {}
   return {
+    sdkClaimTransferMock,
     initializeMock,
     failedInitCleanupMock,
     FakeUUID,
@@ -476,5 +484,52 @@ describe("createSharedSparkSyncWallet", () => {
       "transfer:claimed",
       transferClaimedHandler
     )
+  })
+})
+
+describe("Spark wallet claims", () => {
+  test("claims a transfer once when the claim poll lists it again, and retries a failed claim", async () => {
+    // The wallet `initialize` builds, to call its claims as the SDK does.
+    interface ClaimingWallet {
+      readonly claimTransfer: (params: object) => Promise<unknown>
+    }
+    const built: { wallet?: ClaimingWallet } = {}
+    initializeMock.mockImplementationOnce(async function (
+      this: new () => ClaimingWallet
+    ) {
+      built.wallet = new this()
+      return { wallet: built.wallet }
+    })
+    await using _wallet = await createSharedSparkSyncWallet(nextSecret())
+    const { wallet } = built
+    if (wallet === undefined) throw new Error("No wallet was built.")
+    const claim = (id: string) => wallet.claimTransfer({ transfer: { id } })
+
+    sdkClaimTransferMock.mockClear()
+    let release = () => {}
+    sdkClaimTransferMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve(["leaf-1"])
+        })
+    )
+    // The stream's claim, then the poll's while the first still runs.
+    const streamClaim = claim("transfer-1")
+    const pollClaim = claim("transfer-1")
+    release()
+    expect(await streamClaim).toEqual(["leaf-1"])
+    expect(await pollClaim).toEqual(["leaf-1"])
+    // A poll that listed it before the claim ended.
+    expect(await claim("transfer-1")).toEqual(["leaf-1"])
+    expect(sdkClaimTransferMock).toHaveBeenCalledTimes(1)
+
+    sdkClaimTransferMock.mockRejectedValueOnce(new Error("unavailable"))
+    await expect(claim("transfer-2")).rejects.toThrow("unavailable")
+    await claim("transfer-2")
+    expect(sdkClaimTransferMock.mock.calls).toEqual([
+      ["transfer-1"],
+      ["transfer-2"],
+      ["transfer-2"],
+    ])
   })
 })

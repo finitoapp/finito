@@ -736,10 +736,15 @@ const createSparkAccountSyncSession = ({
           })
           syncTransferSoon(transferId)
         },
-        "balance:update": () => {
+        "balance:update": ({ incoming }) => {
           run.deps.console.debug("Received Spark balance update event.", {
             accountId: account.id,
           })
+          // An incoming amount is a transfer the SDK is about to claim: a
+          // sweep now would find it unfinished and skip it, while taking the
+          // JS thread from the claim. The claim ends in another update, with
+          // nothing incoming, and a claim that fails is the history timer's.
+          if (incoming > 0n) return
           syncHistorySoon()
         },
         "deposit:confirmed": () => {
