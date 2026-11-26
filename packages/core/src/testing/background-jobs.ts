@@ -1,3 +1,7 @@
+import {
+  type AwaitedPaymentsDep,
+  createAwaitedPayments,
+} from "../background-jobs/awaited-payments.ts"
 import type { NotificationsDep } from "../background-jobs/notifications.ts"
 import { createNotificationStore } from "../background-jobs/notifications.ts"
 import { deriveDeviceAccountId } from "../evolu/device-account.ts"
@@ -5,9 +9,13 @@ import type { DeviceAccountDep } from "../modules/shared/evolu-deps.ts"
 import { MasterKey } from "../modules/shared/key-derivation.ts"
 import { createTestDeviceEvolu } from "./device-evolu.ts"
 
-/** A job context's notifications, in a store of their own nothing reads. */
-export const testNotificationsDep = (): NotificationsDep => ({
+/**
+ * A job context's in-memory stores, the notifications and the awaited
+ * payments, each of their own and read by nothing.
+ */
+export const testJobStoreDeps = (): NotificationsDep & AwaitedPaymentsDep => ({
   notifications: createNotificationStore().notifications,
+  awaitedPayments: createAwaitedPayments(),
 })
 
 /** The account every test device database is opened for. */

@@ -1,3 +1,4 @@
+import type { AwaitedPaymentsDep } from "@payky/core/background-jobs/awaited-payments"
 import {
   appBackgroundJobs,
   bankBackgroundJobs,
@@ -28,6 +29,7 @@ import {
 } from "react"
 import { accountAtom } from "../../atoms/account.ts"
 import { appMigrationsAtom } from "../../atoms/app-migrations.ts"
+import { awaitedPaymentsAtom } from "../../atoms/awaited-payments.ts"
 import { cashuShardStoreAtom, cashuWalletDepAtom } from "../../atoms/cashu.ts"
 import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
 import { evoluAtom } from "../../atoms/evolu.ts"
@@ -55,12 +57,14 @@ const createJobDeps = ({
   deviceAccountId,
   deviceId,
   notificationStore,
+  awaitedPayments,
 }: {
   readonly evolu: Evolu
   readonly deviceEvolu: DeviceEvolu
   readonly deviceAccountId: DeviceAccountId
   readonly deviceId: DeviceId
   readonly notificationStore: NotificationStore
+  readonly awaitedPayments: AwaitedPaymentsDep["awaitedPayments"]
 }) => {
   const dateDep = createDateDep()
   const fetchDep = createFetchDep({ deviceEvolu })
@@ -71,6 +75,7 @@ const createJobDeps = ({
     deviceAccountId,
     deviceId,
     notifications: notificationStore.notifications,
+    awaitedPayments,
     ...dateDep,
     ...fetchDep,
     ...createConnectivityDep(),
@@ -163,6 +168,7 @@ function AppBackgroundJobs() {
   const account = useAtomValue(accountAtom)
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const notificationStore = useAtomValue(notificationStoreAtom)
+  const awaitedPayments = useAtomValue(awaitedPaymentsAtom)
   // Jobs start behind the data migrations, so none reads a half-migrated
   // database. A failed migration still lets them start, as on web.
   useAtomValue(appMigrationsAtom)
@@ -177,10 +183,18 @@ function AppBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        awaitedPayments,
       })
     )
     return { run, jobs: run.ok(runBackgroundJobs(appBackgroundJobs)) }
-  }, [evolu, deviceEvolu, deviceAccountId, deviceId, notificationStore])
+  }, [
+    evolu,
+    deviceEvolu,
+    deviceAccountId,
+    deviceId,
+    notificationStore,
+    awaitedPayments,
+  ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, start })
   return null
@@ -204,6 +218,7 @@ function RunningBankBackgroundJobs() {
   const account = useAtomValue(accountAtom)
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const notificationStore = useAtomValue(notificationStoreAtom)
+  const awaitedPayments = useAtomValue(awaitedPaymentsAtom)
   useAtomValue(appMigrationsAtom)
 
   const deviceId = account.device.id
@@ -216,10 +231,18 @@ function RunningBankBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        awaitedPayments,
       })
     )
     return { run, jobs: run.ok(runBackgroundJobs(bankBackgroundJobs)) }
-  }, [evolu, deviceEvolu, deviceAccountId, deviceId, notificationStore])
+  }, [
+    evolu,
+    deviceEvolu,
+    deviceAccountId,
+    deviceId,
+    notificationStore,
+    awaitedPayments,
+  ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, start })
   return null
@@ -238,6 +261,7 @@ function CashuBackgroundJobs() {
   const cashuShardStore = useAtomValue(cashuShardStoreAtom)
   const cashuWalletDep = useAtomValue(cashuWalletDepAtom)
   const notificationStore = useAtomValue(notificationStoreAtom)
+  const awaitedPayments = useAtomValue(awaitedPaymentsAtom)
   useAtomValue(appMigrationsAtom)
   const deviceId = account.device.id
   const deviceAccountId = account.id
@@ -250,6 +274,7 @@ function CashuBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        awaitedPayments,
       }),
       masterKey,
       ...createNostrDep(nativeEnv.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS),
@@ -266,6 +291,7 @@ function CashuBackgroundJobs() {
     evolu,
     masterKey,
     notificationStore,
+    awaitedPayments,
   ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, start })

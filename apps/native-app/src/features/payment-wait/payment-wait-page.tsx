@@ -110,6 +110,7 @@ import { IbanPaymentTab } from "./payment-wait-iban-tab.tsx"
 import { LightningAddressPaymentTab } from "./payment-wait-lightning-address-tab.tsx"
 import { QerkoPaymentTab as QerkoQrPaymentTab } from "./payment-wait-qerko-payment-tab.tsx"
 import { QerkoPaymentTab } from "./payment-wait-qerko-tab.tsx"
+import { useAwaitedPaymentSignal } from "./use-awaited-payment-signal.ts"
 
 // Spark/Lightning (with a Bolt Card tap under the QR), cash, bank transfer,
 // Cashu, the merchant's own Lightning address and the card terminals are
@@ -428,6 +429,9 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
           hasActiveClaim: claims.length > 0,
           now,
         })
+  // The Spark sync job signals the record before Evolu commits it, so Paid
+  // shows without waiting for the commit and this screen's queries.
+  const recorded = useAwaitedPaymentSignal(payment, status === "pending")
   useScreenWakeLock(status === "pending")
   // The payment screen serves only an open payment (access/0008): opened on a
   // paid or canceled one (a typed link, Back) it hands it to its activity
@@ -591,9 +595,9 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     )
   if (payment === undefined || status === null)
     return <RouteMessage>{t("paymentWait.notFound")}</RouteMessage>
+  if (status === "paid" || recorded) return <Paid paymentId={paymentId} />
   if (status === "canceled")
     return <RouteMessage>{t("paymentWait.canceled")}</RouteMessage>
-  if (status === "paid") return <Paid paymentId={paymentId} />
 
   const cashRegisterAccountId = payment.cashRegisterAccountId
   const { text, leastReceived, receivedAmount } = readCashReceived({
@@ -1222,7 +1226,10 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   )
 }
 
-/** Shown from the derived status alone, so a reopened paid payment shows it too. */
+/**
+ * Shown from the derived status, so a reopened paid payment shows it too, or
+ * from the Spark sync job's signal before the status turns paid.
+ */
 function Paid({ paymentId }: { readonly paymentId: PaymentId }) {
   const { t } = useTranslation()
   const { isSandboxActive: isEetSandboxActive } = useEetSettings()

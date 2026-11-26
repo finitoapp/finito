@@ -24,7 +24,7 @@ import { createInProcessLockManager } from "../../runtime/in-process-lock-manage
 import { createFakeSparkWallet } from "../../spark/spark-wallet-test-fixtures.ts"
 import {
   createTestDeviceAccountDep,
-  testNotificationsDep,
+  testJobStoreDeps,
 } from "../../testing/background-jobs.ts"
 import { createTestDateDep } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
@@ -134,7 +134,7 @@ const setup = async () => {
       ...createQerkoConnectionStatusDep(),
       deviceId: createRowId<"Device">(),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       console: testCreateConsole(),
       onError: () => {},
     }

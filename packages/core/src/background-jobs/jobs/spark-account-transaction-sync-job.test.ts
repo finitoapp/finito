@@ -14,6 +14,7 @@ import type { AccountId } from "../../modules/account/account-types.ts"
 import { createAccountTransaction } from "../../modules/account-transaction/account-transaction-actions.ts"
 import { createPayment } from "../../modules/payment/payment-actions.ts"
 import { loadPaymentStatus } from "../../modules/payment/payment-guards.ts"
+import { sparkReconciliationCandidateByValuesQuery } from "../../modules/reconciliation-claim/reconciliation-claim-queries.ts"
 import type { EvoluDep } from "../../modules/shared/evolu-deps.ts"
 import {
   createRowId,
@@ -35,10 +36,14 @@ import type {
   SharedSparkSyncWalletEventHandlers,
   SparkWalletTransfer,
 } from "../../spark/spark-wallet.ts"
-import { testNotificationsDep } from "../../testing/background-jobs.ts"
+import { testJobStoreDeps } from "../../testing/background-jobs.ts"
 import { createTestDateDep, testFixedDate } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
+import {
+  type AwaitedPayment,
+  createAwaitedPayments,
+} from "../awaited-payments.ts"
 import { createSparkAccountTransactionSyncJob } from "./spark-account-transaction-sync-job.ts"
 
 const unimplementedFetch: FetchDep["fetch"] = (() => {
@@ -344,7 +349,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -414,7 +419,7 @@ describe("spark account transaction sync job", () => {
       ...clock,
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -476,7 +481,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(testFixedDate),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -523,7 +528,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(testFixedDate),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: () => undefined,
     })
     await using _job = await jobRun.ok(
@@ -566,7 +571,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(testFixedDate),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -626,7 +631,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(testFixedDate),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -704,7 +709,7 @@ describe("spark account transaction sync job", () => {
           )
         }) as typeof lockManager.request,
       },
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -779,7 +784,7 @@ describe("spark account transaction sync job", () => {
         ...createTestDateDep(testFixedDate),
         fetch: unimplementedFetch,
         lockManager: createInProcessLockManager(),
-        ...testNotificationsDep(),
+        ...testJobStoreDeps(),
         onError: (error: unknown) => {
           errors.push(error)
         },
@@ -895,7 +900,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -952,7 +957,7 @@ describe("spark account transaction sync job", () => {
         ...createTestDateDep(),
         fetch: unimplementedFetch,
         lockManager: createInProcessLockManager(),
-        ...testNotificationsDep(),
+        ...testJobStoreDeps(),
         onError: (error: unknown) => {
           errors.push(error)
         },
@@ -1019,7 +1024,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1079,7 +1084,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1129,7 +1134,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1175,7 +1180,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1225,7 +1230,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1286,7 +1291,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1333,7 +1338,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: () => undefined,
     })
     await using _job = await jobRun.ok(
@@ -1382,7 +1387,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1452,7 +1457,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1504,7 +1509,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(testFixedDate),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1601,7 +1606,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1625,6 +1630,189 @@ describe("spark account transaction sync job", () => {
       .toEqual([{ paymentId }])
     expect(wallet.getTransferIds).toEqual([])
     expect(errors).toEqual([])
+  })
+})
+
+describe("spark account transaction sync job, awaited payments", () => {
+  /**
+   * A job over a fresh database with one Spark account and the default
+   * transfer's Lightning payment, the awaited payments in the test's hands
+   * and every `loadQuery` spied on.
+   */
+  const startJob = async () => {
+    const testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const run = testCreateRun({
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    })
+    const secret = createUniqueSecret()
+    const accountId = await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255("Spark account"),
+        spark: { secret },
+      })
+    )
+    const paymentId = await run.orThrow(createSparkLightningPayment(accountId))
+    const loadQuery = vi.spyOn(evolu, "loadQuery")
+    const awaitedPayments = createAwaitedPayments()
+    const errors: unknown[] = []
+    const wallet = new FakeSparkWallet([])
+    const jobRun = testCreateRun({
+      console: testCreateConsole(),
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+      fetch: unimplementedFetch,
+      lockManager: createInProcessLockManager(),
+      ...testJobStoreDeps(),
+      awaitedPayments,
+      onError: (error: unknown) => {
+        errors.push(error)
+      },
+    })
+    const job = await jobRun.ok(
+      createSparkAccountTransactionSyncJob({
+        walletFactory: createFakeWalletFactory(secret, wallet),
+        recheckIntervalMs: 60_000,
+      })
+    )
+    await expect.poll(() => wallet.listenerCount("transfer:incoming")).toBe(1)
+    const awaited: AwaitedPayment = {
+      paymentId,
+      accountId,
+      amountSats: NonNegativeInteger(1234),
+      lnInvoice: NonEmptyStringSchema.decode("lnbc1invoice"),
+      sparkInvoice: null,
+    }
+    const transfer = createCompletedTransfer({
+      id: `spark-transfer-awaited-${accountId}`,
+      status: "TRANSFER_STATUS_SENDER_KEY_TWEAKED",
+      sparkInvoice: undefined,
+    })
+    const candidateQuery = sparkReconciliationCandidateByValuesQuery({
+      accountId,
+      amount: awaited.amountSats,
+      lnInvoice: awaited.lnInvoice,
+      sparkInvoice: null,
+    })
+    return {
+      evolu,
+      accountId,
+      paymentId,
+      awaitedPayments,
+      awaited,
+      transfer,
+      wallet,
+      errors,
+      queriedCandidates: () =>
+        loadQuery.mock.calls.some(([query]) => query === candidateQuery),
+      [Symbol.asyncDispose]: async () => {
+        await job[Symbol.asyncDispose]()
+        await jobRun[Symbol.asyncDispose]()
+        await run[Symbol.asyncDispose]()
+        await testEvolu[Symbol.asyncDispose]()
+      },
+    }
+  }
+
+  test("records an awaited payment's claim without querying for candidates, and signals it", async () => {
+    await using setup = await startJob()
+    const onRecorded = vi.fn()
+    using _registration = setup.awaitedPayments.await(setup.awaited, onRecorded)
+
+    await setup.wallet.announce(setup.transfer)
+
+    expect(
+      await setup.evolu.loadQuery(
+        reconciliationClaimsByAccountIdQuery(setup.accountId)
+      )
+    ).toEqual([{ paymentId: setup.paymentId }])
+    expect(setup.queriedCandidates()).toBe(false)
+    expect(onRecorded).toHaveBeenCalledTimes(1)
+    expect(setup.errors).toEqual([])
+  })
+
+  test("queries for candidates when no registration matches, and still signals the payment it finds", async () => {
+    await using setup = await startJob()
+    const onRecorded = vi.fn()
+    using _registration = setup.awaitedPayments.await(
+      { ...setup.awaited, amountSats: NonNegativeInteger(1235) },
+      onRecorded
+    )
+
+    await setup.wallet.announce(setup.transfer)
+
+    expect(
+      await setup.evolu.loadQuery(
+        reconciliationClaimsByAccountIdQuery(setup.accountId)
+      )
+    ).toEqual([{ paymentId: setup.paymentId }])
+    expect(setup.queriedCandidates()).toBe(true)
+    expect(onRecorded).toHaveBeenCalledTimes(1)
+    expect(setup.errors).toEqual([])
+  })
+
+  test("signals once the mutation is queued, before it completes", async () => {
+    await using setup = await startJob()
+    const events: string[] = []
+    const upsert = setup.evolu.upsert.bind(setup.evolu)
+    vi.spyOn(setup.evolu, "upsert").mockImplementation(((
+      table: string,
+      values: unknown,
+      options?: { readonly onComplete?: () => void }
+    ) => {
+      events.push(`upsert:${table}`)
+      return (upsert as (...args: ReadonlyArray<unknown>) => unknown)(
+        table,
+        values,
+        {
+          ...options,
+          onComplete: () => {
+            events.push("complete")
+            options?.onComplete?.()
+          },
+        }
+      )
+    }) as typeof setup.evolu.upsert)
+    using _registration = setup.awaitedPayments.await(setup.awaited, () => {
+      events.push("signal")
+    })
+
+    await setup.wallet.announce(setup.transfer)
+
+    const signalAt = events.indexOf("signal")
+    expect(signalAt).toBeGreaterThan(
+      events.indexOf("upsert:reconciliationClaim")
+    )
+    expect(events.indexOf("upsert:reconciliationClaim")).toBeGreaterThan(-1)
+    expect(events.slice(0, signalAt)).not.toContain("complete")
+    expect(events.slice(signalAt)).toContain("complete")
+  })
+
+  test("sends no signal for a duplicate or an ignored transfer", async () => {
+    await using setup = await startJob()
+    // Recorded before anybody awaits it.
+    await setup.wallet.announce(setup.transfer)
+    const onRecorded = vi.fn()
+    using _registration = setup.awaitedPayments.await(setup.awaited, onRecorded)
+
+    await setup.wallet.announce(setup.transfer)
+    await setup.wallet.announce(
+      createCompletedTransfer({
+        id: `spark-transfer-expired-${setup.accountId}`,
+        status: "TRANSFER_STATUS_EXPIRED",
+        sparkInvoice: undefined,
+      })
+    )
+
+    expect(onRecorded).not.toHaveBeenCalled()
+    expect(
+      await setup.evolu.loadQuery(
+        sparkTransactionsByAccountIdQuery(setup.accountId)
+      )
+    ).toHaveLength(1)
+    expect(setup.errors).toEqual([])
   })
 })
 
@@ -1709,7 +1897,7 @@ describe("spark account transaction sync job, withdrawals", () => {
         ...createTestDateDep(),
         fetch: unimplementedFetch,
         lockManager: createInProcessLockManager(),
-        ...testNotificationsDep(),
+        ...testJobStoreDeps(),
         onError: (error: unknown) => {
           errors.push(error)
         },

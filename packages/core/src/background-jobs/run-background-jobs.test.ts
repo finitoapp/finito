@@ -8,7 +8,7 @@ import { describe, expect, test } from "vitest"
 import type { FetchDep } from "../deps.ts"
 import type { Evolu } from "../evolu/schema.ts"
 import { createInProcessLockManager } from "../runtime/in-process-lock-manager.ts"
-import { testNotificationsDep } from "../testing/background-jobs.ts"
+import { testJobStoreDeps } from "../testing/background-jobs.ts"
 import type {
   BackgroundJob,
   BackgroundJobContext,
@@ -26,7 +26,7 @@ const createBackgroundJobContext = (
     throw new Error("fetch is not implemented in this test.")
   }) as unknown as FetchDep["fetch"],
   lockManager: createInProcessLockManager(),
-  ...testNotificationsDep(),
+  ...testJobStoreDeps(),
   onError: (error) => {
     errors.push(error)
   },

@@ -17,6 +17,7 @@ import type {
   DeviceAccountDep,
   EvoluDep,
 } from "../modules/shared/evolu-deps.ts"
+import type { AwaitedPaymentsDep } from "./awaited-payments.ts"
 import type { NotificationsDep } from "./notifications.ts"
 
 export interface BackgroundJobOnErrorDep {
@@ -30,6 +31,7 @@ export type BackgroundJobContext = EvoluDep &
   FetchDep &
   LockManagerDep &
   NotificationsDep &
+  AwaitedPaymentsDep &
   BackgroundJobOnErrorDep
 
 export type BackgroundJob = Task<AsyncDisposable, never, BackgroundJobContext>

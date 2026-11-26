@@ -76,7 +76,7 @@ import {
 import { createFakeSparkWallet } from "../../spark/spark-wallet-test-fixtures.ts"
 import {
   createTestDeviceAccountDep,
-  testNotificationsDep,
+  testJobStoreDeps,
 } from "../../testing/background-jobs.ts"
 import type { AppBackgroundJobContext } from "../background-job-types.ts"
 import {
@@ -129,7 +129,7 @@ const startJob = async (
   const device = await createTestDeviceAccountDep()
   const jobDeps: AppBackgroundJobContext = {
     ...device.deviceAccount,
-    ...testNotificationsDep(),
+    ...testJobStoreDeps(),
     ...context.deps,
     ...createQerkoApiDep({ posId: "test" }),
     ...createQerkoSocketDep(),

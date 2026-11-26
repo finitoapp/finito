@@ -27,6 +27,7 @@ import { createTestDateDep } from "../../testing/date-dep.ts"
 import { createTestDeviceEvolu } from "../../testing/device-evolu.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
+import { createAwaitedPayments } from "../awaited-payments.ts"
 import { createNotificationStore } from "../notifications.ts"
 import { startRecoveryBackupReminderJob } from "./recovery-backup-reminder-job.ts"
 
@@ -62,6 +63,7 @@ const setup = async () => {
     deviceEvolu,
     deviceAccountId: accountId,
     notifications: store.notifications,
+    awaitedPayments: createAwaitedPayments(),
     fetch: (() => {
       throw new Error("The reminder job fetches nothing.")
     }) as unknown as FetchDep["fetch"],

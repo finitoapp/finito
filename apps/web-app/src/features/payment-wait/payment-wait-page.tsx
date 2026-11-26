@@ -82,6 +82,7 @@ import type {
   PaymentMethodOption,
   PaymentMethodTab,
 } from "@/features/payment-wait/payment-wait-types.ts"
+import { useAwaitedPaymentSignal } from "@/features/payment-wait/use-awaited-payment-signal.ts"
 import { useEetSettings } from "@/features/shared/use-eet-settings.ts"
 import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useAppRun, useCashuAppRun } from "@/hooks/use-app-run.ts"
@@ -253,7 +254,10 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       })
     }
   )
-  const isPaid = paymentStatus === "paid"
+  // The Spark sync job signals the record before Evolu commits it, so Paid
+  // shows without waiting for the commit and this screen's queries.
+  const recorded = useAwaitedPaymentSignal(payment, paymentStatus === "pending")
+  const isPaid = paymentStatus === "paid" || recorded
   const wakeLockEnabled = payment !== undefined && paymentStatus === "pending"
   const { supported: wakeLockSupported } = useScreenWakeLock(wakeLockEnabled)
 
