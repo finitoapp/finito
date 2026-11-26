@@ -90,7 +90,10 @@ path records `COMPLETED` transfers only. The `balance:update` that ends the
 claim of announced transfers, all recorded, starts no sweep. On
 `transfer:claimed` the job checks Evolu first and fetches only a transfer
 it has not recorded. A transfer whose claim never completes stays recorded
-(`payment/0031`).
+(`payment/0031`). The payment screen registers the payment it waits for
+with the job, which then takes it from the registration instead of
+querying by invoice, and signals the screen as soon as the rows are
+queued, before the commit, so Paid shows at once (`payment/0032`).
 
 Neither bank answers a browser's CORS preflight, so FIO and MONETA
 (`bankBackgroundJobs`) run natively and in the CLI, and in a browser (web,

@@ -26,7 +26,7 @@ import {
   VariableSymbol,
 } from "../../modules/shared/schema.ts"
 import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
-import { testNotificationsDep } from "../../testing/background-jobs.ts"
+import { testJobStoreDeps } from "../../testing/background-jobs.ts"
 import { createTestDateDep } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
@@ -182,7 +182,7 @@ describe("fio account transaction sync job", () => {
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -293,7 +293,7 @@ describe("fio account transaction sync job", () => {
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: () => undefined,
       fetch: async () =>
         statementResponse({
@@ -393,7 +393,7 @@ describe("fio account transaction sync job", () => {
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -474,7 +474,7 @@ describe("fio account transaction sync job", () => {
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -552,7 +552,7 @@ describe("fio account transaction sync job", () => {
       console,
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -633,7 +633,7 @@ describe("fio account transaction sync job", () => {
         console,
         ...evoluTestDeps(evolu),
         lockManager,
-        ...testNotificationsDep(),
+        ...testJobStoreDeps(),
         onError: (error: unknown) => {
           errors.push(error)
         },
@@ -696,7 +696,7 @@ describe("fio account transaction sync job", () => {
       console,
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -764,7 +764,7 @@ describe("fio account transaction sync job", () => {
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -822,7 +822,7 @@ describe("fio account transaction sync job", () => {
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -905,7 +905,7 @@ describe("fio account transaction sync job", () => {
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       onError: (error: unknown) => {
         errors.push(error)
       },

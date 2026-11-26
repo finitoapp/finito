@@ -27,7 +27,7 @@ import {
   deriveNostrSecretKey,
 } from "../../modules/shared/key-derivation.ts"
 import { NonNegativeInteger } from "../../modules/shared/schema.ts"
-import { testNotificationsDep } from "../../testing/background-jobs.ts"
+import { testJobStoreDeps } from "../../testing/background-jobs.ts"
 import {
   createCashuTest,
   testCashuMasterKey,
@@ -60,7 +60,7 @@ const setup = async () => {
       ...createEetApiDep({ ...dateDep, ...fetchDep }),
       masterKey: testCashuMasterKey,
       deviceAccountId: deriveDeviceAccountId(testCashuMasterKey),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       nostr: relays.nostr,
       console: createConsole({ level: "silent" }),
       deviceId: "device" as DeviceId,

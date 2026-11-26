@@ -1,4 +1,5 @@
 import { createRun } from "@evolu/web"
+import type { AwaitedPaymentsDep } from "@payky/core/background-jobs/awaited-payments"
 import {
   appBackgroundJobs,
   bankBackgroundJobs,
@@ -21,6 +22,7 @@ import type { DeviceId } from "@payky/core/modules/device/device-types"
 import { useAtomValue } from "jotai"
 import { useCallback, useEffect } from "react"
 import { accountAtom } from "@/atoms/account.ts"
+import { awaitedPaymentsAtom } from "@/atoms/awaited-payments.ts"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
 import {
   cashuShardStoreAtom,
@@ -52,6 +54,7 @@ const createAppJobDeps = ({
   deviceAccountId,
   deviceId,
   notificationStore,
+  awaitedPayments,
   console,
   isServiceProxyEnabled,
 }: {
@@ -60,6 +63,7 @@ const createAppJobDeps = ({
   readonly deviceAccountId: DeviceAccountId
   readonly deviceId: DeviceId
   readonly notificationStore: NotificationStore
+  readonly awaitedPayments: AwaitedPaymentsDep["awaitedPayments"]
   readonly console: Console
   readonly isServiceProxyEnabled?: (() => boolean) | undefined
 }) => {
@@ -72,6 +76,7 @@ const createAppJobDeps = ({
     deviceAccountId,
     deviceId,
     notifications: notificationStore.notifications,
+    awaitedPayments,
     ...dateDep,
     ...fetchDep,
     ...createConnectivityDep(),
@@ -159,6 +164,7 @@ export function AppBackgroundJobs() {
   const account = useAtomValue(accountAtom)
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const notificationStore = useAtomValue(notificationStoreAtom)
+  const awaitedPayments = useAtomValue(awaitedPaymentsAtom)
   const console = useConsole()
   const deviceId = account.device.id
   const deviceAccountId = account.id
@@ -170,6 +176,7 @@ export function AppBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        awaitedPayments,
         console,
       })
     )
@@ -184,6 +191,7 @@ export function AppBackgroundJobs() {
     deviceId,
     evolu,
     notificationStore,
+    awaitedPayments,
   ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, console, start })
@@ -203,6 +211,7 @@ export function CashuBackgroundJobs() {
   const cashuShardStore = useAtomValue(cashuShardStoreAtom)
   const cashuWalletDep = useAtomValue(cashuWalletDepAtom)
   const notificationStore = useAtomValue(notificationStoreAtom)
+  const awaitedPayments = useAtomValue(awaitedPaymentsAtom)
   const console = useConsole()
   const deviceId = account.device.id
   const deviceAccountId = account.id
@@ -215,6 +224,7 @@ export function CashuBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        awaitedPayments,
         console,
       }),
       masterKey,
@@ -233,6 +243,7 @@ export function CashuBackgroundJobs() {
     evolu,
     masterKey,
     notificationStore,
+    awaitedPayments,
   ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, console, start })
@@ -263,6 +274,7 @@ function RunningBankBackgroundJobs() {
   const account = useAtomValue(accountAtom)
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const notificationStore = useAtomValue(notificationStoreAtom)
+  const awaitedPayments = useAtomValue(awaitedPaymentsAtom)
   const isServiceProxyEnabled = useAtomValue(serviceProxyConsentAtom)
   const console = useConsole()
   const deviceId = account.device.id
@@ -275,6 +287,7 @@ function RunningBankBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        awaitedPayments,
         console,
         isServiceProxyEnabled,
       })
@@ -291,6 +304,7 @@ function RunningBankBackgroundJobs() {
     evolu,
     isServiceProxyEnabled,
     notificationStore,
+    awaitedPayments,
   ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, console, start })

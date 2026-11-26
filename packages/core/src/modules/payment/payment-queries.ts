@@ -1083,6 +1083,7 @@ export const paymentRequestQuery = (paymentId: PaymentId) =>
         "payment.confirmedPaidAt",
         "payment.expiresAt",
         "payment.createdAt",
+        "paymentBtc.accountId as sparkAccountId",
         "paymentBtc.amountSats",
         "paymentBtcLightning.lnInvoice",
         "paymentBtcSpark.sparkInvoice",

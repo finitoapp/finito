@@ -17,7 +17,7 @@ import { testPreimage } from "../../modules/shared/lightning-invoice-test-fixtur
 import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
 import {
   createTestDeviceAccountDep,
-  testNotificationsDep,
+  testJobStoreDeps,
 } from "../../testing/background-jobs.ts"
 import type { AppBackgroundJobContext } from "../background-job-types.ts"
 import {
@@ -72,7 +72,7 @@ const setup = async () => {
       ...connectivity,
       deviceId: createRowId<"Device">(),
       lockManager: createInProcessLockManager(),
-      ...testNotificationsDep(),
+      ...testJobStoreDeps(),
       console: testCreateConsole(),
       onError: (error) => {
         errors.push(error)

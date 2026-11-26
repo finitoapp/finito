@@ -23,12 +23,15 @@ import {
   accountTransactionSparkByTransferIdQuery,
   recordedSparkTransfersQuery,
 } from "../../modules/account-transaction/account-transaction-queries.ts"
+import type { PaymentId } from "../../modules/payment/payment-types.ts"
 import {
   loadAutomaticReconciliationClaimForNewAccountTransaction,
   loadBillClosedAtForPayment,
   reconcileAccountTransaction,
   upsertReconciliationClaimRows,
 } from "../../modules/reconciliation-claim/reconciliation-claim-actions.ts"
+import type { ReconciliationClaimWrite } from "../../modules/reconciliation-claim/reconciliation-claim-types.ts"
+import { createAutomaticReconciliationClaim } from "../../modules/reconciliation-claim/reconciliation-claim-utils.ts"
 import {
   removeUndefinedValues,
   runMutationWithCompletion,
@@ -39,6 +42,7 @@ import {
   IntegerSchema,
   type NonEmptyString,
   NonEmptyStringSchema,
+  NonNegativeInteger,
   TimestampMsSchema,
 } from "../../modules/shared/schema.ts"
 import { checkPendingWithdrawals } from "../../modules/withdraw/withdraw-check-actions.ts"
@@ -386,6 +390,27 @@ const createSparkAccountSyncSession = ({
     })
   }
 
+  /**
+   * The payment the waiting screen registered for a transfer's values,
+   * matched as `loadAutomaticReconciliationClaimForNewAccountTransaction`
+   * matches a Spark transaction, so the record can skip that query.
+   */
+  const findAwaitedPaymentId = ({
+    accountId,
+    amount,
+    currency,
+    spark,
+  }: CreateAccountTransactionInput): PaymentId | undefined => {
+    if (spark === undefined || amount < 0 || currency !== "BTC")
+      return undefined
+    return run.deps.awaitedPayments.find({
+      accountId,
+      amountSats: NonNegativeInteger(amount),
+      lnInvoice: spark.lightning?.lnInvoice ?? null,
+      sparkInvoice: spark.sparkInvoice?.sparkInvoice ?? null,
+    })?.paymentId
+  }
+
   const recordTransfer = async (
     transfer: SparkTransfer,
     { allowWithoutInvoice = false, incomingEventAt }: RecordTransferOptions = {}
@@ -458,12 +483,20 @@ const createSparkAccountSyncSession = ({
           input.value,
           run.deps.date.now()
         )
-        const claim = await run.ok(
-          loadAutomaticReconciliationClaimForNewAccountTransaction(
-            input.value,
-            accountTransaction.id
-          )
-        )
+        const awaitedPaymentId = findAwaitedPaymentId(input.value)
+        const claim: ReconciliationClaimWrite | null =
+          awaitedPaymentId === undefined
+            ? await run.ok(
+                loadAutomaticReconciliationClaimForNewAccountTransaction(
+                  input.value,
+                  accountTransaction.id
+                )
+              )
+            : createAutomaticReconciliationClaim(
+                awaitedPaymentId,
+                accountTransaction.id,
+                run.deps.date.now()
+              )
         const billClosing =
           claim === null
             ? null
@@ -487,6 +520,8 @@ const createSparkAccountSyncSession = ({
               ...options,
               owner: run.deps.evoluOwner,
             })
+            // The waiting screen shows Paid now, before the commit lands.
+            run.deps.awaitedPayments.recorded(claim.paymentId)
           }
         })
         const accountTransactionId = accountTransaction.id

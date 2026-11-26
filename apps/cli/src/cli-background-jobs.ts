@@ -1,5 +1,6 @@
 import { createConsole, ok, type Task } from "@evolu/common"
 import { runMain } from "@evolu/nodejs"
+import { createAwaitedPayments } from "@payky/core/background-jobs/awaited-payments"
 import { cliBackgroundJobs } from "@payky/core/background-jobs/background-jobs"
 import { createNotificationStore } from "@payky/core/background-jobs/notifications"
 import { runBackgroundJobs } from "@payky/core/background-jobs/run-background-jobs"
@@ -32,6 +33,8 @@ export const registerBackgroundJobsCommand =
             lockManager: createInProcessLockManager(),
             // Nothing in the CLI shows the jobs' notifications.
             notifications: createNotificationStore().notifications,
+            // Nothing in the CLI waits for a payment.
+            awaitedPayments: createAwaitedPayments(),
             onError: (error: unknown) => {
               appConsole.error("Background job failed.", error)
             },
