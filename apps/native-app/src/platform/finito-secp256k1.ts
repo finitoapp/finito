@@ -8,6 +8,7 @@ declare class FinitoSecp256k1NativeModule
 {
   publicKey(privateKey: Uint8Array): Uint8Array
   multiply(point: Uint8Array, scalar: Uint8Array): Uint8Array
+  add(a: Uint8Array, b: Uint8Array): Uint8Array
   decompress(point: Uint8Array): Uint8Array
 }
 

@@ -17,5 +17,7 @@ internal object FinitoSecp256k1Native {
 
   @JvmStatic external fun multiply(point: ByteArray, scalar: ByteArray): ByteArray?
 
+  @JvmStatic external fun add(a: ByteArray, b: ByteArray): ByteArray?
+
   @JvmStatic external fun decompress(point: ByteArray): ByteArray?
 }
