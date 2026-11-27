@@ -1,0 +1,100 @@
+diff --git a/dist/cjs/createAnimations.native.cjs b/dist/cjs/createAnimations.native.cjs
+index 71d8c696e1f08bf781e68eb5f9639a2f51379176..13408549397e9a30cd9de03e2eb61878d0ab9382 100644
+--- a/dist/cjs/createAnimations.native.cjs
++++ b/dist/cjs/createAnimations.native.cjs
+@@ -65,14 +65,12 @@ var colorStyleKey = {
+ 	borderTopColor: true,
+ 	borderBottomColor: true
+ };
+-var layoutStyleKey = {
+-	height: true,
+-	width: true,
+-	minHeight: true,
+-	maxHeight: true,
+-	minWidth: true,
+-	maxWidth: true
+-};
++// Finito's patch: layout dimensions are never animated here. They paint as
++// static styles, so a fixed-size control whose fill fades on press (a kit
++// Button's height) keeps the native driver instead of running every frame of
++// its fill on the JS thread. Finito animates a height itself where it needs
++// one (its Collapsible), never through a transition.
++var layoutStyleKey = {};
+ var textMetricStyleKey = {
+ 	fontSize: true,
+ 	lineHeight: true
+diff --git a/dist/cjs/createAnimations.native.js b/dist/cjs/createAnimations.native.js
+index 3827a02fd2784d7c6aadb9442645bc0d7eb69439..c3e60d3ff1f9a61e3462303b0faff9b6e10b567f 100644
+--- a/dist/cjs/createAnimations.native.js
++++ b/dist/cjs/createAnimations.native.js
+@@ -65,14 +65,12 @@ var colorStyleKey = {
+ 	borderTopColor: true,
+ 	borderBottomColor: true
+ };
+-var layoutStyleKey = {
+-	height: true,
+-	width: true,
+-	minHeight: true,
+-	maxHeight: true,
+-	minWidth: true,
+-	maxWidth: true
+-};
++// Finito's patch: layout dimensions are never animated here. They paint as
++// static styles, so a fixed-size control whose fill fades on press (a kit
++// Button's height) keeps the native driver instead of running every frame of
++// its fill on the JS thread. Finito animates a height itself where it needs
++// one (its Collapsible), never through a transition.
++var layoutStyleKey = {};
+ var textMetricStyleKey = {
+ 	fontSize: true,
+ 	lineHeight: true
+diff --git a/dist/esm/createAnimations.native.js b/dist/esm/createAnimations.native.js
+index bddab59aee0edddd5b0ed1c0dc822fd633a6ce3d..8d833e74ba6bc353cb870b7310b00f50b89f932f 100644
+--- a/dist/esm/createAnimations.native.js
++++ b/dist/esm/createAnimations.native.js
+@@ -27,14 +27,12 @@ var colorStyleKey = {
+ 	borderTopColor: true,
+ 	borderBottomColor: true
+ };
+-var layoutStyleKey = {
+-	height: true,
+-	width: true,
+-	minHeight: true,
+-	maxHeight: true,
+-	minWidth: true,
+-	maxWidth: true
+-};
++// Finito's patch: layout dimensions are never animated here. They paint as
++// static styles, so a fixed-size control whose fill fades on press (a kit
++// Button's height) keeps the native driver instead of running every frame of
++// its fill on the JS thread. Finito animates a height itself where it needs
++// one (its Collapsible), never through a transition.
++var layoutStyleKey = {};
+ var textMetricStyleKey = {
+ 	fontSize: true,
+ 	lineHeight: true
+diff --git a/src/createAnimations.native.tsx b/src/createAnimations.native.tsx
+index 2c917c1078d4d078b275a71111ba1f8bd911cc0c..d4c80c192d665686bb2d430fe31bf54325ff7c30 100644
+--- a/src/createAnimations.native.tsx
++++ b/src/createAnimations.native.tsx
+@@ -69,14 +69,12 @@ const colorStyleKey = {
+ // of them, so a node animating one runs its whole Animated graph on the JS
+ // driver (useNativeDriver:false): Fabric cannot mix native- and JS-driven
+ // values on one node.
+-const layoutStyleKey = {
+-  height: true,
+-  width: true,
+-  minHeight: true,
+-  maxHeight: true,
+-  minWidth: true,
+-  maxWidth: true,
+-}
++// Finito's patch: layout dimensions are never animated here. They paint as
++// static styles, so a fixed-size control whose fill fades on press (a kit
++// Button's height) keeps the native driver instead of running every frame of
++// its fill on the JS thread. Finito animates a height itself where it needs
++// one (its Collapsible), never through a transition.
++const layoutStyleKey: Record<string, boolean> = {}
+ 
+ // text metrics have no whitelist entry either, but unlike a height they sit on
+ // nearly every Text, so being covered by a broad `transition="medium"` must not

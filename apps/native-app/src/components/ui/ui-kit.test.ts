@@ -420,8 +420,9 @@ test("every pressed fill also answers a pointer's hover", () => {
 
 /**
  * A transition naming its properties ("background-color fast, opacity
- * fast") looks cheaper than `fast`, which covers a kit Button's height too
- * and so animates it on the JS driver. But Tamagui 3.0.18's React Native
+ * fast") once looked cheaper than `fast`, which covered a kit Button's height
+ * too and so animated it on the JS driver (now patched away, see
+ * `theme/animations.ts`). But Tamagui 3.0.18's React Native
  * driver animates a pressed state's keys through a path that ignores the
  * list while the render path honours it, and on a PAX A920Pro a keypad
  * key's pressed fill then stayed after any press held 100 ms or longer
