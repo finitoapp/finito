@@ -52,6 +52,7 @@ const native: FinitoCrypto = {
       createPrivateKey({ key, format: "der", type: format })
     else createPublicKey({ key, format: "der", type: format })
   },
+  base64Decode: (text) => new Uint8Array(Buffer.from(text, "base64")),
   rsaGenerate: (modulusLength, publicExponent) => {
     const { privateKey, publicKey } = generateKeyPairSync("rsa", {
       modulusLength,
@@ -243,6 +244,7 @@ it("names the module and its functions the same in JS and Kotlin", () => {
     "rsaVerify",
     "rsaCheckKey",
     "rsaGenerate",
+    "base64Decode",
   ]) {
     expect(js).toContain(`${name}(`)
     expect(kotlin).toContain(`Function("${name}")`)

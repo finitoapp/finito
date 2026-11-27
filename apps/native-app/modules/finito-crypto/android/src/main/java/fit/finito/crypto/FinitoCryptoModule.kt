@@ -20,7 +20,7 @@ import javax.crypto.spec.SecretKeySpec
  * The cryptography Finito needs natively, from Android's own provider
  * (Conscrypt, BoringSSL underneath), so the app ships no crypto library of
  * its own for it: hashes, HMAC, PBKDF2 and RSA PKCS#1 v1.5 signatures with
- * SHA-256. `src/platform/native-subtle.ts` builds the global
+ * SHA-256, and base64 decoding. `src/platform/native-subtle.ts` builds the global
  * `crypto.subtle` from it and `src/platform/eet-crypto.ts` EET's backend.
  *
  * Hash names are Web Crypto's: SHA-1, SHA-256, SHA-384 and SHA-512. Every
@@ -47,6 +47,14 @@ class FinitoCryptoModule : Module() {
     // the PIN hash's 30 000 iterations take ~0.45 s on a payment terminal.
     AsyncFunction("pbkdf2Async") { hash: String, password: ByteArray, salt: ByteArray, iterations: Int, length: Int ->
       pbkdf2(hash, password, salt, iterations, length)
+    }
+
+    // Standard base64 (RFC 4648, whitespace and missing padding tolerated) to
+    // bytes; throws for any other character, URL-safe ones included. The
+    // Spark SDK's gRPC answers arrive base64-encoded, and decoding them in JS
+    // took ~100 times as long on a payment terminal.
+    Function("base64Decode") { text: String ->
+      android.util.Base64.decode(text, android.util.Base64.DEFAULT)
     }
 
     // RSASSA-PKCS1-v1_5 with SHA-256.
