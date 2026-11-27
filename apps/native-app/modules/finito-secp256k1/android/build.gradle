@@ -6,15 +6,28 @@ plugins {
 group = 'fit.finito.secp256k1'
 version = '1.0.0'
 
+// The ABIs the app is built for, as React Native's own libraries read them.
+def reactNativeArchitectures() {
+  def value = rootProject.getProperties().get("reactNativeArchitectures")
+  return value ? value.split(",") : ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]
+}
+
 android {
   namespace "fit.finito.secp256k1"
+  ndkVersion rootProject.ext.ndkVersion
   defaultConfig {
     versionCode 1
     versionName '1.0.0'
+    externalNativeBuild {
+      cmake {
+        arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+        abiFilters(*reactNativeArchitectures())
+      }
+    }
   }
-}
-
-dependencies {
-  // Bitcoin Core's libsecp256k1, built for every Android ABI by ACINQ.
-  implementation 'fr.acinq.secp256k1:secp256k1-kmp-jni-android:0.24.0'
+  externalNativeBuild {
+    cmake {
+      path "CMakeLists.txt"
+    }
+  }
 }

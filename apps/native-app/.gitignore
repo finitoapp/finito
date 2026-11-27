@@ -3,4 +3,6 @@
 /ios/
 # Gradle output of the local Expo modules
 modules/*/android/build/
+# CMake output of the local Expo modules with native code
+modules/*/android/.cxx/
 /e2e/.generated/

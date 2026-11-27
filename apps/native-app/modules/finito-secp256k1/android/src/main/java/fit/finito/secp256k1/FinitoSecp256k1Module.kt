@@ -2,7 +2,6 @@ package fit.finito.secp256k1
 
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import fr.acinq.secp256k1.Secp256k1
 
 /**
  * libsecp256k1 for the Spark SDK's noble secp256k1
@@ -11,25 +10,31 @@ import fr.acinq.secp256k1.Secp256k1
  * key, scalar or point libsecp256k1 rejects throws, which leaves the
  * operation to noble.
  *
- * On the PAX A920Pro each call takes 0.6-0.9 ms from JS, where OpenSSL
- * through Quick Crypto took 4.8 ms for `key⋅G` and 38 ms for `k⋅P`.
+ * Built here from Bitcoin Core's source (`CMakeLists.txt`) with only what
+ * these three functions need, ~0.1 MB per ABI where a prebuilt library with
+ * its full tables took 1.3 MB. On the PAX A920Pro each call takes under a
+ * millisecond from JS, where OpenSSL through Quick Crypto took 4.8 ms for
+ * `key⋅G` and 38 ms for `k⋅P`.
  */
 class FinitoSecp256k1Module : Module() {
-  private val secp256k1 = Secp256k1.get()
-
   override fun definition() = ModuleDefinition {
     Name("FinitoSecp256k1")
 
     // key⋅G
     Function("publicKey") { privateKey: ByteArray ->
-      secp256k1.pubkeyCreate(privateKey)
+      rejectedIfNull(FinitoSecp256k1Native.publicKey(privateKey))
     }
 
     // scalar⋅point
     Function("multiply") { point: ByteArray, scalar: ByteArray ->
-      secp256k1.pubKeyTweakMul(point, scalar)
+      rejectedIfNull(FinitoSecp256k1Native.multiply(point, scalar))
     }
 
-    Function("decompress") { point: ByteArray -> secp256k1.pubkeyParse(point) }
+    Function("decompress") { point: ByteArray ->
+      rejectedIfNull(FinitoSecp256k1Native.decompress(point))
+    }
   }
+
+  private fun rejectedIfNull(point: ByteArray?): ByteArray =
+    point ?: throw IllegalArgumentException("libsecp256k1 rejected the input.")
 }
