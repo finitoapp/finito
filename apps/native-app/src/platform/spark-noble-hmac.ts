@@ -1,7 +1,7 @@
 import { hmac as nobleHmac } from "spark:@noble/hashes/hmac"
 import { sha256, sha512 } from "spark:@noble/hashes/sha2"
 import { createHmac } from "react-native-quick-crypto"
-import { wrapHmac } from "./spark-hmac.ts"
+import { wrapHmac } from "./noble-hmac.ts"
 
 // What every import of the Spark SDK's `@noble/hashes/hmac` gets on Android
 // (`metro.config.js`): that module, with `wrapHmac`'s native HMAC.
