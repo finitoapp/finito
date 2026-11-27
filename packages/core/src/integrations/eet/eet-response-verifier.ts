@@ -12,7 +12,7 @@ export const EET_RESPONSE_SIGNER_ORGANIZATION = "Generální finanční ředitel
 /**
  * Accepts a response signed by a currently valid certificate of the GFŘ,
  * checked with that certificate's own key. With `native`, the signature
- * check runs on eet-client's Quick Crypto verifier, pinned to that same
+ * check runs on eet-client's React Native verifier, pinned to that same
  * leaf; otherwise on Web Crypto.
  */
 export const createEetResponseVerifier = (

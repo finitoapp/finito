@@ -11,7 +11,8 @@ import {
 import { readEetCertificateFile } from "./eet-certificate.ts"
 import { createEetApiDep, type EetReceipt } from "./eet-client.ts"
 
-// The native app passes Quick Crypto; Node's crypto has the same shape, as in
+// The native app passes its Quick Crypto-shaped backend over Android's crypto
+// provider; Node's crypto has the same shape, as in
 // eet-client's own tests, so the native path runs here without Web Crypto
 // signing or verifying anything.
 const native = createReactNativeCrypto(nodeCrypto)

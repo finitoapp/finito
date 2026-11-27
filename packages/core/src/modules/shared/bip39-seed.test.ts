@@ -9,7 +9,7 @@ import {
   mnemonicToBip39Seed,
 } from "./bip39-seed.ts"
 
-// Node's PBKDF2 stands in for Quick Crypto's, which has the same signature.
+// Node's PBKDF2 stands in for the native app's, which has the same signature.
 const nativePbkdf2 = (
   password: Uint8Array,
   salt: Uint8Array,

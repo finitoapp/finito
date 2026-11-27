@@ -10,8 +10,8 @@ import {
   secp256k1PublicKey,
 } from "./secp256k1-public-key.ts"
 
-// Node's ECDH stands in for Quick Crypto's, which has the same shape and,
-// like Node's by default, returns the uncompressed point.
+// Node's ECDH stands in for the native app's libsecp256k1, which likewise
+// returns the uncompressed point.
 const nativePublicKey = (privateKey: Uint8Array) => {
   const ecdh = createECDH("secp256k1")
   ecdh.setPrivateKey(privateKey)

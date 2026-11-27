@@ -23,18 +23,18 @@ describe.each(copies)(
   "wrapHmac over $name's noble",
   ({ hmac: nobleHmac, sha2 }) => {
     const { sha256, sha512, sha384 } = sha2
-    // Node's OpenSSL, the library behind Quick Crypto on the device.
+    // Node's crypto, standing in for Android's crypto provider on the device.
     const nativeCalls: HmacAlgorithm[] = []
     const hmac = wrapHmac(
       nobleHmac,
       new Map<unknown, HmacAlgorithm>([
-        [sha256, "sha256"],
-        [sha512, "sha512"],
+        [sha256, "SHA-256"],
+        [sha512, "SHA-512"],
       ]),
       (algorithm, key, message) => {
         nativeCalls.push(algorithm)
         return new Uint8Array(
-          createHmac(algorithm, key).update(message).digest()
+          createHmac(algorithm.replace("-", ""), key).update(message).digest()
         )
       }
     )

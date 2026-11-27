@@ -63,7 +63,7 @@ export type PlaygroundCertificatesError =
 export const fetchPlaygroundCertificates =
   (
     url: string,
-    /** The native app's Quick Crypto; see `EetNativeCrypto`. */
+    /** The native app's crypto; see `EetNativeCrypto`. */
     native?: EetNativeCrypto
   ): Task<
     ReadonlyArray<EetCertificateFile>,

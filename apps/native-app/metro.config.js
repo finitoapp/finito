@@ -23,7 +23,7 @@ const isSharedPeer = (moduleName) =>
 // received payment, and Evolu derives its owners with `@noble/hashes` HMAC.
 // On Android every import that resolves to one of these modules gets its
 // wrapper, which computes the costly parts natively (curve points on
-// libsecp256k1, HMAC on Quick Crypto) and reaches the module itself, as its
+// libsecp256k1, HMAC on Android's crypto provider) and reaches the module itself, as its
 // package resolves it, as `<origin>:<module>`.
 const nobleOrigins = {
   spark: "@buildonspark/spark-sdk",

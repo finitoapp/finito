@@ -4,7 +4,7 @@ export interface NobleHmac {
   readonly create: (hash: unknown, key: unknown) => unknown
 }
 
-export type HmacAlgorithm = "sha256" | "sha512"
+export type HmacAlgorithm = "SHA-256" | "SHA-512"
 
 /**
  * Noble's one-shot HMAC with SHA-256 and SHA-512 computed natively. Noble
