@@ -17,6 +17,7 @@ import {
   useLayoutEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react"
 import { useColorScheme, useWindowDimensions } from "react-native"
 import { TamaguiProvider, Theme, useTheme, View, XStack } from "tamagui"
@@ -47,6 +48,7 @@ import {
   menuSidebarWidth,
 } from "../src/components/menu-nav.tsx"
 import { paneGap, WebColumn } from "../src/components/web-column.tsx"
+import { resolveReduceMotion } from "../src/core/animations-preference.ts"
 import { recordPathname } from "../src/core/current-pathname.ts"
 import {
   isFirstScreenReady,
@@ -72,8 +74,14 @@ import { BillHistoryPage } from "../src/features/activity/bill-history-page.tsx"
 import { PaymentHistoryPage } from "../src/features/activity/payment-history-page.tsx"
 import { SettingsPage } from "../src/features/settings/settings-page.tsx"
 import { EetSandboxBanner } from "../src/features/shared/eet-sandbox-banner.tsx"
+import { useAnimationsPreference } from "../src/hooks/use-animations-preference.ts"
 import { useThemePreference } from "../src/hooks/use-theme-preference.ts"
 import { setBrowserThemeColor } from "../src/platform/browser-theme-color"
+import {
+  isSystemReduceMotionEnabled,
+  setAnimationsPreference,
+  subscribeSystemReduceMotion,
+} from "../src/platform/reduce-motion.ts"
 import { removeStaleSharedFiles } from "../src/platform/share-file"
 import { captureUnhandledErrors } from "../src/platform/unhandled-errors"
 import { WindowSafeArea } from "../src/platform/window-safe-area"
@@ -193,6 +201,17 @@ function ThemedApp() {
   const preference = useThemePreference()
   const systemScheme = useColorScheme()
   const theme = resolveTheme(preference, systemScheme)
+  const animations = useAnimationsPreference()
+  // During render, before any screen below renders or starts an animation:
+  // they read it synchronously through `isReduceMotionEnabled`.
+  setAnimationsPreference(animations)
+  const animated = !resolveReduceMotion(
+    animations,
+    useSyncExternalStore(
+      subscribeSystemReduceMotion,
+      isSystemReduceMotionEnabled
+    )
+  )
   useEffect(() => {
     setBrowserThemeColor(theme)
   }, [theme])
@@ -207,14 +226,19 @@ function ThemedApp() {
           <AppColorsContext value={appThemes[theme]}>
             <StatusBar style={theme === "dark" ? "light" : "dark"} />
             <AccessGate>
-              <ThemedStack dark={theme === "dark"} />
+              {/* Mounted again when the choice changes: a kit view reads it once per mount (`useKitTransition`). */}
+              <ThemedStack
+                key={animated ? "animated" : "still"}
+                dark={theme === "dark"}
+                animated={animated}
+              />
             </AccessGate>
             {/* After the first screen and a pause in tapping: their start blocks the JS thread. */}
             {appJobsMayStart ? <AppEvoluConsumers /> : null}
             {cashuJobsMayStart ? <CashuEvoluConsumers /> : null}
             <ConfirmHost />
             <PinPromptHost />
-            <ToastHost />
+            <ToastHost key={animated ? "animated" : "still"} />
             {/* Its own boundary: the pending check suspends on every account switch. */}
             <Suspense fallback={null}>
               <AppMigrations />
@@ -257,7 +281,13 @@ const masterPages: Readonly<Record<string, ComponentType>> = {
   "/settings": SettingsPage,
 }
 
+// Screen transitions off with every other animation (settings/0007): the
+// native stack animates whatever the system's animation scales say.
 const stackScreenOptions = { headerShown: false } as const
+const stillStackScreenOptions = {
+  headerShown: false,
+  animation: "none",
+} as const
 
 /**
  * The navigator on the app's theme. React Navigation draws screens and their
@@ -265,7 +295,13 @@ const stackScreenOptions = { headerShown: false } as const
  * route that suspends on its first open (rendering nothing until its data is
  * there) showed that grey meanwhile: a white flash, most visible in dark.
  */
-function ThemedStack({ dark }: { readonly dark: boolean }) {
+function ThemedStack({
+  dark,
+  animated,
+}: {
+  readonly dark: boolean
+  readonly animated: boolean
+}) {
   const theme = useTheme()
   const background = theme.background.val
   // Everything that does not follow the route is built once per theme: a
@@ -286,7 +322,14 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
     ),
     []
   )
-  const stack = useMemo(() => <Stack screenOptions={stackScreenOptions} />, [])
+  const stack = useMemo(
+    () => (
+      <Stack
+        screenOptions={animated ? stackScreenOptions : stillStackScreenOptions}
+      />
+    ),
+    [animated]
+  )
   // The tabs (navigation/0001, navigation/0002): the rail on every screen of
   // them on a large window, the terminal's included; the bottom bar on a
   // menu tab's root screen otherwise (home keeps its hamburger).

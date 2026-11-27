@@ -28,6 +28,7 @@ import {
   createDeviceQuery,
   type DemoAccountState,
   type DeviceAccountId,
+  type DeviceAnimations,
   type DeviceEvolu,
   type DeviceSettings,
   type DeviceSettingsRow,
@@ -561,6 +562,19 @@ export const serviceProxySettingQuery = createDeviceQuery((db) =>
 export const isServiceProxyEnabled = (
   row: Pick<DeviceSettingsRow, "serviceProxyEnabled"> | null | undefined
 ): boolean => row?.serviceProxyEnabled === sqliteTrue
+
+/** Sets whether Finito animates on this device (settings/0007). */
+export function setDeviceAnimations(
+  deviceEvolu: DeviceEvolu,
+  animations: DeviceAnimations,
+  options?: MutationOptions
+) {
+  deviceEvolu.update(
+    "deviceSettings",
+    { id: deviceSettingsId, animations },
+    options
+  )
+}
 
 /** Turns the device's consent to the service proxy on or off. */
 export function setServiceProxyEnabled(

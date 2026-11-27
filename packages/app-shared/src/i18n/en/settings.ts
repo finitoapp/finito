@@ -1171,6 +1171,17 @@ export const enSettings = {
   "settings.taxRates.rename": "Rename {name}",
   "settings.taxRates.rename.input": "New name for {name}",
   "settings.taxRates.title": "Tax rates",
+  "settings.theme.animations.description":
+    "Without animations the app responds faster on slower devices, such as card terminals.",
+  "settings.theme.animations.off.description":
+    "Never animate, for the fastest response",
+  "settings.theme.animations.off.title": "Off",
+  "settings.theme.animations.on.description": "Always animate",
+  "settings.theme.animations.on.title": "On",
+  "settings.theme.animations.system.description":
+    "Follow the operating system setting",
+  "settings.theme.animations.system.title": "Auto",
+  "settings.theme.animations.title": "Animations",
   "settings.theme.dark.description": "Always use the dark interface",
   "settings.theme.dark.title": "Dark",
   "settings.theme.light.description": "Always use the light interface",

@@ -83,11 +83,17 @@ const DeviceLocaleSchema = z.enum(["cs-CZ", "en-US", "sk-SK", "vi-VN"])
  * public documentation and code, or the merchant's data as well.
  */
 const AiAssistantAccessSchema = z.enum(["off", "public", "all"])
+/**
+ * Whether Finito animates on this device (settings/0007): as the system's
+ * reduce-motion setting says, always, or never.
+ */
+const DeviceAnimationsSchema = z.enum(["system", "on", "off"])
 
 export type DeviceLanguage = z.output<typeof DeviceLanguageSchema>
 export type DeviceTheme = z.output<typeof DeviceThemeSchema>
 export type DeviceLocale = z.output<typeof DeviceLocaleSchema>
 export type AiAssistantAccess = z.output<typeof AiAssistantAccessSchema>
+export type DeviceAnimations = z.output<typeof DeviceAnimationsSchema>
 
 export interface DeviceSettings {
   readonly id: DeviceSettingsId
@@ -250,6 +256,13 @@ const deviceEvoluSchema = {
      * write; read it through `isServiceProxyEnabled`.
      */
     serviceProxyEnabled: SqliteBoolSchema.nullable(),
+    /**
+     * Whether Finito animates on this device (settings/0007). `null` — what
+     * every device has until the merchant chooses — means `system`, so it is
+     * left out of `DeviceSettings` and of the defaults seeding and onboarding
+     * write; write it through `setDeviceAnimations`.
+     */
+    animations: DeviceAnimationsSchema.nullable(),
   },
 } as const
 

@@ -32,10 +32,11 @@ export const pressFillClause = (
 }
 
 /**
- * The kit's `fast` transition, or none under the system's reduce-motion
- * setting, which Tamagui's React Native driver ignores. Read once per
- * mount: Tamagui must not see a view gain or lose its transition while
- * mounted.
+ * The kit's `fast` transition, or none under reduced motion (the device's
+ * choice, by default the system's setting, settings/0007), which Tamagui's
+ * React Native driver ignores. Read once per mount: Tamagui must not see a
+ * view gain or lose its transition while mounted, so the root layout mounts
+ * the screens again when the choice changes.
  */
 export function useFastTransition() {
   return useKitTransition("fast")

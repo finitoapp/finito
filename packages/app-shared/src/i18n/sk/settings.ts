@@ -1174,6 +1174,17 @@ export const skSettings = {
   "settings.taxRates.rename": "Premenovať {name}",
   "settings.taxRates.rename.input": "Nový názov pre {name}",
   "settings.taxRates.title": "Daňové sadzby",
+  "settings.theme.animations.description":
+    "Bez animácií aplikácia reaguje rýchlejšie na pomalších zariadeniach, ako sú platobné terminály.",
+  "settings.theme.animations.off.description":
+    "Nikdy neanimovať, pre najrýchlejšiu odozvu",
+  "settings.theme.animations.off.title": "Vypnuté",
+  "settings.theme.animations.on.description": "Vždy animovať",
+  "settings.theme.animations.on.title": "Zapnuté",
+  "settings.theme.animations.system.description":
+    "Riadiť sa nastavením operačného systému",
+  "settings.theme.animations.system.title": "Auto",
+  "settings.theme.animations.title": "Animácie",
   "settings.theme.dark.description": "Vždy použiť tmavé rozhranie",
   "settings.theme.dark.title": "Tmavý",
   "settings.theme.light.description": "Vždy použiť svetlé rozhranie",
