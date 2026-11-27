@@ -11,9 +11,13 @@ import { duration } from "./tokens.ts"
  * `useNativeDriver` is explicit because the driver's own default never
  * turns it on: it detects Fabric by `global.__nativeFabricUIManager`
  * (3.0.18 through 3.3.3), which React Native 0.88 names
- * `nativeFabricUIManager`. A node whose
- * transition covers a numeric height, width or min/max size still runs on
- * the JS driver (the driver decides that per node).
+ * `nativeFabricUIManager`. Unpatched, the driver also put a whole node on the
+ * JS driver as soon as its transition covered a numeric height, width or
+ * min/max size, as `fast` does a kit Button's: every frame of a pressed fill
+ * then ran on the JS thread, ~0.16 s of a payment terminal's per keypad tap.
+ * `patches/@tamagui%2Fanimations-react-native@3.3.3.patch` paints those sizes
+ * as static styles, so the node keeps the native driver; a size never
+ * animates through a transition (`ui/collapsible.tsx` animates its own).
  */
 export const animations = createAnimations(
   {
