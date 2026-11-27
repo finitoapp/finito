@@ -17,8 +17,35 @@ const isSharedPeer = (moduleName) =>
   sharedPeers.some(
     (peer) => moduleName === peer || moduleName.startsWith(`${peer}/`)
   )
+// The Spark SDK's secp256k1 (`@noble/curves` 1.x, which its `@scure/bip32` and
+// `@scure/btc-signer` share) is BigInt arithmetic, which held a payment
+// terminal's JS thread for ~18 s at start and again after each received
+// payment. On Android every import of it gets `spark-noble-secp256k1.ts`,
+// which computes the costly point operations on Quick Crypto, and reaches the
+// module itself as `spark-noble-secp256k1`.
+const sparkSecp256k1 = path.join(
+  __dirname,
+  "src/platform/spark-noble-secp256k1.ts"
+)
+const coreOrigin = path.join(__dirname, "../../packages/core/package.json")
+const resolveSparkNoble = (context, platform) => {
+  const spark = context.resolveRequest(
+    { ...context, originModulePath: coreOrigin },
+    "@buildonspark/spark-sdk",
+    platform
+  )
+  return context.resolveRequest(
+    { ...context, originModulePath: spark.filePath },
+    "@noble/curves/secp256k1",
+    platform
+  )
+}
+let sparkNoblePath = null
+
 config.resolver.assetExts.push("wasm")
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === "android" && moduleName === "spark-noble-secp256k1")
+    return resolveSparkNoble(context, platform)
   // @evolu/sqlite-wasm finds its binary at `new URL("../wasm/sqlite3.wasm",
   // import.meta.url)`, which Metro neither emits nor can resolve in a worker.
   // On web its WasmUrl.js is swapped for one that requires the binary as an
@@ -57,11 +84,17 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     context.originModulePath.includes(
       `${path.sep}@evolu${path.sep}web${path.sep}`
     )
-  return fromApp.resolveRequest(
+  const resolution = fromApp.resolveRequest(
     fromApp,
     evoluWorker ? `./${moduleName}` : moduleName,
     platform
   )
+  if (platform === "android" && moduleName.startsWith("@noble/curves")) {
+    sparkNoblePath ??= resolveSparkNoble(context, platform).filePath
+    if (resolution.filePath === sparkNoblePath)
+      return { type: "sourceFile", filePath: sparkSecp256k1 }
+  }
+  return resolution
 }
 
 // Evaluates a module where it is first used rather than when the bundle
