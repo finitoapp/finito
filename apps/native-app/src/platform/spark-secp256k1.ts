@@ -56,24 +56,39 @@ export interface Secp256k1Native {
   readonly decompress: (point: Uint8Array) => Uint8Array
 }
 
-const bytesToHex = (bytes: Uint8Array): string =>
-  Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+const HEX_BYTES = Array.from({ length: 256 }, (_, byte) =>
+  byte.toString(16).padStart(2, "0")
+)
+
+const bytesToHex = (bytes: Uint8Array): string => {
+  let hex = ""
+  for (const byte of bytes) hex += HEX_BYTES[byte]
+  return hex
+}
 
 const bytesToBigInt = (bytes: Uint8Array): bigint =>
   BigInt(`0x${bytesToHex(bytes)}`)
 
-const bigIntTo32Bytes = (value: bigint): Uint8Array =>
-  Uint8Array.from(
-    value.toString(16).padStart(64, "0").match(/../g) ?? [],
-    (pair) => Number.parseInt(pair, 16)
-  )
+// Each pair of hex digits as a byte, or null for any other string.
+const hexToBytes = (hex: string): Uint8Array | null => {
+  if (hex.length % 2 !== 0) return null
+  const bytes = new Uint8Array(hex.length / 2)
+  for (let index = 0; index < bytes.length; index++) {
+    const pair = hex.slice(index * 2, index * 2 + 2)
+    const byte = Number.parseInt(pair, 16)
+    // parseInt reads a leading digit of "1x" as 1.
+    if (HEX_BYTES[byte] !== pair.toLowerCase()) return null
+    bytes[index] = byte
+  }
+  return bytes
+}
 
-const hexToBytes = (hex: string): Uint8Array | null =>
-  /^(?:[0-9a-fA-F]{2})+$/.test(hex)
-    ? Uint8Array.from(hex.match(/../g) ?? [], (pair) =>
-        Number.parseInt(pair, 16)
-      )
-    : null
+// Callers pass a scalar or coordinate below 2^256, never a negative one.
+const bigIntTo32Bytes = (value: bigint): Uint8Array => {
+  const bytes = hexToBytes(value.toString(16).padStart(64, "0"))
+  if (bytes?.length !== 32) throw new Error("Expected a 256-bit number.")
+  return bytes
+}
 
 /**
  * How many public keys `getPublicKey` remembers, enough for every leaf of a
