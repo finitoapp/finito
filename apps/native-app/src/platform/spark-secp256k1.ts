@@ -28,6 +28,10 @@ export interface NobleSecp256k1Module<P extends NoblePoint = NoblePoint> {
   readonly secp256k1: {
     readonly CURVE: { readonly p: bigint; readonly n: bigint }
     readonly Point: NoblePointClass<P>
+    readonly getPublicKey: (
+      secretKey: unknown,
+      isCompressed?: boolean
+    ) => Uint8Array
   }
   readonly schnorr: {
     readonly utils: { readonly lift_x: (x: bigint) => P }
@@ -52,10 +56,11 @@ export interface Secp256k1Native {
   readonly decompress: (point: Uint8Array) => Uint8Array
 }
 
+const bytesToHex = (bytes: Uint8Array): string =>
+  Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+
 const bytesToBigInt = (bytes: Uint8Array): bigint =>
-  BigInt(
-    `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`
-  )
+  BigInt(`0x${bytesToHex(bytes)}`)
 
 const bigIntTo32Bytes = (value: bigint): Uint8Array =>
   Uint8Array.from(
@@ -69,6 +74,12 @@ const hexToBytes = (hex: string): Uint8Array | null =>
         Number.parseInt(pair, 16)
       )
     : null
+
+/**
+ * How many public keys `getPublicKey` remembers, enough for every leaf of a
+ * wallet the Spark SDK walks at each sync.
+ */
+const PUBLIC_KEY_CACHE_SIZE = 4096
 
 const isCompressedPoint = (bytes: Uint8Array): boolean =>
   bytes.length === 33 && (bytes[0] === 0x02 || bytes[0] === 0x03)
@@ -86,6 +97,12 @@ const equalBytes = (a: Uint8Array, b: Uint8Array): boolean =>
  * thread for ~18 s at start and again after each received payment. Noble
  * still does everything around them, so it returns its own values, and every
  * input outside the native path goes to noble, so errors stay noble's.
+ *
+ * `secp256k1.getPublicKey` also remembers the public keys it computed, by
+ * private key, for the session: the SDK derives every leaf's key at each sync
+ * and claim, each twice (`@scure/bip32` computes a child's public key, then
+ * the SDK asks for it again). The private keys it holds are those the SDK
+ * already keeps in memory; the nonces signing multiplies by never reach it.
  *
  * Replaces the methods on noble's point class in place, so call it once per
  * module instance.
@@ -182,7 +199,38 @@ export const wrapSecp256k1 = <P extends NoblePoint>(
     return point ?? nobleLiftX(x)
   }
 
+  // Newest last, so the first is the one to forget.
+  const publicKeys = new Map<string, Uint8Array>()
+  const nobleGetPublicKey = secp256k1.getPublicKey
+  const getPublicKey = (secretKey: unknown, isCompressed = true) => {
+    // One entry per key, whether it comes as 32 bytes (from the SDK) or as a
+    // bigint (from `@scure/bip32`); any other form is left to noble.
+    const id =
+      secretKey instanceof Uint8Array && secretKey.length === 32
+        ? bytesToHex(secretKey)
+        : typeof secretKey === "bigint" && secretKey > 0n && secretKey < CURVE.n
+          ? secretKey.toString(16).padStart(64, "0")
+          : null
+    if (id === null) return nobleGetPublicKey(secretKey, isCompressed)
+    const key = `${isCompressed}:${id}`
+    const cached = publicKeys.get(key)
+    if (cached !== undefined) {
+      publicKeys.delete(key)
+      publicKeys.set(key, cached)
+      return cached.slice()
+    }
+    // Noble throws for an invalid key, which is then never remembered.
+    const publicKey = nobleGetPublicKey(secretKey, isCompressed)
+    publicKeys.set(key, publicKey.slice())
+    if (publicKeys.size > PUBLIC_KEY_CACHE_SIZE) {
+      const [oldest] = publicKeys.keys()
+      if (oldest !== undefined) publicKeys.delete(oldest)
+    }
+    return publicKey
+  }
+
   return {
+    secp256k1: { ...secp256k1, getPublicKey },
     schnorr: { ...schnorr, utils: { ...schnorr.utils, lift_x: liftX } },
   }
 }
