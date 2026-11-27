@@ -7,9 +7,12 @@ import { wrapSecp256k1 } from "./spark-secp256k1.ts"
 // point operations.
 export * from "spark:@noble/curves/secp256k1"
 
+// One native ECDH object for every call, each setting its key first: the
+// calls are synchronous, so none sees another's key.
+const ecdh = createECDH("secp256k1")
+
 export const { secp256k1, schnorr } = wrapSecp256k1(noble, {
   ecdh: (privateKey, points) => {
-    const ecdh = createECDH("secp256k1")
     ecdh.setPrivateKey(Buffer.from(privateKey))
     // A string only when an encoding is asked for, which none is.
     const publicKey = ecdh.getPublicKey()

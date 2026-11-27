@@ -78,6 +78,7 @@ const compute = (
     fromBigInt: hex(getPublicKey(bigint(key))),
     fromPrivateKey: hex(Point.fromPrivateKey(key).toRawBytes()),
     decoded: hex(Point.fromHex(publicKey).toRawBytes(false)),
+    decodedFromHex: hex(Point.fromHex(hex(publicKey)).toRawBytes(false)),
     lifted: hex(schnorr.utils.lift_x(bigint(xOnly)).toRawBytes()),
     signature: `${signature.toCompactHex()}/${signature.recovery}`,
     verified: verify(signature, hash, publicKey),
