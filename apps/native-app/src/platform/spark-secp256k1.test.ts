@@ -15,6 +15,9 @@ const fromSpark = createRequire(fromCore.resolve("@buildonspark/spark-sdk"))
 
 interface Point {
   readonly assertValidity: () => void
+  readonly is0: () => boolean
+  readonly add: (other: Point) => Point
+  readonly negate: () => Point
   readonly toRawBytes: (isCompressed?: boolean) => Uint8Array
   multiply: (scalar: bigint) => this
   multiplyUnsafe: (scalar: bigint) => this
@@ -89,19 +92,46 @@ const cases = Array.from({ length: 10 }, () => ({
   hash: new Uint8Array(randomBytes(32)),
   auxRand: new Uint8Array(randomBytes(32)),
 }))
+const n = BigInt(
+  "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
+)
+const { BASE } = secp256k1.Point
+// Points and scalars for a multiplication, the edges among them: 1, n - 1,
+// and -G, whose sum with G the native check cannot use.
+const products = [
+  ...cases.map(({ key, hash }) => ({
+    point: secp256k1.Point.fromHex(secp256k1.getPublicKey(key)),
+    scalar: bigint(hash) % n || 1n,
+  })),
+  { point: BASE.multiply(7n), scalar: 1n },
+  { point: BASE.multiply(7n), scalar: n - 1n },
+  { point: BASE.negate(), scalar: 5n },
+]
+const multiplyAll = () =>
+  products.map(({ point, scalar }) => [
+    hex(point.multiply(scalar).toRawBytes()),
+    hex(point.multiplyUnsafe(scalar).toRawBytes()),
+  ])
+
 // Taken before wrapping, which changes noble's point class in place.
 const expected = cases.map(({ key, hash, auxRand }) =>
   compute(secp256k1, noble.schnorr, key, hash, auxRand)
 )
+const expectedProducts = multiplyAll()
 
 // Node's OpenSSL, the library behind Quick Crypto on the device.
 const nativeCalls: string[] = []
 const native: Secp256k1Native = {
-  publicKey: (privateKey) => {
-    nativeCalls.push("publicKey")
+  ecdh: (privateKey, points) => {
+    nativeCalls.push("ecdh")
     const ecdh = createECDH("secp256k1")
     ecdh.setPrivateKey(privateKey)
-    return new Uint8Array(ecdh.getPublicKey())
+    return {
+      publicKey: new Uint8Array(ecdh.getPublicKey()),
+      sharedXs: points.map(
+        (point) => new Uint8Array(ecdh.computeSecret(point))
+      ),
+    }
   },
   decompress: (point) => {
     nativeCalls.push("decompress")
@@ -113,10 +143,6 @@ const native: Secp256k1Native = {
 const { schnorr } = wrapSecp256k1(noble, native)
 const wrappedSchnorr = { ...noble.schnorr, ...schnorr }
 
-const n = BigInt(
-  "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
-)
-
 describe("wrapSecp256k1", () => {
   it("returns noble's keys and signatures from native point operations", () => {
     nativeCalls.length = 0
@@ -124,7 +150,16 @@ describe("wrapSecp256k1", () => {
       compute(secp256k1, wrappedSchnorr, key, hash, auxRand)
     )
     expect(actual).toEqual(expected)
-    expect(new Set(nativeCalls)).toEqual(new Set(["publicKey", "decompress"]))
+    expect(new Set(nativeCalls)).toEqual(new Set(["ecdh", "decompress"]))
+  })
+
+  it("multiplies any point natively", () => {
+    nativeCalls.length = 0
+    expect(multiplyAll()).toEqual(expectedProducts)
+    // All but -G, which noble multiplies.
+    expect(nativeCalls.filter((call) => call === "ecdh")).toHaveLength(
+      (products.length - 1) * 2
+    )
   })
 
   it("leaves invalid input to noble, which rejects it", () => {
