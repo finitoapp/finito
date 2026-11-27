@@ -37,6 +37,12 @@ export const pressFillClause = (
  * React Native driver ignores. Read once per mount: Tamagui must not see a
  * view gain or lose its transition while mounted, so the root layout mounts
  * the screens again when the choice changes.
+ *
+ * A key a transition animates must stay in the view's style: when one
+ * leaves it (a `disabled` variant's opacity on enabling), the driver drops
+ * its native-driven value, and Fabric, which never held that value, keeps
+ * the view at it. So a frame whose variant sets an opacity sets
+ * `opacity: 1` at rest (`ui-kit.test.ts`).
  */
 export function useFastTransition() {
   return useKitTransition("fast")

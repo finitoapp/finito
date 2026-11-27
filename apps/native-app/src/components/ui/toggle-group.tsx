@@ -70,6 +70,8 @@ const ItemFrame = styled(TamaguiToggleGroup.Item, {
   shrink: 0,
   gap: 4,
   cursor: "web:pointer",
+  // At rest too, so enabling fades back (`useKitTransition`).
+  opacity: 1,
 
   variants: {
     variant: { default: {}, outline: {} },

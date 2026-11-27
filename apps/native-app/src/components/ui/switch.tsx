@@ -39,6 +39,8 @@ const SwitchTrack = styled(View, {
   justify: "center",
   hitSlop: (48 - TRACK_HEIGHT) / 2,
   cursor: "web:pointer",
+  // At rest too, so enabling fades back (`useKitTransition`).
+  opacity: 1,
 
   variants: {
     active: {

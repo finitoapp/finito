@@ -64,6 +64,8 @@ const RadioGroupItemFrame = styled(TamaguiRadioGroup.Item, {
   p: 0,
   shrink: 0,
   rounded: shape.pill,
+  // At rest too, so enabling fades back (`useKitTransition`).
+  opacity: 1,
 
   variants: {
     checked: {

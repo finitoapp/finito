@@ -73,6 +73,8 @@ const ButtonFrame = styled(ButtonBehaviorFrame, {
   cursor: "web:pointer",
   // A real `<button>` on web, whose default is an outset border.
   ...(isWeb ? { borderWidth: 0 } : {}),
+  // At rest too, so enabling fades back (`useKitTransition`).
+  opacity: 1,
 
   variants: {
     variant: {
