@@ -52,7 +52,9 @@ const resolveFromOrigin = (context, moduleName, platform) => {
     platform
   )
 }
-let nobleWrapperByPath = null
+// The wrappers by the file each module resolves to, for an ESM import and for
+// a require, which resolve a package's exports to different files.
+const nobleWrapperByPath = new Map()
 
 config.resolver.assetExts.push("wasm")
 config.resolver.resolveRequest = (context, moduleName, platform) => {
@@ -105,13 +107,18 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     platform
   )
   if (platform === "android" && moduleName.startsWith("@noble/")) {
-    nobleWrapperByPath ??= new Map(
-      nobleWrappers.map(([name, wrapper]) => [
-        resolveFromOrigin(context, name, platform).filePath,
-        path.join(__dirname, wrapper),
-      ])
-    )
-    const wrapper = nobleWrapperByPath.get(resolution.filePath)
+    const isESMImport = context.isESMImport === true
+    if (!nobleWrapperByPath.has(isESMImport))
+      nobleWrapperByPath.set(
+        isESMImport,
+        new Map(
+          nobleWrappers.map(([name, wrapper]) => [
+            resolveFromOrigin(context, name, platform).filePath,
+            path.join(__dirname, wrapper),
+          ])
+        )
+      )
+    const wrapper = nobleWrapperByPath.get(isESMImport).get(resolution.filePath)
     if (wrapper) return { type: "sourceFile", filePath: wrapper }
   }
   return resolution
