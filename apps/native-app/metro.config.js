@@ -138,8 +138,22 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 // loads: a cold start otherwise ran every route's module graph before the
 // first screen (~0.2 s on the test phone). Side-effect imports, such as the
 // polyfills entry.ts loads first, keep their place.
+//
+// Except in `@noble/hashes`, whose SHA-256 and RIPEMD-160 rounds call a helper
+// from another of its modules (`rotr`, `Maj`) each time: inlined, every call
+// went through `require`, a third of the time the Spark SDK and Evolu spend
+// hashing (~0.1 s of a payment terminal's JS thread at start and again after
+// each payment). Its modules import nothing else, so loading them up front
+// costs nothing.
 config.transformer.getTransformOptions = async () => ({
-  transform: { experimentalImportSupport: true, inlineRequires: true },
+  transform: {
+    experimentalImportSupport: true,
+    inlineRequires: {
+      blockList: Object.fromEntries(
+        require("./metro-noble-hashes.cjs").map((file) => [file, true])
+      ),
+    },
+  },
 })
 
 module.exports = config
