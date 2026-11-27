@@ -1,5 +1,5 @@
 // The JNI half of modules/finito-secp256k1: libsecp256k1's key creation,
-// point multiplication and point parsing, each returning the uncompressed
+// point multiplication, addition and parsing, each returning the uncompressed
 // point (65 bytes), or null for input libsecp256k1 rejects.
 #include <jni.h>
 #include <stddef.h>
@@ -71,6 +71,19 @@ Java_fit_finito_secp256k1_FinitoSecp256k1Native_multiply(JNIEnv *env,
       !secp256k1_ec_pubkey_tweak_mul(context, &parsed, tweak))
     return NULL;
   return serialize(env, &parsed);
+}
+
+// a + b; null for the point at infinity too.
+JNIEXPORT jbyteArray JNICALL
+Java_fit_finito_secp256k1_FinitoSecp256k1Native_add(JNIEnv *env, jclass type,
+                                                    jbyteArray a,
+                                                    jbyteArray b) {
+  secp256k1_pubkey points[2], sum;
+  const secp256k1_pubkey *summands[2] = {&points[0], &points[1]};
+  if (!parse(env, a, &points[0]) || !parse(env, b, &points[1]) ||
+      !secp256k1_ec_pubkey_combine(context, &sum, summands, 2))
+    return NULL;
+  return serialize(env, &sum);
 }
 
 JNIEXPORT jbyteArray JNICALL

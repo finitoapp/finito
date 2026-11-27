@@ -11,7 +11,7 @@ import expo.modules.kotlin.modules.ModuleDefinition
  * operation to noble.
  *
  * Built here from Bitcoin Core's source (`CMakeLists.txt`) with only what
- * these three functions need, ~0.1 MB per ABI where a prebuilt library with
+ * these functions need, ~0.1 MB per ABI where a prebuilt library with
  * its full tables took 1.3 MB. On the PAX A920Pro each call takes under a
  * millisecond from JS, where OpenSSL through Quick Crypto took 4.8 ms for
  * `key⋅G` and 38 ms for `k⋅P`.
@@ -28,6 +28,11 @@ class FinitoSecp256k1Module : Module() {
     // scalar⋅point
     Function("multiply") { point: ByteArray, scalar: ByteArray ->
       rejectedIfNull(FinitoSecp256k1Native.multiply(point, scalar))
+    }
+
+    // a + b
+    Function("add") { a: ByteArray, b: ByteArray ->
+      rejectedIfNull(FinitoSecp256k1Native.add(a, b))
     }
 
     Function("decompress") { point: ByteArray ->

@@ -15,9 +15,17 @@ const fromCore = createRequire(
 const fromSpark = createRequire(fromCore.resolve("@buildonspark/spark-sdk"))
 
 interface Point {
+  readonly X: bigint
+  readonly Y: bigint
+  readonly Z: bigint
   readonly assertValidity: () => void
   readonly negate: () => Point
+  readonly double: () => Point
+  readonly subtract: (other: Point) => Point
+  readonly is0: () => boolean
   readonly toRawBytes: (isCompressed?: boolean) => Uint8Array
+  toBytes: (isCompressed?: boolean) => Uint8Array
+  add: (other: Point) => this
   multiply: (scalar: bigint) => this
   multiplyUnsafe: (scalar: bigint) => this
 }
@@ -113,15 +121,39 @@ const multiplyAll = () =>
     hex(point.multiplyUnsafe(scalar).toRawBytes()),
   ])
 
+// Sums as the Spark SDK checks a leaf's key (`addPublicKeys`: two decoded
+// public keys, their sum compressed) and takes one apart, and the edges: a
+// doubling, P + (-P), and a projective point noble computed itself.
+const publicKeys = cases.map(({ key }) => secp256k1.getPublicKey(key))
+const addAll = () =>
+  publicKeys.map((publicKey, index) => {
+    const a = secp256k1.Point.fromHex(publicKey)
+    const b = secp256k1.Point.fromHex(
+      publicKeys[(index + 1) % publicKeys.length] ?? publicKey
+    )
+    const projective = a.double()
+    return [
+      hex(a.add(b).toBytes(true)),
+      hex(a.add(b).toRawBytes(false)),
+      hex(a.subtract(b).toBytes(true)),
+      hex(a.add(a).toBytes(true)),
+      a.add(a.negate()).is0(),
+      hex(projective.add(b).toBytes(true)),
+      hex(b.add(projective).toBytes(true)),
+    ]
+  })
+
 // Taken before wrapping, which changes noble's point class in place.
 const expected = cases.map(({ key, hash, auxRand }) =>
   compute(secp256k1, noble.schnorr, key, hash, auxRand)
 )
 const expectedProducts = multiplyAll()
+const expectedSums = addAll()
 
 // Another noble, 2.x, as Payky's core resolves it, for the native side:
 // libsecp256k1 runs only on the device.
 interface ReferencePoint {
+  readonly add: (other: ReferencePoint) => ReferencePoint
   readonly multiply: (scalar: bigint) => ReferencePoint
   readonly toBytes: (isCompressed: boolean) => Uint8Array
 }
@@ -146,6 +178,12 @@ const native: Secp256k1Native = {
       .multiply(bigint(scalar))
       .toBytes(false)
   },
+  add: (a, b) => {
+    nativeCalls.push("add")
+    return ReferencePoint.fromBytes(a)
+      .add(ReferencePoint.fromBytes(b))
+      .toBytes(false)
+  },
   decompress: (point) => {
     nativeCalls.push("decompress")
     return ReferencePoint.fromBytes(point).toBytes(false)
@@ -166,7 +204,8 @@ describe("wrapSecp256k1", () => {
     )
     expect(actual).toEqual(expected)
     expect(new Set(nativeCalls)).toEqual(
-      new Set(["publicKey", "multiply", "decompress"])
+      // Verification adds the two products natively too.
+      new Set(["publicKey", "multiply", "add", "decompress"])
     )
   })
 
@@ -175,6 +214,20 @@ describe("wrapSecp256k1", () => {
     expect(multiplyAll()).toEqual(expectedProducts)
     expect(nativeCalls).toEqual(
       products.flatMap(() => ["multiply", "multiply"])
+    )
+  })
+
+  it("adds points natively, leaving noble the projective ones", () => {
+    nativeCalls.length = 0
+    expect(addAll()).toEqual(expectedSums)
+    // Per pair: two decodings, five sums natively (one of them P + (-P),
+    // which native code rejects), and none with the projective point.
+    expect(nativeCalls).toEqual(
+      publicKeys.flatMap(() => [
+        "decompress",
+        "decompress",
+        ...Array.from({ length: 5 }, () => "add"),
+      ])
     )
   })
 
@@ -219,7 +272,7 @@ it("names the module and its functions the same in JS and Kotlin", () => {
     'requireOptionalNativeModule<FinitoSecp256k1NativeModule>("FinitoSecp256k1")'
   )
   expect(kotlin).toContain('Name("FinitoSecp256k1")')
-  for (const name of ["publicKey", "multiply", "decompress"]) {
+  for (const name of ["publicKey", "multiply", "add", "decompress"]) {
     expect(js).toContain(`${name}(`)
     expect(kotlin).toContain(`Function("${name}")`)
   }
