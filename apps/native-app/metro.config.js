@@ -65,6 +65,14 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       ? resolveFromOrigin(context, moduleName, platform)
       : null
   if (fromOrigin !== null) return fromOrigin
+  // Unlinked on Android (`react-native.config.js`), so no JS may reach it;
+  // react-native-nitro-modules then finds it missing, as it allows for.
+  if (
+    platform === "android" &&
+    (moduleName === "react-native-worklets" ||
+      moduleName.startsWith("react-native-worklets/"))
+  )
+    return { type: "empty" }
   // @evolu/sqlite-wasm finds its binary at `new URL("../wasm/sqlite3.wasm",
   // import.meta.url)`, which Metro neither emits nor can resolve in a worker.
   // On web its WasmUrl.js is swapped for one that requires the binary as an
