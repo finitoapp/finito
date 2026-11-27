@@ -17,29 +17,31 @@ const isSharedPeer = (moduleName) =>
   sharedPeers.some(
     (peer) => moduleName === peer || moduleName.startsWith(`${peer}/`)
   )
-// The Spark SDK's cryptography (`@noble/curves` 1.x and `@noble/hashes`, which
-// its `@scure/bip32` and `@scure/btc-signer` share) is pure JS, which held a
-// payment terminal's JS thread for ~18 s at start and again after each
-// received payment, and Evolu derives its owners with `@noble/hashes` HMAC.
-// On Android every import that resolves to one of these modules gets its
-// wrapper, which computes the costly parts natively (curve points on
-// libsecp256k1, HMAC on Android's crypto provider) and reaches the module itself, as its
-// package resolves it, as `<origin>:<module>`.
-const nobleOrigins = {
+// Pure-JS code the Spark SDK and Evolu run on every start and payment, which
+// a payment terminal's JS thread took seconds for: the Spark SDK's
+// cryptography (`@noble/curves` 1.x and `@noble/hashes`, which its
+// `@scure/bip32` and `@scure/btc-signer` share), Evolu's `@noble/hashes`
+// HMAC, and the `js-base64` decoding of the Spark SDK's gRPC answers. On
+// Android every import that resolves to one of these modules gets its
+// wrapper, which does the costly part natively (curve points on
+// libsecp256k1, HMAC and base64 on Android's own code) and reaches the module
+// itself, as its package resolves it, as `<origin>:<module>`.
+const wrapperOrigins = {
   spark: "@buildonspark/spark-sdk",
   evolu: "@evolu/common",
 }
-const nobleWrappers = [
+const moduleWrappers = [
   ["spark:@noble/curves/secp256k1", "src/platform/spark-noble-secp256k1.ts"],
   ["spark:@noble/hashes/hmac", "src/platform/spark-noble-hmac.ts"],
   ["evolu:@noble/hashes/hmac.js", "src/platform/evolu-noble-hmac.ts"],
+  ["spark:js-base64", "src/platform/spark-js-base64.ts"],
 ]
 const coreOrigin = path.join(__dirname, "../../packages/core/package.json")
 // `<origin>:<module>` as that origin's package resolves the module, or null
 // for any other name.
 const resolveFromOrigin = (context, moduleName, platform) => {
   const [origin, ...rest] = moduleName.split(":")
-  const originPackage = nobleOrigins[origin]
+  const originPackage = wrapperOrigins[origin]
   if (originPackage === undefined || rest.length === 0) return null
   const entry = context.resolveRequest(
     { ...context, originModulePath: coreOrigin },
@@ -54,7 +56,7 @@ const resolveFromOrigin = (context, moduleName, platform) => {
 }
 // The wrappers by the file each module resolves to, for an ESM import and for
 // a require, which resolve a package's exports to different files.
-const nobleWrapperByPath = new Map()
+const wrapperByPath = new Map()
 
 config.resolver.assetExts.push("wasm")
 config.resolver.resolveRequest = (context, moduleName, platform) => {
@@ -106,19 +108,19 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     evoluWorker ? `./${moduleName}` : moduleName,
     platform
   )
-  if (platform === "android" && moduleName.startsWith("@noble/")) {
+  if (platform === "android") {
     const isESMImport = context.isESMImport === true
-    if (!nobleWrapperByPath.has(isESMImport))
-      nobleWrapperByPath.set(
+    if (!wrapperByPath.has(isESMImport))
+      wrapperByPath.set(
         isESMImport,
         new Map(
-          nobleWrappers.map(([name, wrapper]) => [
+          moduleWrappers.map(([name, wrapper]) => [
             resolveFromOrigin(context, name, platform).filePath,
             path.join(__dirname, wrapper),
           ])
         )
       )
-    const wrapper = nobleWrapperByPath.get(isESMImport).get(resolution.filePath)
+    const wrapper = wrapperByPath.get(isESMImport).get(resolution.filePath)
     if (wrapper) return { type: "sourceFile", filePath: wrapper }
   }
   return resolution

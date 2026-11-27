@@ -1,6 +1,6 @@
-// The noble modules of the Spark SDK and of Evolu, which `metro.config.js`
-// resolves `spark:<module>` and `evolu:<module>` to for the wrappers in
-// `platform/*-noble-*.ts`. Typed as far as those files use them.
+// The modules of the Spark SDK and of Evolu that `metro.config.js` resolves
+// `spark:<module>` and `evolu:<module>` to for the wrappers in `platform/`
+// (`*-noble-*.ts`, `spark-js-base64.ts`). Typed as far as those files use them.
 
 declare module "spark:@noble/curves/secp256k1" {
   import type { NobleSecp256k1Module } from "./platform/spark-secp256k1.ts"
@@ -29,4 +29,9 @@ declare module "evolu:@noble/hashes/hmac.js" {
 declare module "evolu:@noble/hashes/sha2.js" {
   export const sha256: unknown
   export const sha512: unknown
+}
+
+declare module "spark:js-base64" {
+  export const toUint8Array: (text: string) => Uint8Array
+  export const Base64: { readonly toUint8Array: (text: string) => Uint8Array }
 }
