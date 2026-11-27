@@ -38,10 +38,11 @@ const deviceSettingsQuery = createDeviceQuery((db) =>
 /**
  * The consent to the service proxy is not one of the `DeviceSettings`: it is
  * read through `useServiceProxyEnabled`, so it is neither selected here nor
- * defaulted.
+ * defaulted. Nor is Finito's animations choice (settings/0007), which web
+ * does not offer.
  */
 function withDeviceSettingsDefaults(
-  row: Omit<DeviceSettingsRow, "serviceProxyEnabled"> | undefined
+  row: Omit<DeviceSettingsRow, "serviceProxyEnabled" | "animations"> | undefined
 ): DeviceSettings {
   const defaults = getDefaultDeviceSettings()
   const language = row?.language ?? defaults.language

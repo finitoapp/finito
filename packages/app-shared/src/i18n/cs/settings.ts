@@ -1170,6 +1170,17 @@ export const csSettings = {
   "settings.taxRates.rename": "Přejmenovat {name}",
   "settings.taxRates.rename.input": "Nový název pro {name}",
   "settings.taxRates.title": "Daňové sazby",
+  "settings.theme.animations.description":
+    "Bez animací aplikace reaguje rychleji na pomalejších zařízeních, jako jsou platební terminály.",
+  "settings.theme.animations.off.description":
+    "Nikdy neanimovat, pro nejrychlejší odezvu",
+  "settings.theme.animations.off.title": "Vypnuto",
+  "settings.theme.animations.on.description": "Vždy animovat",
+  "settings.theme.animations.on.title": "Zapnuto",
+  "settings.theme.animations.system.description":
+    "Řídit se nastavením operačního systému",
+  "settings.theme.animations.system.title": "Auto",
+  "settings.theme.animations.title": "Animace",
   "settings.theme.dark.description": "Vždy použít tmavé rozhraní",
   "settings.theme.dark.title": "Tmavý",
   "settings.theme.light.description": "Vždy použít světlé rozhraní",

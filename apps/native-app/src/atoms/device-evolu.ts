@@ -18,7 +18,14 @@ import { nativeRun } from "../core/native-runtime.ts"
 export const deviceSettingsQuery = createDeviceQuery((db) =>
   db
     .selectFrom("deviceSettings")
-    .select(["id", "language", "locale", "theme", "errorReportingEnabled"])
+    .select([
+      "id",
+      "language",
+      "locale",
+      "theme",
+      "animations",
+      "errorReportingEnabled",
+    ])
     .where("id", "=", deviceSettingsId)
 )
 
