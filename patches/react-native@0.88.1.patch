@@ -1,0 +1,30 @@
+diff --git a/Libraries/ReactNative/UIManager.js b/Libraries/ReactNative/UIManager.js
+index a97c6a7b3ea7512c4a29c0dd63a2d4d4a2bc11e5..ca59bffa7df73a44e6dfb4b7e6bdbd5a0060b791 100644
+--- a/Libraries/ReactNative/UIManager.js
++++ b/Libraries/ReactNative/UIManager.js
+@@ -24,8 +24,13 @@ const UIManagerImpl: UIManagerJSInterface =
+     : require('./PaperUIManager').default;
+ 
+ // $FlowFixMe[cannot-spread-interface]
+-const UIManager: UIManagerJSInterface = {
+-  ...UIManagerImpl,
++// Finito's patch: the methods below override UIManagerImpl's, and every other
++// property is copied as its descriptor rather than by spreading, so the lazy
++// getter BridgelessUIManager defines per lazily loaded view manager stays
++// lazy. Spreading read every one of them, which asked Android for the
++// constants of every lazy view manager while the app started (~0.45 s of a
++// payment terminal's JS thread).
++const UIManagerOverrides = {
+   /**
+    * Determines the location on screen, width, and height of the given view and
+    * returns the values via an async callback. If successful, the callback will
+@@ -243,4 +248,9 @@ const UIManager: UIManagerJSInterface = {
+   },
+ };
+ 
++const UIManager: UIManagerJSInterface = Object.defineProperties(
++  Object.defineProperties({}, Object.getOwnPropertyDescriptors(UIManagerImpl)),
++  Object.getOwnPropertyDescriptors(UIManagerOverrides),
++);
++
+ export default UIManager;
