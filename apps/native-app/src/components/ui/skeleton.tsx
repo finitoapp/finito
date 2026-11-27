@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Animated, StyleSheet } from "react-native"
 import { type GetProps, styled, useTheme, View } from "tamagui"
+import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
 import { radius } from "../../theme/tokens.ts"
 
 /**
@@ -9,7 +10,8 @@ import { radius } from "../../theme/tokens.ts"
  * Tailwind's) runs on RN `Animated` with the native driver. It animates a
  * plain `Animated.View` filling the frame rather than an animated Tamagui view:
  * Animated hands its component a style array, which Tamagui passes to the
- * DOM as is on web, where it crashes the render.
+ * DOM as is on web, where it crashes the render. Under reduced motion it
+ * stays still (settings/0007).
  */
 
 const SkeletonFrame = styled(View, {
@@ -22,6 +24,7 @@ export function Skeleton(props: GetProps<typeof SkeletonFrame>) {
   const theme = useTheme()
   const [opacity] = useState(() => new Animated.Value(1))
   useEffect(() => {
+    if (isReduceMotionEnabled()) return
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, {
