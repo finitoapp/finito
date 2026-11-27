@@ -17,18 +17,18 @@ const isSharedPeer = (moduleName) =>
   sharedPeers.some(
     (peer) => moduleName === peer || moduleName.startsWith(`${peer}/`)
   )
-// The Spark SDK's secp256k1 (`@noble/curves` 1.x, which its `@scure/bip32` and
-// `@scure/btc-signer` share) is BigInt arithmetic, which held a payment
-// terminal's JS thread for ~18 s at start and again after each received
-// payment. On Android every import of it gets `spark-noble-secp256k1.ts`,
-// which computes the costly point operations on Quick Crypto, and reaches the
-// module itself as `spark-noble-secp256k1`.
-const sparkSecp256k1 = path.join(
-  __dirname,
-  "src/platform/spark-noble-secp256k1.ts"
-)
+// The Spark SDK's cryptography (`@noble/curves` 1.x and `@noble/hashes`, which
+// its `@scure/bip32` and `@scure/btc-signer` share) is pure JS, which held a
+// payment terminal's JS thread for ~18 s at start and again after each
+// received payment. On Android every import that resolves to one of these
+// modules gets its wrapper, which computes the costly parts on Quick Crypto
+// and reaches the module itself, as the SDK resolves it, as `spark:<module>`.
+const sparkNobleWrappers = {
+  "@noble/curves/secp256k1": "src/platform/spark-noble-secp256k1.ts",
+  "@noble/hashes/hmac": "src/platform/spark-noble-hmac.ts",
+}
 const coreOrigin = path.join(__dirname, "../../packages/core/package.json")
-const resolveSparkNoble = (context, platform) => {
+const resolveFromSpark = (context, moduleName, platform) => {
   const spark = context.resolveRequest(
     { ...context, originModulePath: coreOrigin },
     "@buildonspark/spark-sdk",
@@ -36,16 +36,20 @@ const resolveSparkNoble = (context, platform) => {
   )
   return context.resolveRequest(
     { ...context, originModulePath: spark.filePath },
-    "@noble/curves/secp256k1",
+    moduleName,
     platform
   )
 }
-let sparkNoblePath = null
+let sparkWrapperByPath = null
 
 config.resolver.assetExts.push("wasm")
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (platform === "android" && moduleName === "spark-noble-secp256k1")
-    return resolveSparkNoble(context, platform)
+  if (platform === "android" && moduleName.startsWith("spark:"))
+    return resolveFromSpark(
+      context,
+      moduleName.slice("spark:".length),
+      platform
+    )
   // @evolu/sqlite-wasm finds its binary at `new URL("../wasm/sqlite3.wasm",
   // import.meta.url)`, which Metro neither emits nor can resolve in a worker.
   // On web its WasmUrl.js is swapped for one that requires the binary as an
@@ -89,10 +93,15 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     evoluWorker ? `./${moduleName}` : moduleName,
     platform
   )
-  if (platform === "android" && moduleName.startsWith("@noble/curves")) {
-    sparkNoblePath ??= resolveSparkNoble(context, platform).filePath
-    if (resolution.filePath === sparkNoblePath)
-      return { type: "sourceFile", filePath: sparkSecp256k1 }
+  if (platform === "android" && moduleName.startsWith("@noble/")) {
+    sparkWrapperByPath ??= new Map(
+      Object.entries(sparkNobleWrappers).map(([name, wrapper]) => [
+        resolveFromSpark(context, name, platform).filePath,
+        path.join(__dirname, wrapper),
+      ])
+    )
+    const wrapper = sparkWrapperByPath.get(resolution.filePath)
+    if (wrapper) return { type: "sourceFile", filePath: wrapper }
   }
   return resolution
 }
