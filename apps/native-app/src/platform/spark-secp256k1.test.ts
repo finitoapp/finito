@@ -211,7 +211,7 @@ describe("wrapSecp256k1", () => {
 it("names the module and its functions the same in JS and Kotlin", () => {
   const read = (file: string) =>
     readFileSync(new URL(file, import.meta.url), "utf8")
-  const js = read("./spark-noble-secp256k1.ts")
+  const js = read("./finito-secp256k1.ts")
   const kotlin = read(
     "../../modules/finito-secp256k1/android/src/main/java/fit/finito/secp256k1/FinitoSecp256k1Module.kt"
   )

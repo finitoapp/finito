@@ -19,8 +19,8 @@ import { defineError } from "../../error.ts"
 import { type EetEic, EetEicSchema } from "../../modules/eet/eet-types.ts"
 
 /**
- * eet-client's React Native crypto (`createReactNativeCrypto(QuickCrypto)`),
- * which the native app passes in so EET runs on Quick Crypto explicitly
+ * eet-client's React Native crypto (`createReactNativeCrypto(backend)`),
+ * which the native app passes in so EET runs on its native crypto explicitly
  * rather than on a global `crypto.subtle`. Without it, the EET helpers here
  * use Web Crypto, as the browser and Node do.
  */

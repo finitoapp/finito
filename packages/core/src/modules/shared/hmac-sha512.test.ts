@@ -13,7 +13,7 @@ import {
   deriveEvoluOwnerSecret,
 } from "./key-derivation.ts"
 
-// Node's HMAC stands in for Quick Crypto's, which has the same shape.
+// Node's HMAC stands in for the native app's, which has the same shape.
 const nativeHmac = (key: Uint8Array, data: Uint8Array) =>
   new Uint8Array(createHmac("sha512", key).update(data).digest())
 

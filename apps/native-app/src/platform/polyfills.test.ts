@@ -12,8 +12,14 @@ vi.mock("expo-crypto", () => {
   }
 })
 
-const quickSubtle = vi.hoisted(() => ({ marker: "quick-crypto subtle" }))
-vi.mock("react-native-quick-crypto", () => ({ subtle: quickSubtle }))
+// `modules/finito-crypto`, behind the `subtle` the polyfill builds.
+const digest = vi.hoisted(() =>
+  vi.fn((_hash: string, data: Uint8Array) => data.slice(0, 1))
+)
+vi.mock("expo", () => ({
+  requireNativeModule: () => ({ digest }),
+  requireOptionalNativeModule: () => null,
+}))
 // The e2e setup entry imports (`src/e2e/e2e-setup.ts`) reaches for LogBox;
 // Evolu's polyfills look up its native modules, which a test has none of.
 vi.mock("react-native", () => ({
@@ -44,7 +50,12 @@ test("installs secure randomness before the router imports shared domain code", 
   await import("../../entry.ts")
 
   expect(globalThis.crypto.getRandomValues).toBe(getRandomValues)
-  expect(globalThis.crypto.subtle).toBe(quickSubtle)
+  const hashed = await globalThis.crypto.subtle.digest(
+    "SHA-256",
+    Uint8Array.of(7, 8)
+  )
+  expect(new Uint8Array(hashed)).toEqual(Uint8Array.of(7))
+  expect(digest).toHaveBeenCalledWith("SHA-256", Uint8Array.of(7, 8))
   expect(globalThis.crypto.getRandomValues(new Uint8Array(16))).toHaveLength(16)
   expect(startup.roundedAmount).toBe(12300)
   expect(startup.disposed).toBe(true)

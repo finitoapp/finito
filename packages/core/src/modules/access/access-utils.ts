@@ -47,7 +47,7 @@ export const PinHashJson = jsonCodec(PinHashSchema)
 
 /**
  * PBKDF2-HMAC-SHA256 through WebCrypto, which every runtime provides
- * natively (the native app through react-native-quick-crypto). A pure-JS
+ * natively (the native app through Android's own crypto provider). A pure-JS
  * PBKDF2 took over 20 s per PIN on Hermes, which has no JIT.
  */
 const derive = async (

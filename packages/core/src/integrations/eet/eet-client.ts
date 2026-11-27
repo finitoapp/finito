@@ -181,7 +181,7 @@ const requestBodyText = (body: BodyInit | null | undefined): string | null => {
 
 /**
  * The request signer for the stored key: Web Crypto's `CryptoKey`, or
- * Quick Crypto's key through `native`. `null` when the key cannot sign.
+ * the native app's key through `native`. `null` when the key cannot sign.
  */
 const createSigner = async (
   certificate: EetSigningCertificate,
@@ -215,7 +215,7 @@ export const createEetApiDep = (
     /** Replaces EET's playground endpoint; only the e2e builds set it. */
     readonly playgroundUrl?: string | undefined
     readonly timeoutMs?: number
-    /** The native app's Quick Crypto; see `EetNativeCrypto`. */
+    /** The native app's crypto; see `EetNativeCrypto`. */
     readonly native?: EetNativeCrypto | undefined
   } = {}
 ): EetApiDep => ({
