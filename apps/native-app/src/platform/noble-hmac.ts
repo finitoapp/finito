@@ -7,12 +7,13 @@ export interface NobleHmac {
 export type HmacAlgorithm = "sha256" | "sha512"
 
 /**
- * Spark's one-shot HMAC with SHA-256 and SHA-512 computed natively: the
- * HMAC-SHA512 behind every `@scure/bip32` child key, which the Spark SDK
- * derives for each leaf, and the HMAC-SHA256 of ECDSA's RFC 6979 nonces.
- * Noble hashes in pure JS, which cost the Spark SDK ~1.5 s of a payment
- * terminal's JS thread at start. Any other hash, a string key or message,
- * and the incremental `create` stay noble's.
+ * Noble's one-shot HMAC with SHA-256 and SHA-512 computed natively. Noble
+ * hashes in pure JS, which cost a payment terminal's JS thread ~1.5 s at
+ * start in the Spark SDK (the HMAC-SHA512 behind every `@scure/bip32` child
+ * key, which it derives for each leaf, and the HMAC-SHA256 of ECDSA's
+ * RFC 6979 nonces) and ~0.6 s in Evolu, which derives its owners by SLIP-21.
+ * Any other hash, a string key or message, and the incremental `create`
+ * stay noble's.
  */
 export const wrapHmac = (
   nobleHmac: NobleHmac,
