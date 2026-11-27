@@ -118,6 +118,8 @@ const TriggerFrame = styled(View, {
   pl: 12,
   rounded: shape.control,
   cursor: "web:pointer",
+  // At rest too, so enabling fades back (`useKitTransition`).
+  opacity: 1,
 
   variants: {
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
@@ -252,6 +254,8 @@ const ItemFrame = styled(View, {
   pr: 8,
   rounded: shape.control,
   cursor: "web:pointer",
+  // At rest too, so enabling fades back (`useKitTransition`).
+  opacity: 1,
 
   variants: {
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },

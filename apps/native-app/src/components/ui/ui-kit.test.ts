@@ -444,3 +444,28 @@ test("a transition names a preset, never a list of properties", () => {
   )
   expect(violations).toEqual([])
 })
+
+/**
+ * A key a transition animates must stay in the style: when a `disabled`
+ * variant's opacity leaves it, Tamagui's driver drops the native-driven
+ * value and Fabric keeps the view faded (`useKitTransition`). On a PAX
+ * A920Pro and an emulator, home's Pay stayed faded after an amount was
+ * typed (v26.11.11).
+ */
+test("a styled frame that fades in a variant also sets its opacity at rest", () => {
+  const violations = sourceFiles(srcDir).flatMap((file) =>
+    [
+      ...readFileSync(file, "utf8").matchAll(
+        /= styled\([^\n]*\n[\s\S]*?\n\}\)/gu
+      ),
+    ]
+      .map((match) => match[0])
+      .filter(
+        (frame) =>
+          /\{\s*opacity:\s*0?\.\d/u.test(frame) &&
+          !/^ {2}opacity: 1,$/mu.test(frame)
+      )
+      .map((frame) => `${relativeToSrc(file)}: ${frame.split("\n")[0]}`)
+  )
+  expect(violations).toEqual([])
+})

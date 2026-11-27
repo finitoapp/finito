@@ -172,6 +172,8 @@ const FieldLabelCardFrame = styled(View, {
   py: 10,
   rounded: shape.control,
   cursor: "web:pointer",
+  // At rest too, so enabling fades back (`useKitTransition`).
+  opacity: 1,
 
   variants: {
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },

@@ -185,6 +185,8 @@ const TriggerFrame = styled(TamaguiTabs.Tab, {
   rounded: shape.pill,
   hitSlop: { top: 8, bottom: 8 },
   cursor: "web:pointer",
+  // At rest too, so enabling fades back (`useKitTransition`).
+  opacity: 1,
 
   variants: {
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
