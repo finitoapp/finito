@@ -7,7 +7,7 @@ import { wrapSecp256k1 } from "./spark-secp256k1.ts"
 // point operations.
 export * from "spark:@noble/curves/secp256k1"
 
-export const { schnorr } = wrapSecp256k1(noble, {
+export const { secp256k1, schnorr } = wrapSecp256k1(noble, {
   ecdh: (privateKey, points) => {
     const ecdh = createECDH("secp256k1")
     ecdh.setPrivateKey(Buffer.from(privateKey))

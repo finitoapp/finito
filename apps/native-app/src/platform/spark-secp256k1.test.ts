@@ -140,14 +140,18 @@ const native: Secp256k1Native = {
     )
   },
 }
-const { schnorr } = wrapSecp256k1(noble, native)
-const wrappedSchnorr = { ...noble.schnorr, ...schnorr }
+const wrapped = wrapSecp256k1(noble, native)
+const wrappedSecp256k1 = {
+  ...secp256k1,
+  getPublicKey: wrapped.secp256k1.getPublicKey,
+}
+const schnorr = { ...noble.schnorr, ...wrapped.schnorr }
 
 describe("wrapSecp256k1", () => {
   it("returns noble's keys and signatures from native point operations", () => {
     nativeCalls.length = 0
     const actual = cases.map(({ key, hash, auxRand }) =>
-      compute(secp256k1, wrappedSchnorr, key, hash, auxRand)
+      compute(wrappedSecp256k1, schnorr, key, hash, auxRand)
     )
     expect(actual).toEqual(expected)
     expect(new Set(nativeCalls)).toEqual(new Set(["ecdh", "decompress"]))
@@ -162,11 +166,24 @@ describe("wrapSecp256k1", () => {
     )
   })
 
+  it("remembers the public keys it computed", () => {
+    const key = new Uint8Array(randomBytes(32))
+    nativeCalls.length = 0
+    const first = wrappedSecp256k1.getPublicKey(key)
+    first.fill(0)
+    const again = wrappedSecp256k1.getPublicKey(key)
+    expect(hex(again)).toBe(hex(secp256k1.getPublicKey(key)))
+    // As `@scure/bip32` passes the same key, which it remembered too.
+    expect(hex(wrappedSecp256k1.getPublicKey(bigint(key)))).toBe(hex(again))
+    // The first call and the reference just above.
+    expect(nativeCalls).toEqual(["ecdh", "ecdh"])
+  })
+
   it("leaves invalid input to noble, which rejects it", () => {
     const zero = new Uint8Array(32)
     const order = Uint8Array.from(Buffer.from(n.toString(16), "hex"))
     for (const key of [zero, order, 0n, n, -1n]) {
-      expect(() => secp256k1.getPublicKey(key)).toThrow()
+      expect(() => wrappedSecp256k1.getPublicKey(key)).toThrow()
       expect(() => secp256k1.Point.fromPrivateKey(key)).toThrow()
     }
     // x = 5 has no point on secp256k1.
