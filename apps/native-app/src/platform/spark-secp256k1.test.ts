@@ -1,4 +1,5 @@
-import { createECDH, ECDH, randomBytes } from "node:crypto"
+import { randomBytes } from "node:crypto"
+import { readFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { describe, expect, it } from "vitest"
 import {
@@ -15,8 +16,6 @@ const fromSpark = createRequire(fromCore.resolve("@buildonspark/spark-sdk"))
 
 interface Point {
   readonly assertValidity: () => void
-  readonly is0: () => boolean
-  readonly add: (other: Point) => Point
   readonly negate: () => Point
   readonly toRawBytes: (isCompressed?: boolean) => Uint8Array
   multiply: (scalar: bigint) => this
@@ -98,7 +97,7 @@ const n = BigInt(
 )
 const { BASE } = secp256k1.Point
 // Points and scalars for a multiplication, the edges among them: 1, n - 1,
-// and -G, whose sum with G the native check cannot use.
+// and -G.
 const products = [
   ...cases.map(({ key, hash }) => ({
     point: secp256k1.Point.fromHex(secp256k1.getPublicKey(key)),
@@ -120,25 +119,36 @@ const expected = cases.map(({ key, hash, auxRand }) =>
 )
 const expectedProducts = multiplyAll()
 
-// Node's OpenSSL, the library behind Quick Crypto on the device.
+// Another noble, 2.x, as Payky's core resolves it, for the native side:
+// libsecp256k1 runs only on the device.
+interface ReferencePoint {
+  readonly multiply: (scalar: bigint) => ReferencePoint
+  readonly toBytes: (isCompressed: boolean) => Uint8Array
+}
+const reference: {
+  secp256k1: {
+    Point: {
+      BASE: ReferencePoint
+      fromBytes: (bytes: Uint8Array) => ReferencePoint
+    }
+  }
+} = fromCore("@noble/curves/secp256k1.js")
+const { Point: ReferencePoint } = reference.secp256k1
 const nativeCalls: string[] = []
 const native: Secp256k1Native = {
-  ecdh: (privateKey, points) => {
-    nativeCalls.push("ecdh")
-    const ecdh = createECDH("secp256k1")
-    ecdh.setPrivateKey(privateKey)
-    return {
-      publicKey: new Uint8Array(ecdh.getPublicKey()),
-      sharedXs: points.map(
-        (point) => new Uint8Array(ecdh.computeSecret(point))
-      ),
-    }
+  publicKey: (privateKey) => {
+    nativeCalls.push("publicKey")
+    return ReferencePoint.BASE.multiply(bigint(privateKey)).toBytes(false)
+  },
+  multiply: (point, scalar) => {
+    nativeCalls.push("multiply")
+    return ReferencePoint.fromBytes(point)
+      .multiply(bigint(scalar))
+      .toBytes(false)
   },
   decompress: (point) => {
     nativeCalls.push("decompress")
-    return new Uint8Array(
-      ECDH.convertKey(point, "secp256k1", undefined, undefined, "uncompressed")
-    )
+    return ReferencePoint.fromBytes(point).toBytes(false)
   },
 }
 const wrapped = wrapSecp256k1(noble, native)
@@ -155,15 +165,16 @@ describe("wrapSecp256k1", () => {
       compute(wrappedSecp256k1, schnorr, key, hash, auxRand)
     )
     expect(actual).toEqual(expected)
-    expect(new Set(nativeCalls)).toEqual(new Set(["ecdh", "decompress"]))
+    expect(new Set(nativeCalls)).toEqual(
+      new Set(["publicKey", "multiply", "decompress"])
+    )
   })
 
   it("multiplies any point natively", () => {
     nativeCalls.length = 0
     expect(multiplyAll()).toEqual(expectedProducts)
-    // All but -G, which noble multiplies.
-    expect(nativeCalls.filter((call) => call === "ecdh")).toHaveLength(
-      (products.length - 1) * 2
+    expect(nativeCalls).toEqual(
+      products.flatMap(() => ["multiply", "multiply"])
     )
   })
 
@@ -177,7 +188,7 @@ describe("wrapSecp256k1", () => {
     // As `@scure/bip32` passes the same key, which it remembered too.
     expect(hex(wrappedSecp256k1.getPublicKey(bigint(key)))).toBe(hex(again))
     // The first call and the reference just above.
-    expect(nativeCalls).toEqual(["ecdh", "ecdh"])
+    expect(nativeCalls).toEqual(["publicKey", "publicKey"])
   })
 
   it("leaves invalid input to noble, which rejects it", () => {
@@ -195,4 +206,21 @@ describe("wrapSecp256k1", () => {
     // Noble's unsafe multiplication takes 0, which native code cannot.
     expect(() => secp256k1.Point.BASE.multiplyUnsafe(0n)).not.toThrow()
   })
+})
+
+it("names the module and its functions the same in JS and Kotlin", () => {
+  const read = (file: string) =>
+    readFileSync(new URL(file, import.meta.url), "utf8")
+  const js = read("./spark-noble-secp256k1.ts")
+  const kotlin = read(
+    "../../modules/finito-secp256k1/android/src/main/java/fit/finito/secp256k1/FinitoSecp256k1Module.kt"
+  )
+  expect(js).toContain(
+    'requireOptionalNativeModule<FinitoSecp256k1NativeModule>("FinitoSecp256k1")'
+  )
+  expect(kotlin).toContain('Name("FinitoSecp256k1")')
+  for (const name of ["publicKey", "multiply", "decompress"]) {
+    expect(js).toContain(`${name}(`)
+    expect(kotlin).toContain(`Function("${name}")`)
+  }
 })

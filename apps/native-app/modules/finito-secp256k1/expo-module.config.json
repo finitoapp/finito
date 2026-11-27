@@ -1,0 +1,6 @@
+{
+  "platforms": ["android"],
+  "android": {
+    "modules": ["fit.finito.secp256k1.FinitoSecp256k1Module"]
+  }
+}

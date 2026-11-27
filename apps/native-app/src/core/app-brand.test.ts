@@ -81,7 +81,9 @@ test("Finito's native modules carry Finito's name", () => {
       "utf8"
     )
     expect(config).not.toMatch(/me\.payky/u)
-    expect(config).toMatch(/"fit\.finito\.[a-z]+\.Finito[A-Za-z]+Module"/u)
+    expect(config).toMatch(
+      /"fit\.finito\.[a-z0-9]+\.Finito[A-Za-z0-9]+Module"/u
+    )
     const sources = files(dir, /\.kt$/u).filter(
       (file) => !file.includes(`${path.sep}build${path.sep}`)
     )
