@@ -1,38 +1,25 @@
 import * as noble from "spark:@noble/curves/secp256k1"
-import { Buffer, createECDH, ECDH } from "react-native-quick-crypto"
-import { wrapSecp256k1 } from "./spark-secp256k1.ts"
+import { type NativeModule, requireOptionalNativeModule } from "expo"
+import { type Secp256k1Native, wrapSecp256k1 } from "./spark-secp256k1.ts"
+
+/** `modules/finito-secp256k1`: libsecp256k1. */
+declare class FinitoSecp256k1NativeModule
+  extends NativeModule
+  implements Secp256k1Native
+{
+  publicKey(privateKey: Uint8Array): Uint8Array
+  multiply(point: Uint8Array, scalar: Uint8Array): Uint8Array
+  decompress(point: Uint8Array): Uint8Array
+}
 
 // What every import of the Spark SDK's `@noble/curves/secp256k1` gets on
 // Android (`metro.config.js`): that module, with `wrapSecp256k1`'s native
 // point operations.
 export * from "spark:@noble/curves/secp256k1"
 
-// One native ECDH object for every call, each setting its key first: the
-// calls are synchronous, so none sees another's key.
-const ecdh = createECDH("secp256k1")
+const native =
+  requireOptionalNativeModule<FinitoSecp256k1NativeModule>("FinitoSecp256k1")
 
-export const { secp256k1, schnorr } = wrapSecp256k1(noble, {
-  ecdh: (privateKey, points) => {
-    ecdh.setPrivateKey(Buffer.from(privateKey))
-    // A string only when an encoding is asked for, which none is.
-    const publicKey = ecdh.getPublicKey()
-    if (typeof publicKey === "string") throw new Error("Expected key bytes.")
-    return {
-      publicKey: new Uint8Array(publicKey),
-      sharedXs: points.map(
-        (point) => new Uint8Array(ecdh.computeSecret(Buffer.from(point)))
-      ),
-    }
-  },
-  decompress: (point) => {
-    const uncompressed = ECDH.convertKey(
-      Buffer.from(point),
-      "secp256k1",
-      undefined,
-      undefined,
-      "uncompressed"
-    )
-    if (typeof uncompressed === "string") throw new Error("Expected key bytes.")
-    return new Uint8Array(uncompressed)
-  },
-})
+// Absent from a binary built before the module existed: noble's own then.
+export const { secp256k1, schnorr } =
+  native === null ? noble : wrapSecp256k1(noble, native)
