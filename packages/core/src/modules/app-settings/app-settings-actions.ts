@@ -27,7 +27,10 @@ import {
   upsertNewCatalogItems,
 } from "../catalog-item/catalog-item-actions.ts"
 import type { CatalogItemPricingError } from "../catalog-item/catalog-item-utils.ts"
-import { setLegalEntity } from "../legal-entity/legal-entity-actions.ts"
+import {
+  setLegalEntity,
+  setLegalEntityPublicName,
+} from "../legal-entity/legal-entity-actions.ts"
 import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
 import type { CountryCode } from "../legal-entity/legal-entity-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
@@ -35,7 +38,12 @@ import {
   removeUndefinedValues,
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
-import { type FiatCurrency, type Iban, TimestampMs } from "../shared/schema.ts"
+import {
+  type FiatCurrency,
+  type Iban,
+  type NonEmptyString255,
+  TimestampMs,
+} from "../shared/schema.ts"
 import { seedTaxRatesForCountry } from "../tax-rate/tax-rate-actions.ts"
 import {
   activeTaxRatesQuery,
@@ -332,6 +340,12 @@ export const finishOnboarding =
      */
     readonly cardSwitchio: boolean
     /**
+     * The business name typed on onboarding's last step, kept whether or not
+     * the profile published it (onboarding/0016); `null` leaves the stored
+     * one as it is.
+     */
+    readonly publicName: NonEmptyString255 | null
+    /**
      * The starter pack's products the merchant checked and priced; left out,
      * the catalog starts empty.
      */
@@ -370,6 +384,9 @@ export const finishOnboarding =
     }
     if (existingTaxRates.length === 0) {
       await run.ok(seedTaxRatesForCountry(input.country))
+    }
+    if (input.publicName !== null) {
+      await run.ok(setLegalEntityPublicName({ publicName: input.publicName }))
     }
     await run.ok(
       saveCashRegisterAccount({ enabled: true, currency: input.currency })

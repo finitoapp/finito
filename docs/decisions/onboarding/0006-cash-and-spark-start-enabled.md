@@ -22,7 +22,7 @@ possible, so its UI and Task validation are removed. A blank or whitespace-only
 bank input skips bank transfers; a nonblank input must be a valid Czech
 account number or IBAN, stored as IBAN. Validation still precedes business-name
 publication, and the finish labels distinguish starting with or without bank
-transfers. The profile publication rules of onboarding/0004 remain in effect.
+transfers. The profile publication rules of onboarding/0016 remain in effect.
 
 With a bank account, the initial method order is bank transfer, card, Spark,
 Cashu, cash, and bank transfer is the default. Without a bank account, Spark

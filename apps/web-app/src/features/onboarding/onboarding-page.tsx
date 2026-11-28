@@ -236,6 +236,8 @@ export function OnboardingPage({
             tipsEnabled,
             // False outside the Android shell (onboarding/0015).
             cardSwitchio: await isSwitchioInstalled(),
+            // Kept even when not published (onboarding/0016).
+            publicName: validation.businessName,
           })
         )
       )

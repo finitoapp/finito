@@ -75,12 +75,14 @@ export const createFinishOnboardingInput = ({
   homeMode,
   tipsEnabled,
   cardSwitchio,
+  publicName,
   starterItems = [],
 }: {
   readonly iban: Iban | null
   readonly homeMode: TerminalHomeMode
   readonly tipsEnabled: boolean
   readonly cardSwitchio: boolean
+  readonly publicName: NonEmptyString255 | null
   readonly starterItems?: ReadonlyArray<OnboardingStarterItem>
 }) => ({
   country: onboardingCountry,
@@ -89,6 +91,7 @@ export const createFinishOnboardingInput = ({
   homeMode,
   tipsEnabled,
   cardSwitchio,
+  publicName,
   starterItems,
   defaultPaymentMethod: onboardingPaymentMethodOrder[0],
   paymentMethodOrderJson: z.encode(

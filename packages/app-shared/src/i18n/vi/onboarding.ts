@@ -140,7 +140,7 @@ export const viOnboarding = {
     "Tên công khai trên hồ sơ của bạn, hiện là người nhận khi chuyển khoản.",
   "onboarding.businessName.publishFailed.title": "Không đăng được tên",
   "onboarding.businessName.publishFailed.description":
-    "Biểu mẫu của bạn vẫn còn nguyên. Hãy thử lại hoặc tiếp tục mà không đăng tên.",
+    "Biểu mẫu của bạn vẫn còn nguyên. Hãy thử lại, hoặc tiếp tục và đăng tên sau trong cài đặt hồ sơ.",
   "onboarding.businessName.retry": "Thử lại",
   "onboarding.businessName.continueWithoutPublishing":
     "Tiếp tục mà không đăng tên",

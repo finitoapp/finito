@@ -9,6 +9,7 @@ import {
   getNostrIdentity,
   type NostrIdentity,
 } from "@payky/core/integrations/nostr/nostr-client"
+import { adoptPublishedPublicName } from "@payky/core/modules/legal-entity/legal-entity-actions"
 import { useQuery } from "@tanstack/react-query"
 import { useAtomValue } from "jotai"
 import { useEffect, useMemo } from "react"
@@ -16,6 +17,7 @@ import { accountAtom } from "@/atoms/account.ts"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useDeviceEvoluQuery } from "@/hooks/use-device-evolu-query.ts"
+import { useRunToast } from "@/hooks/use-run-toast.ts"
 
 /** The account's Nostr identity, derived from its recovery phrase. */
 export const useNostrIdentity = (): NostrIdentity => {
@@ -28,14 +30,17 @@ export const nostrProfileQueryKey = (pubkey: string) =>
 
 /**
  * A published kind-0 profile; errors when no relay answered. `extraRelays`
- * are read on top of the app's relays.
+ * are read on top of the app's relays. Not `enabled`, it asks no relay but
+ * still returns what an earlier read cached.
  */
 export const useNostrProfile = (
   pubkey: string,
-  extraRelays?: ReadonlyArray<string>
+  extraRelays?: ReadonlyArray<string>,
+  enabled = true
 ) => {
   const appRun = useAppRun()
   return useQuery({
+    enabled,
     queryKey: nostrProfileQueryKey(pubkey),
     queryFn: async () => {
       await using run = appRun()
@@ -52,11 +57,14 @@ export const useNostrProfile = (
  * its name and picture are remembered on the device account: that is how
  * the account list shows the other accounts' businesses without asking
  * relays about them, which would let a relay link the accounts (account/0004,
- * account/0011).
+ * account/0011). Its name also becomes the business's public name while the
+ * account has none, as for an account named before the app kept it
+ * (onboarding/0016).
  */
-export const useActiveNostrProfile = () => {
+export const useActiveNostrProfile = (enabled = true) => {
   const identity = useNostrIdentity()
-  const profile = useNostrProfile(identity.pubkey)
+  const profile = useNostrProfile(identity.pubkey, undefined, enabled)
+  const runToast = useRunToast()
   const account = useAtomValue(accountAtom)
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const { data: accounts } = useDeviceEvoluQuery(accountListQuery)
@@ -78,6 +86,14 @@ export const useActiveNostrProfile = () => {
     if (name === stored.nostrName && picture === stored.nostrPicture) return
     updateAccountNostrProfile(deviceEvolu, account.id, { name, picture })
   }, [account.id, deviceEvolu, name, picture, stored])
+
+  useEffect(() => {
+    if (name === undefined || name === null) return
+    void runToast(async (run) => {
+      await run.ok(adoptPublishedPublicName({ name }))
+      return undefined
+    })
+  }, [name, runToast])
 
   return profile
 }

@@ -878,9 +878,14 @@ export const csSettings = {
     "Váš Nostr profil, stejný, jaký pro tuto obnovovací frázi zobrazuje Linky.",
   "settings.profile.loadFailed":
     "Nepodařilo se spojit s žádným Nostr relayem a načíst profil. Zkontrolujte připojení a zkuste to znovu.",
+  "settings.profile.name.differs": "Ve zveřejněném profilu je jméno „{name}“.",
   "settings.profile.name.invalid": "Jméno je příliš dlouhé.",
   "settings.profile.name.label": "Jméno",
   "settings.profile.name.placeholder": "Název vašeho obchodu",
+  "settings.profile.name.publish": "Zveřejnit",
+  "settings.profile.name.unpublished":
+    "Jméno je uložené, ale ve veřejném profilu zatím není.",
+  "settings.profile.name.usePublished": "Použít „{name}“",
   "settings.profile.npub.copied": "Veřejný klíč zkopírován",
   "settings.profile.npub.copy": "Kopírovat veřejný klíč",
   "settings.profile.npub.copyFailed": "Veřejný klíč se nepodařilo zkopírovat",

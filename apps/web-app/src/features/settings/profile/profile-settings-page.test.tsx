@@ -8,6 +8,8 @@ import { ProfileSettingsPage } from "./profile-settings-page.tsx"
 const state = vi.hoisted(() => ({
   profile: "pending" as "pending" | "suspended" | "error" | "loaded",
   identityPending: false,
+  publicName: null as string | null,
+  publishedName: "Cafe" as string | null,
   pending: new Promise<never>(() => {}),
 }))
 
@@ -18,6 +20,9 @@ vi.mock("@/hooks/use-translation.ts", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 vi.mock("@/hooks/use-app-run.ts", () => ({ useAppRun: () => vi.fn() }))
+vi.mock("@/hooks/use-evolu-query.ts", () => ({
+  useEvoluQuery: () => ({ data: [{ publicName: state.publicName }] }),
+}))
 vi.mock("@/hooks/use-nostr-profile.ts", () => ({
   useNostrIdentity: () => {
     if (state.identityPending) throw state.pending
@@ -30,7 +35,7 @@ vi.mock("@/hooks/use-nostr-profile.ts", () => ({
       isError: state.profile === "error",
       isFetching: false,
       data: {
-        name: "Cafe",
+        name: state.publishedName,
         picture: "https://example.com/avatar.png",
         metadata: {},
       },
@@ -49,6 +54,8 @@ describe("ProfileSettingsPage", () => {
   beforeEach(() => {
     state.profile = "pending"
     state.identityPending = false
+    state.publicName = null
+    state.publishedName = "Cafe"
   })
 
   it.each(["pending", "suspended"] as const)(
@@ -97,5 +104,32 @@ describe("ProfileSettingsPage", () => {
     expect(html).toContain('src="https://example.com/avatar.png"')
     expect(html).toContain('type="file"')
     expect(html).not.toContain('data-slot="skeleton"')
+  })
+
+  it("edits the stored public name over the published one and offers either", () => {
+    state.profile = "loaded"
+    state.publicName = "Linden Café"
+    const html = renderPage()
+    expect(html).toContain('value="Linden Café"')
+    expect(html).toContain("settings.profile.name.differs")
+    expect(html).toContain("settings.profile.name.publish")
+    expect(html).toContain("settings.profile.name.usePublished")
+  })
+
+  it("offers to publish a stored public name the profile does not carry", () => {
+    state.profile = "loaded"
+    state.publicName = "Linden Café"
+    state.publishedName = null
+    const html = renderPage()
+    expect(html).toContain("settings.profile.name.unpublished")
+    expect(html).toContain("settings.profile.name.publish")
+    expect(html).not.toContain("settings.profile.name.usePublished")
+  })
+
+  it("shows no notice when the profile publishes the stored name", () => {
+    state.profile = "loaded"
+    state.publicName = "Cafe"
+    const html = renderPage()
+    expect(html).not.toContain("settings.profile.name.publish")
   })
 })

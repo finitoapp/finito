@@ -927,9 +927,15 @@ Cập nhật lần cuối: tháng 10 năm 2026`,
     "Hồ sơ Nostr của bạn, giống hồ sơ Linky hiển thị cho cụm từ khôi phục này.",
   "settings.profile.loadFailed":
     "Không kết nối được relay Nostr nào để tải hồ sơ. Hãy kiểm tra kết nối rồi thử lại.",
+  "settings.profile.name.differs":
+    "Hồ sơ đã công bố của bạn hiển thị tên “{name}”.",
   "settings.profile.name.invalid": "Tên quá dài.",
   "settings.profile.name.label": "Tên",
   "settings.profile.name.placeholder": "Tên cửa hàng của bạn",
+  "settings.profile.name.publish": "Công bố",
+  "settings.profile.name.unpublished":
+    "Tên đã được lưu nhưng chưa được công bố trên hồ sơ của bạn.",
+  "settings.profile.name.usePublished": "Dùng “{name}”",
   "settings.profile.npub.copied": "Đã sao chép khóa công khai",
   "settings.profile.npub.copy": "Sao chép khóa công khai",
   "settings.profile.npub.copyFailed": "Không sao chép được khóa công khai",

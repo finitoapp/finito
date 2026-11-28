@@ -140,7 +140,7 @@ export const skOnboarding = {
   "onboarding.businessName.publishFailed.title":
     "Názov sa nepodarilo zverejniť",
   "onboarding.businessName.publishFailed.description":
-    "Formulár zostal vyplnený. Skúste to znova alebo pokračujte bez zverejnenia názvu.",
+    "Formulár zostal vyplnený. Skúste to znova, alebo pokračujte a názov zverejnite neskôr v nastaveniach profilu.",
   "onboarding.businessName.retry": "Skúsiť znova",
   "onboarding.businessName.continueWithoutPublishing":
     "Pokračovať bez zverejnenia názvu",
