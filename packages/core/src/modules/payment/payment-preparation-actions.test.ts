@@ -692,6 +692,67 @@ describe("payment preparation actions", () => {
       ])
   }, 15_000)
 
+  test("starts the Spark wallet while the rate loads, and releases it when the rate fails", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    let walletStarts = 0
+    let walletReleases = 0
+    let walletStartedBeforeRate = false
+    const deps = {
+      evolu,
+      fetch: async () => {
+        walletStartedBeforeRate = walletStarts > 0
+        return new Response("down", { status: 503 })
+      },
+      sparkWallet: {
+        create: async () => {
+          walletStarts += 1
+          return createFakeSparkWallet({
+            [Symbol.asyncDispose]: async () => {
+              walletReleases += 1
+            },
+          })
+        },
+      },
+      evoluOwner: evolu.appOwner,
+      ...createTestDateDep(),
+      ...createYadioApiDep(),
+    } satisfies EvoluDep &
+      EvoluOwnerDep &
+      DateDep &
+      FetchDep &
+      SparkWalletDep &
+      YadioApiDep
+    await using run = testCreateRun(deps)
+    const { sparkAccountId } = await createPaymentAccounts(deps)
+    const id = await run.orThrow(
+      createPayment({
+        deviceId: null,
+        billId: null,
+        tableId: null,
+        amount: NonNegativeInteger(12_900),
+        currency: "CZK",
+        tipAmount: NonNegativeInteger(0),
+        canceledAt: null,
+        expiresAt: null,
+      })
+    )
+
+    await expect(
+      run(
+        preparePaymentMethod({
+          paymentId: id,
+          spark: { accountId: sparkAccountId },
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "YadioHttpError", status: 503 },
+    })
+    expect(walletStartedBeforeRate).toBe(true)
+    await expect.poll(() => walletReleases).toBe(1)
+  }, 15_000)
+
   test("preparePaymentMethod refuses each method against a missing or wrong-currency account", async () => {
     await using testEvolu = await createEvoluTest()
     const { evolu } = testEvolu

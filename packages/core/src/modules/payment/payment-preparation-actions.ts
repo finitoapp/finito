@@ -219,12 +219,23 @@ const createSparkLightningInvoice =
     EvoluDep & SparkWalletDep & FetchDep & YadioApiDep
   > =>
   async (run) => {
+    // The wallet starts while the rate loads: neither waits on the other,
+    // and a wallet the sync job is not holding takes seconds to start.
+    const starting = run.deps.sparkWallet.create(secret)
+    // A start that fails before the quote ends is answered below, not unhandled.
+    starting.catch(() => undefined)
     const quote = await run(quoteFiatAmountInSats({ currency, amount }))
-    if (!quote.ok) return quote
+    if (!quote.ok) {
+      // Released once started; the failed quote is answered at once.
+      void starting
+        .then((wallet) => wallet[Symbol.asyncDispose]())
+        .catch(() => undefined)
+      return quote
+    }
     const { amountSats } = quote.value
 
     try {
-      await using wallet = await run.deps.sparkWallet.create(secret)
+      await using wallet = await starting
       const lightningInvoice = await wallet.createLightningInvoice(
         removeUndefinedValues({
           amountSats,
