@@ -32,7 +32,7 @@ import {
 } from "./nostr-client.ts"
 
 /**
- * Moves an account to another device (account/0001): the source shows a
+ * Moves an account to another device (account/0012): the source shows a
  * `payky:pair` QR with an ephemeral pubkey and a session secret `s`, the
  * target answers over a Nostr relay, the user types the target's code into
  * the source, and only then does the master key travel, NIP-44-encrypted
@@ -55,6 +55,18 @@ export const CODE_ENTRY_MS = 120_000
 export const CODE_ATTEMPTS = 3
 export const ACK_WAIT_MS = 30_000
 export const TARGET_PAYLOAD_WAIT_MS = 300_000
+/**
+ * How long the target waits for `ready`. A source past its QR's lifetime
+ * that has not locked onto the target has stopped listening for good.
+ */
+export const TARGET_READY_WAIT_MS = QR_LIFETIME_MS
+/** How often the target repeats its `hello`, and the source its payload. */
+export const RESEND_MS = 5_000
+/** Unaccepted `hello`s in a row, none ever accepted, that end the target. */
+export const HELLO_ATTEMPTS = 3
+/** Subscriptions dropped in a row, none answered, that end a session. */
+export const RESUBSCRIBE_ATTEMPTS = 5
+const RESUBSCRIBE_DELAY_MS = 1_000
 
 const AbortReasonSchema = z.enum([
   "cancelled",
@@ -77,7 +89,7 @@ export type TransferPayload = z.output<typeof TransferPayloadSchema>
 
 /**
  * The payload that sends `account` away, the same for the QR transfer and the
- * app-to-app request (account/0001, account/0008): its master key and name,
+ * app-to-app request (account/0012, account/0008): its master key and name,
  * and its transports less any that are not `wss`, each once, at most eight.
  */
 export const createTransferPayload = (account: {
@@ -210,22 +222,42 @@ const createChannel = (
   const pubkey = getPublicKey(secretKey)
   const seen = new Set<string>()
   let closed = false
+  let resubscribes = 0
+  let resubscribeTimer: ReturnType<typeof setTimeout> | undefined
   // No `since`: the key is fresh, so nothing older is addressed to it, and a
   // `since` from a clock running behind would make relays drop events.
-  const subscription = nostr.pool.subscribeMany(
-    [...relays],
-    { kinds: [PAYKY_PAIR_KIND], "#p": [pubkey] },
-    {
-      onevent: (event) => {
-        if (closed || seen.has(event.id)) return
-        seen.add(event.id)
-        onEvent(event)
-      },
-      onclose: () => {
-        if (!closed) onClose()
-      },
-    }
-  )
+  const subscribe = (): { readonly close: () => void } =>
+    nostr.pool.subscribeMany(
+      [...relays],
+      { kinds: [PAYKY_PAIR_KIND], "#p": [pubkey] },
+      {
+        onevent: (event) => {
+          resubscribes = 0
+          if (closed || seen.has(event.id)) return
+          seen.add(event.id)
+          onEvent(event)
+        },
+        oneose: () => {
+          resubscribes = 0
+        },
+        // Every relay dropped the subscription: a phone that slept, a
+        // network that changed. The session subscribes again under the same
+        // key, since a new key would be a second device to the other side
+        // (account/0012), and ends only when the relays stay unreachable.
+        onclose: () => {
+          if (closed) return
+          if (resubscribes >= RESUBSCRIBE_ATTEMPTS) {
+            onClose()
+            return
+          }
+          resubscribes++
+          resubscribeTimer = setTimeout(() => {
+            if (!closed) subscription = subscribe()
+          }, RESUBSCRIBE_DELAY_MS * resubscribes)
+        },
+      }
+    )
+  let subscription = subscribe()
 
   const send = async (to: string, message: Message): Promise<boolean> => {
     const now = Math.floor(date.now().getTime() / 1000)
@@ -263,6 +295,7 @@ const createChannel = (
   const close = () => {
     if (closed) return
     closed = true
+    clearTimeout(resubscribeTimer)
     subscription.close()
     secretKey.fill(0)
   }
@@ -279,6 +312,11 @@ export type TransferSourceState =
   | { readonly phase: "expired" }
   | {
       readonly phase: "locked"
+      /**
+       * Counts the locks, so a new one shows: the same device scanned the QR
+       * again under a new key and shows a new code (account/0012).
+       */
+      readonly lock: number
       /** `null` once the QR expired; the locked session goes on. */
       readonly uri: string | null
       readonly expiresAt: number
@@ -308,7 +346,9 @@ export interface TransferSource {
 /**
  * The device with the account: shows the QR, locks onto the first device
  * whose `hello` proves it saw it, and sends the payload once the user typed
- * that device's code. Every state change goes to `onState`.
+ * that device's code. A second device ends the session as a conflict; the
+ * locked device scanning again under a new key moves the lock to it
+ * (account/0012). Every state change goes to `onState`.
  */
 export const startTransferSource = (
   deps: NostrDep & DateDep,
@@ -338,9 +378,11 @@ export const startTransferSource = (
   let lockedDeviceId: DeviceId | null = null
   let codeConfirmed = false
   let payloadSent = false
+  let codeTimer: ReturnType<typeof setTimeout> | undefined
 
   const finish = (next: TransferSourceState) => {
     for (const timer of timers) clearTimeout(timer)
+    clearTimeout(codeTimer)
     channel.close()
     sessionSecret.fill(0)
     emit(next)
@@ -361,12 +403,47 @@ export const startTransferSource = (
       void channel.send(pubkey, { t: "abort", reason })
   }
 
+  /**
+   * Locks onto `pubkey` and tells it so. Sent once; a target that missed it
+   * repeats its `hello` and gets it again. A new lock keeps the attempts the
+   * previous one left, so scanning again buys no extra guesses.
+   */
+  const lock = (pubkey: string, deviceId: DeviceId | null) => {
+    lockedPubkey = pubkey
+    lockedDeviceId = deviceId
+    clearTimeout(codeTimer)
+    emit({
+      phase: "locked",
+      lock: state.phase === "locked" ? state.lock + 1 : 1,
+      uri:
+        state.phase === "waiting" || state.phase === "locked"
+          ? state.uri
+          : null,
+      expiresAt: deps.date.now().getTime() + CODE_ENTRY_MS,
+      attemptsLeft:
+        state.phase === "locked" ? state.attemptsLeft : CODE_ATTEMPTS,
+      mismatch: false,
+    })
+    codeTimer = setTimeout(() => {
+      if (codeConfirmed || isOver()) return
+      abortAll([pubkey], "timeout")
+      finish({ phase: "failed", reason: "timeout" })
+    }, CODE_ENTRY_MS)
+    void channel.send(pubkey, { t: "ready" })
+  }
+
   const onHello = (
     pubkey: string,
     proof: string,
     deviceId: DeviceId | undefined
   ) => {
-    if (codeConfirmed || helloPubkeys.has(pubkey)) return
+    if (codeConfirmed) return
+    if (helloPubkeys.has(pubkey)) {
+      // The locked device asking again: its `ready` was lost while it could
+      // not hear the relays.
+      if (pubkey === lockedPubkey) void channel.send(pubkey, { t: "ready" })
+      return
+    }
     if (
       !constantTimeEqual(
         proof,
@@ -377,31 +454,20 @@ export const startTransferSource = (
     }
     helloPubkeys.add(pubkey)
 
-    if (lockedPubkey !== null) {
-      abortAll(helloPubkeys, "conflict")
-      finish({ phase: "failed", reason: "conflict" })
+    if (lockedPubkey === null) {
+      lock(pubkey, deviceId ?? null)
       return
     }
-
-    lockedPubkey = pubkey
-    lockedDeviceId = deviceId ?? null
-    const uri = state.phase === "waiting" ? state.uri : null
-    emit({
-      phase: "locked",
-      uri,
-      expiresAt: deps.date.now().getTime() + CODE_ENTRY_MS,
-      attemptsLeft: CODE_ATTEMPTS,
-      mismatch: false,
-    })
-    after(CODE_ENTRY_MS, () => {
-      if (codeConfirmed || isOver()) return
-      abortAll([pubkey], "timeout")
-      finish({ phase: "failed", reason: "timeout" })
-    })
-    void (async () => {
-      const accepted = await channel.send(pubkey, { t: "ready" })
-      if (!accepted && !isOver()) finish({ phase: "failed", reason: "network" })
-    })()
+    // The locked device scanned the QR again under a new key, after its
+    // first session ended on its side unseen here (account/0012). Its id
+    // travels encrypted to this key, so only that device can claim it.
+    if (lockedDeviceId !== null && deviceId === lockedDeviceId) {
+      abortAll([lockedPubkey], "cancelled")
+      lock(pubkey, lockedDeviceId)
+      return
+    }
+    abortAll(helloPubkeys, "conflict")
+    finish({ phase: "failed", reason: "conflict" })
   }
 
   const channel = createChannel(deps, {
@@ -461,11 +527,19 @@ export const startTransferSource = (
 
     codeConfirmed = true
     emit({ phase: "sending" })
-    void (async () => {
-      const accepted = await channel.send(target, {
-        t: "payload",
-        data: payload,
+    const sendPayload = () =>
+      channel.send(target, { t: "payload", data: payload })
+    // Repeated until the ack, for a target that missed it while it could not
+    // hear the relays; it reads the first one and nothing after it.
+    const resendPayload = () => {
+      after(RESEND_MS, () => {
+        if (isOver()) return
+        void sendPayload()
+        resendPayload()
       })
+    }
+    void (async () => {
+      const accepted = await sendPayload()
       if (isOver()) return
       if (!accepted) {
         finish({ phase: "failed", reason: "network" })
@@ -476,6 +550,7 @@ export const startTransferSource = (
         if (!isOver())
           finish({ phase: "done", acked: false, deviceId: lockedDeviceId })
       })
+      resendPayload()
     })()
   }
 
@@ -517,18 +592,26 @@ export const startTransferTarget = (
     onState,
   }: {
     readonly pair: PairUri
-    /** This device, so the source can set what it may do (access/0013). */
+    /**
+     * This device, so the source can set what it may do (access/0013) and
+     * tell this device scanning again from a second one (account/0012).
+     */
     readonly deviceId?: DeviceId | undefined
     readonly onState: (state: TransferTargetState) => void
   }
 ): { readonly cancel: () => void } => {
   const sessionSecret = hexToBytes(pair.s)
   let state: TransferTargetState = { phase: "connecting" }
-  let timer: ReturnType<typeof setTimeout> | undefined
+  const timers = new Set<ReturnType<typeof setTimeout>>()
+  let helloAccepted = false
+  let helloRejections = 0
 
   const isOver = () => state.phase === "received" || state.phase === "failed"
+  const after = (ms: number, callback: () => void) => {
+    timers.add(setTimeout(callback, ms))
+  }
   const finish = (next: TransferTargetState) => {
-    clearTimeout(timer)
+    for (const timer of timers) clearTimeout(timer)
     channel.close()
     sessionSecret.fill(0)
     state = next
@@ -575,18 +658,40 @@ export const startTransferTarget = (
     },
   })
 
-  onState(state)
-  timer = setTimeout(() => {
-    if (!isOver()) finish({ phase: "failed", reason: "timeout" })
-  }, TARGET_PAYLOAD_WAIT_MS)
-  void (async () => {
-    const accepted = await channel.send(pair.pk, {
-      t: "hello",
-      proof: computeHelloProof(sessionSecret, pair.pk, channel.pubkey),
-      ...(deviceId === undefined ? {} : { deviceId }),
+  const hello: Message = {
+    t: "hello",
+    proof: computeHelloProof(sessionSecret, pair.pk, channel.pubkey),
+    ...(deviceId === undefined ? {} : { deviceId }),
+  }
+  // Repeated under the same key until `ready`: a `hello` lost on the way, or
+  // a `ready` lost while this device could not hear the relays, is asked for
+  // again, never under a new key, which the source would take for a second
+  // device (account/0012). A source that already locked onto this key reads
+  // the repeat as the same device. Only relays that refused every `hello` so
+  // far end the session; a refusal after an accepted one is a passing fault.
+  const sendHello = async () => {
+    const accepted = await channel.send(pair.pk, hello)
+    if (state.phase !== "connecting") return
+    if (accepted) {
+      helloAccepted = true
+    } else if (!helloAccepted && ++helloRejections >= HELLO_ATTEMPTS) {
+      finish({ phase: "failed", reason: "network" })
+      return
+    }
+    after(RESEND_MS, () => {
+      if (state.phase === "connecting") void sendHello()
     })
-    if (!accepted && !isOver()) finish({ phase: "failed", reason: "network" })
-  })()
+  }
+
+  onState(state)
+  after(TARGET_READY_WAIT_MS, () => {
+    if (state.phase === "connecting")
+      finish({ phase: "failed", reason: "timeout" })
+  })
+  after(TARGET_PAYLOAD_WAIT_MS, () => {
+    if (!isOver()) finish({ phase: "failed", reason: "timeout" })
+  })
+  void sendHello()
 
   return {
     cancel: () => {

@@ -65,7 +65,7 @@ type View =
   | Exclude<TransferTargetState, { phase: "received" }>
 
 /**
- * The new device's half of account/0001: scans the source's QR, shows the
+ * The new device's half of account/0012: scans the source's QR, shows the
  * code once the source has locked onto this device, and adds the account it
  * receives. Used by the onboarding step and the settings dialog.
  */

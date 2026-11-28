@@ -491,7 +491,7 @@ function DevicesCard({
         </ul>
       </CardContent>
       <CardFooter className="justify-end">
-        {/* Sends this account to the new device by QR (account/0001). */}
+        {/* Sends this account to the new device by QR (account/0012). */}
         <Button
           variant="outline"
           render={<Link to="/settings/access/add-device" />}

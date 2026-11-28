@@ -99,7 +99,7 @@ const introSteps = [
 const TRANSFER_CODE_LENGTH = 6
 
 /**
- * The source half of account/0001, S1–S4: the device with the account shows
+ * The source half of account/0012, S1–S4: the device with the account shows
  * a QR, takes the code from the device that scanned it, and sends the
  * account. The QR stays up beside the code input until it is confirmed, so
  * the user's own phone can still turn a raced session into a conflict.
@@ -137,12 +137,19 @@ export function AccountTransferSourcePage() {
     setCode("")
     const payload = createTransferPayload(account)
     const permissions = accessControlOn ? granted : null
+    let lock = 0
     sessionRef.current = startTransferSource(
       { ...createNostrDep(appEnv.VITE_PAYKY_NOSTR_RELAYS), ...createDateDep() },
       {
         payload,
         onState: (next) => {
           setState(next)
+          // A new lock is the same device scanning again, showing a new code
+          // (account/0012), so a half-typed old one goes.
+          if (next.phase === "locked" && next.lock !== lock) {
+            lock = next.lock
+            setCode("")
+          }
           if (
             next.phase !== "done" ||
             next.deviceId === null ||
