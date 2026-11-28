@@ -103,7 +103,7 @@ const introSteps = [
 }>
 
 /**
- * The source half of account/0001: the device with the account shows a QR,
+ * The source half of account/0012: the device with the account shows a QR,
  * takes the code from the device that scanned it, and sends the account. The
  * QR stays up beside the code input until it is confirmed, so the owner's own
  * phone can still turn a raced session into a conflict. The session ends on
@@ -155,6 +155,7 @@ export function AccountTransferSourcePage() {
     setNow(Date.now())
     const payload = createTransferPayload(account)
     const permissions = accessControlOn ? granted : null
+    let lock = 0
     sessionRef.current = startTransferSource(
       {
         ...createNostrDep(nativeEnv.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS),
@@ -164,6 +165,12 @@ export function AccountTransferSourcePage() {
         payload,
         onState: (next) => {
           setState(next)
+          // A new lock is the same device scanning again, showing a new code
+          // (account/0012), so a half-typed old one goes.
+          if (next.phase === "locked" && next.lock !== lock) {
+            lock = next.lock
+            setCode("")
+          }
           if (
             next.phase !== "done" ||
             next.deviceId === null ||

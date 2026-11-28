@@ -1,6 +1,6 @@
 # 0001 An account moves between devices by ephemeral key exchange
 
-Status: accepted
+Status: superseded by account/0012
 Date: 2026-10-07
 
 ## Context

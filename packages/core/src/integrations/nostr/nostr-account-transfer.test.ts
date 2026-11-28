@@ -20,10 +20,14 @@ import {
   computeHelloProof,
   computeTransferCode,
   createTransferPayload,
+  HELLO_ATTEMPTS,
   PAYKY_PAIR_KIND,
   QR_LIFETIME_MS,
+  RESEND_MS,
+  RESUBSCRIBE_ATTEMPTS,
   startTransferSource,
   startTransferTarget,
+  TARGET_READY_WAIT_MS,
   type TransferPayload,
   TransferPayloadSchema,
   type TransferSourceState,
@@ -45,13 +49,19 @@ const payload: TransferPayload = {
 
 /**
  * One in-memory relay. `relayFilter` sees every published event and drops
- * it by returning false — a relay that suppresses or injects.
+ * it by returning false — a relay that suppresses or injects. `accept`
+ * decides what a publish reports; a refused event is not delivered. While
+ * `down`, every subscription closes as soon as it opens; `drop` closes the
+ * open ones, as a socket that died does.
  */
 const createRelay = ({
   relayFilter = () => true,
+  accept = () => true,
 }: {
   readonly relayFilter?: (event: Event) => boolean
+  readonly accept?: (event: Event) => boolean
 } = {}) => {
+  const connection = { down: false }
   const published: Event[] = []
   const subscriptions: {
     readonly filter: Filter
@@ -76,12 +86,20 @@ const createRelay = ({
         subscribeManyEose: () => ({ close: () => undefined }),
         publish: (relays, event) => {
           published.push(event)
+          if (!accept(event)) {
+            return relays.map(async () => "connection failure: refused")
+          }
           if (relayFilter(event)) deliver(event)
           return relays.map(async () => "ok")
         },
         subscribeMany: (_relays, filter, params) => {
-          const subscription = { filter, params, closed: false }
+          const subscription = { filter, params, closed: connection.down }
           subscriptions.push(subscription)
+          setTimeout(() => {
+            if (connection.down)
+              params.onclose?.([{ url: relay, reason: "connection failure" }])
+            else params.oneose?.()
+          }, 0)
           return {
             close: () => {
               subscription.closed = true
@@ -98,7 +116,16 @@ const createRelay = ({
         event.pubkey === from &&
         event.tags.some(([name, value]) => name === "p" && value === to)
     )
-  return { deps, published, deliver, sentTo }
+  const drop = () => {
+    for (const subscription of subscriptions) {
+      if (subscription.closed) continue
+      subscription.closed = true
+      subscription.params.onclose?.([
+        { url: relay, reason: "connection closed" },
+      ])
+    }
+  }
+  return { deps, published, deliver, sentTo, connection, drop }
 }
 type Relay = ReturnType<typeof createRelay>
 
@@ -609,5 +636,241 @@ describe("account transfer session", () => {
       acked: false,
       deviceId: null,
     })
+  })
+})
+
+/** Every event published to `to` other than by itself, oldest first. */
+const addressedTo = (network: Relay, to: string) =>
+  network.published.filter(
+    (event) =>
+      event.pubkey !== to &&
+      event.tags.some(([name, value]) => name === "p" && value === to)
+  )
+
+describe("a device that loses its connection or scans again", () => {
+  const phone = createIdFromString<"Device">("phone")
+
+  test("scanning again under a new key moves the lock to it instead of a conflict", async () => {
+    const network = createRelay()
+    const source = startSource(network)
+    const first = startTarget(network, source.pair, phone)
+    await flush()
+    expect(source.last()).toMatchObject({ phase: "locked", lock: 1 })
+
+    // The first session ended on the phone without the source hearing it.
+    const second = startTarget(network, source.pair, phone)
+    await flush()
+    expect(source.last()).toMatchObject({ phase: "locked", lock: 2 })
+    expect(first.last()).toEqual({ phase: "failed", reason: "cancelled" })
+
+    source.session.submitCode(codeOf(second.states))
+    await flush()
+    await flush()
+
+    expect(second.last()).toEqual({ phase: "received", payload })
+    expect(source.last()).toEqual({
+      phase: "done",
+      acked: true,
+      deviceId: phone,
+    })
+  })
+
+  test("a new lock keeps the attempts left and refuses the old code", async () => {
+    const network = createRelay()
+    const source = startSource(network)
+    const first = startTarget(network, source.pair, phone)
+    await flush()
+    const oldCode = codeOf(first.states)
+    source.session.submitCode(wrongCode(oldCode))
+
+    const second = startTarget(network, source.pair, phone)
+    await flush()
+    expect(source.last()).toMatchObject({
+      phase: "locked",
+      lock: 2,
+      attemptsLeft: 2,
+      mismatch: false,
+    })
+    expect(codeOf(second.states)).not.toBe(oldCode)
+
+    source.session.submitCode(oldCode)
+    expect(source.last()).toMatchObject({ phase: "locked", attemptsLeft: 1 })
+  })
+
+  test.each([
+    ["another id", createIdFromString<"Device">("other")],
+    ["no id", undefined],
+  ])(
+    "a second hello with %s after one with an id is still a conflict",
+    async (_, otherId) => {
+      const network = createRelay()
+      const source = startSource(network)
+      const target = startTarget(network, source.pair, phone)
+      await flush()
+      const other = startTarget(network, source.pair, otherId)
+      await flush()
+
+      expect(source.last()).toEqual({ phase: "failed", reason: "conflict" })
+      expect(target.last()).toEqual({ phase: "failed", reason: "conflict" })
+      expect(other.last()).toEqual({ phase: "failed", reason: "conflict" })
+    }
+  )
+
+  test("two hellos without an id are still a conflict, even from one device", async () => {
+    const network = createRelay()
+    const source = startSource(network)
+    startTarget(network, source.pair)
+    await flush()
+    startTarget(network, source.pair)
+    await flush()
+
+    expect(source.last()).toEqual({ phase: "failed", reason: "conflict" })
+  })
+
+  test("the target repeats a lost hello under the same key", async () => {
+    let dropFirstHello = true
+    const network = createRelay({
+      relayFilter: (event) => {
+        if (!dropFirstHello || event.tags.every(([, v]) => v !== pk)) {
+          return true
+        }
+        dropFirstHello = false
+        return false
+      },
+    })
+    const source = startSource(network)
+    const pk = source.pair.pk
+    const target = startTarget(network, source.pair, phone)
+    await flush()
+    expect(source.last()?.phase).toBe("waiting")
+
+    await vi.advanceTimersByTimeAsync(RESEND_MS)
+    await flush()
+    expect(source.last()).toMatchObject({ phase: "locked", lock: 1 })
+    expect(target.last()?.phase).toBe("code")
+    const hellos = addressedTo(network, pk)
+    expect(hellos).toHaveLength(2)
+    expect(new Set(hellos.map((event) => event.pubkey)).size).toBe(1)
+  })
+
+  test("a lost ready is sent again when the target repeats its hello", async () => {
+    let sourcePubkey = ""
+    let dropReady = true
+    const network = createRelay({
+      relayFilter: (event) => {
+        if (!dropReady || event.pubkey !== sourcePubkey) return true
+        dropReady = false
+        return false
+      },
+    })
+    const source = startSource(network)
+    sourcePubkey = source.pair.pk
+    const target = startTarget(network, source.pair, phone)
+    await flush()
+    expect(source.last()?.phase).toBe("locked")
+    expect(target.last()?.phase).toBe("connecting")
+
+    await vi.advanceTimersByTimeAsync(RESEND_MS)
+    await flush()
+    expect(target.last()?.phase).toBe("code")
+    expect(source.last()).toMatchObject({ phase: "locked", lock: 1 })
+
+    // No more hellos once the code shows.
+    const hellos = addressedTo(network, sourcePubkey).length
+    await vi.advanceTimersByTimeAsync(RESEND_MS * 3)
+    expect(addressedTo(network, sourcePubkey)).toHaveLength(hellos)
+  })
+
+  test("a dropped subscription is opened again under the same key, and the transfer goes on", async () => {
+    const network = createRelay()
+    const source = startSource(network)
+    const target = startTarget(network, source.pair, phone)
+    await flush()
+    const code = codeOf(target.states)
+
+    network.drop()
+    await vi.advanceTimersByTimeAsync(1_000)
+    source.session.submitCode(code)
+    await flush()
+    await flush()
+
+    expect(target.last()).toEqual({ phase: "received", payload })
+    expect(source.last()).toMatchObject({ phase: "done", acked: true })
+  })
+
+  test("relays that stay unreachable end both sides as network", async () => {
+    const network = createRelay()
+    const source = startSource(network)
+    const target = startTarget(network, source.pair, phone)
+    await flush()
+
+    network.connection.down = true
+    network.drop()
+    for (let attempt = 1; attempt <= RESUBSCRIBE_ATTEMPTS + 1; attempt++) {
+      await vi.advanceTimersByTimeAsync(attempt * 1_000)
+    }
+
+    expect(source.last()).toEqual({ phase: "failed", reason: "network" })
+    expect(target.last()).toEqual({ phase: "failed", reason: "network" })
+  })
+
+  test("a target whose every hello is refused ends as network", async () => {
+    const network = createRelay({ accept: () => false })
+    const source = startSource(network)
+    const target = startTarget(network, source.pair, phone)
+    await vi.advanceTimersByTimeAsync(RESEND_MS * HELLO_ATTEMPTS)
+
+    expect(target.last()).toEqual({ phase: "failed", reason: "network" })
+    expect(addressedTo(network, source.pair.pk)).toHaveLength(HELLO_ATTEMPTS)
+  })
+
+  test("a refused hello after an accepted one does not end the target", async () => {
+    let refuse = false
+    const network = createRelay({
+      relayFilter: () => false,
+      accept: () => !refuse,
+    })
+    const source = startSource(network)
+    const target = startTarget(network, source.pair, phone)
+    await flush()
+    refuse = true
+    await vi.advanceTimersByTimeAsync(RESEND_MS * (HELLO_ATTEMPTS + 1))
+
+    expect(target.last()).toEqual({ phase: "connecting" })
+  })
+
+  test("without ready the target gives up once the QR is past its lifetime", async () => {
+    const network = createRelay({ relayFilter: () => false })
+    const source = startSource(network)
+    const target = startTarget(network, source.pair, phone)
+    await vi.advanceTimersByTimeAsync(TARGET_READY_WAIT_MS)
+
+    expect(target.last()).toEqual({ phase: "failed", reason: "timeout" })
+  })
+
+  test("a lost payload is sent again until the target acks it", async () => {
+    let sourcePubkey = ""
+    let dropPayload = false
+    const network = createRelay({
+      relayFilter: (event) => {
+        if (!dropPayload || event.pubkey !== sourcePubkey) return true
+        dropPayload = false
+        return false
+      },
+    })
+    const source = startSource(network)
+    sourcePubkey = source.pair.pk
+    const target = startTarget(network, source.pair, phone)
+    await flush()
+    dropPayload = true
+    source.session.submitCode(codeOf(target.states))
+    await flush()
+    expect(target.last()?.phase).toBe("code")
+
+    await vi.advanceTimersByTimeAsync(RESEND_MS)
+    await flush()
+    await flush()
+    expect(target.last()).toEqual({ phase: "received", payload })
+    expect(source.last()).toMatchObject({ phase: "done", acked: true })
   })
 })

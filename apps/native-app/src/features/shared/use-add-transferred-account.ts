@@ -18,7 +18,7 @@ import { useTranslation } from "../../hooks/use-translation.ts"
 
 /**
  * Adds an account another device or app handed over — the QR transfer
- * (account/0001) and the request to Payky (account/0008) — and continues on
+ * (account/0012) and the request to Payky (account/0008) — and continues on
  * `/restore-account`. A device that already has an account asks for `admin`
  * and a confirmation first; an account switch meanwhile drops the payload.
  * Resolves `false` when nothing was added.

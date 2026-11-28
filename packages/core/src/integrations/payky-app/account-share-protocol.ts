@@ -14,7 +14,7 @@ import {
  * Finito — asks Payky for its active account with an explicit Android intent
  * launched for a result, Payky shows who asks and the code the requester
  * shows, and on the user's approval answers with the same `TransferPayload`
- * the QR transfer (account/0001) sends.
+ * the QR transfer (account/0012) sends.
  *
  * The "service" is the other app, so this sits under `integrations/`. The
  * native halves mirror these constants: Payky's `AccountShareActivity.java`

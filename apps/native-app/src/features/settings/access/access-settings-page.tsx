@@ -154,7 +154,7 @@ function DevicesCard({
         </SettingsTileList>
       </CardContent>
       <CardFooter justify="flex-end">
-        {/* Sends this account to the new device by QR (account/0001). */}
+        {/* Sends this account to the new device by QR (account/0012). */}
         <Button
           variant="outline"
           iconStart={MonitorSmartphone}
