@@ -1,33 +1,61 @@
 diff --git a/dist/react/useAtomValueRaw.js b/dist/react/useAtomValueRaw.js
-index a3c49a6504d20ffd48ce6bd83132846e780b9cc9..18a117ec4a1111e5dda451b09ebf3741ba1b8b49 100644
+index a3c49a6..d924a5e 100644
 --- a/dist/react/useAtomValueRaw.js
 +++ b/dist/react/useAtomValueRaw.js
-@@ -6,11 +6,16 @@ const createState = (store, atom, value) => [
-     value,
-     store,
-     atom,
+@@ -2,25 +2,37 @@
+ import { useDebugValue, useEffect, useReducer } from 'react';
+ import { createContinuablePromise, isPromiseLike, } from './continuablePromise.js';
+ import { useStore } from './Provider.js';
+-const createState = (store, atom, value) => [
+-    value,
+-    store,
+-    atom,
 -    (callback) => {
-+    // Payky's patch: compares with the value the component last rendered,
-+    // passed in by the effect. Comparing with `value`, the one this state
-+    // was created with, misses a change made while the component was hidden
-+    // (React's `Activity` unsubscribes it) after it had rendered another
-+    // value: it resubscribes, sees no change, and keeps showing the old one.
-+    (callback, renderedValue) => {
-         const unsub = store.sub(atom, callback);
-         let needsRerender = true;
-         try {
+-        const unsub = store.sub(atom, callback);
+-        let needsRerender = true;
+-        try {
 -            needsRerender = !Object.is(value, store.get(atom));
-+            needsRerender = !Object.is(renderedValue, store.get(atom));
-         }
-         catch {
-             // Rerender on error.
-@@ -37,7 +42,8 @@ export function useAtomValueRaw(atom, options) {
-         rerender();
-         value = store.get(atom);
-     }
--    useEffect(() => subscribe(rerender), [subscribe]);
-+    // A revealed `Activity` runs the latest render's effect, so `value` is current.
-+    useEffect(() => subscribe(rerender, value), [subscribe]);
-     useDebugValue(value);
-     if (isPromiseLike(value)) {
-         return createContinuablePromise(store, value, () => store.get(atom));
+-        }
+-        catch {
+-            // Rerender on error.
+-        }
+-        if (needsRerender) {
+-            callback();
+-        }
+-        return unsub;
+-    },
+-];
++const createState = (store, atom, value) => {
++    // Payky's patch, as proposed upstream (pmndrs/jotai#3401): once the atom
++    // has changed while subscribed, the component may show a value other than
++    // `value`, so a resubscribe always rerenders. Comparing with `value` alone
++    // missed a change made while React's `Activity` hid the component (and
++    // unsubscribed it) whenever the atom went back to `value`.
++    let forceRerender = false;
++    return [
++        value,
++        store,
++        atom,
++        (callback) => {
++            const listener = () => {
++                forceRerender = true;
++                callback();
++            };
++            const unsub = store.sub(atom, listener);
++            let needsRerender = true;
++            try {
++                needsRerender = forceRerender || !Object.is(value, store.get(atom));
++            }
++            catch {
++                // Rerender on error.
++            }
++            if (needsRerender) {
++                listener();
++            }
++            return unsub;
++        },
++    ];
++};
+ export function useAtomValueRaw(atom, options) {
+     const store = useStore(options);
+     const [[valueFromReducer, storeFromReducer, atomFromReducer, subscribe], rerender,] = useReducer((prev) => {
