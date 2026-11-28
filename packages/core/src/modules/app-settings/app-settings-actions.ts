@@ -11,6 +11,7 @@ import { z } from "zod"
 import type { DateDep, EvoluOwnerDep, MasterKeyDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
 import {
+  saveCardSwitchioAccount,
   saveCashRegisterAccount,
   saveFiatBankAccount,
   saveSparkAccount,
@@ -325,6 +326,12 @@ export const finishOnboarding =
     readonly homeMode: TerminalHomeMode
     readonly tipsEnabled: boolean
     /**
+     * Whether this device can launch SwitchioPay: the card terminal starts
+     * enabled on a phone that has it (onboarding/0015), left as it is
+     * otherwise.
+     */
+    readonly cardSwitchio: boolean
+    /**
      * The starter pack's products the merchant checked and priced; left out,
      * the catalog starts empty.
      */
@@ -354,7 +361,7 @@ export const finishOnboarding =
     // These writes come before the starter pack is judged, which needs the
     // seeded rates, and each is its own batch. Running them again is
     // harmless: the two above are skipped once their rows exist, and the
-    // three accounts are singleton upserts a second finish only writes again
+    // accounts are singleton upserts a second finish only writes again
     // with what the wizard then holds.
     // So a finish refused or cut short anywhere up to the last batch leaves
     // the account not onboarded, and the wizard can finish it again.
@@ -368,6 +375,11 @@ export const finishOnboarding =
       saveCashRegisterAccount({ enabled: true, currency: input.currency })
     )
     await run.ok(saveSparkAccount({ enabled: true }))
+    if (input.cardSwitchio) {
+      await run.ok(
+        saveCardSwitchioAccount({ enabled: true, currency: input.currency })
+      )
+    }
     await run.ok(
       saveFiatBankAccount({
         enabled: input.iban !== null,

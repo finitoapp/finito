@@ -67,6 +67,7 @@ import { nostrProfileQueryKey } from "@/hooks/use-nostr-profile.ts"
 import { useReloadAppEvolu } from "@/hooks/use-reload-app-evolu.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useSetLanguage, useTranslation } from "@/hooks/use-translation.ts"
+import { isSwitchioInstalled } from "@/platform/switchio.ts"
 
 /** The steps that are not part of opening an existing account. */
 type OwnStep = Extract<OnboardingStep, "accountChoice" | "payments" | "selling">
@@ -233,6 +234,8 @@ export function OnboardingPage({
             iban: validation.iban,
             homeMode,
             tipsEnabled,
+            // False outside the Android shell (onboarding/0015).
+            cardSwitchio: await isSwitchioInstalled(),
           })
         )
       )

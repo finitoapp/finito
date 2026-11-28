@@ -1,0 +1,18 @@
+# onboarding/0015: a phone that has SwitchioPay (the fake, installed) finishes
+# onboarding with card payments on; a card payment goes through with no
+# visit to Settings > Payment methods.
+appId: ${APP_ID}
+tags: [onboarding]
+---
+- runFlow: ../../subflows/start.yaml
+# The fake lives in memory: on web the link reloads, `next` returns in-app.
+- openLink: ${BASE_URL}e2e/fake?switchio=approved&next=/onboarding
+- extendedWaitUntil:
+    visible: ${output.t["onboarding.welcome.new"]}
+    timeout: 30000
+- runFlow: ../../subflows/complete-onboarding.yaml
+- runFlow: ../../subflows/pay-by-card.yaml
+- extendedWaitUntil:
+    visible:
+      id: payment-paid-panel
+    timeout: 15000
