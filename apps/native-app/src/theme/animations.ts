@@ -28,6 +28,10 @@ export const animations = createAnimations(
       // Ease-out cubic; the driver turns a CSS curve into `Easing.bezier`.
       easing: "cubic-bezier(0.33, 1, 0.68, 1)",
     },
+    // No motion (settings/0007): a view without any transition gets the
+    // driver's unconfigured "0ms" path, which paints a press but never its
+    // release (`useKitTransition`).
+    instant: { type: "timing", duration: 0 },
   },
   { useNativeDriver: true }
 )
