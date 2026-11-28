@@ -2,7 +2,12 @@ import { createIdFromString, type InferRow, type OwnerId } from "@evolu/common"
 import type { SparkSecret } from "../shared/key-derivation.ts"
 import type { FiatCurrency, Iban } from "../shared/schema.ts"
 import type { enabledPaymentMethodAccountsQuery } from "./account-queries.ts"
-import type { AccountId, AccountKind } from "./account-types.ts"
+import {
+  type AccountId,
+  type AccountKind,
+  type CardSwitchioAutoLaunch,
+  defaultCardSwitchioAutoLaunch,
+} from "./account-types.ts"
 
 /** What `derivePaymentMethodsOffered` reads of an account turned on. */
 export type PaymentMethodAccount = Pick<
@@ -131,4 +136,26 @@ export const derivePaymentMethodsOffered = ({
         .map((account) => account.kind)
     ),
   ]
+}
+
+/**
+ * Whether the card tab opens SwitchioPay by itself (payment/0033). `open`
+ * when the payment screen opened on the card tab, `select` when staff
+ * switched to it. A last attempt whose outcome is unknown may have charged
+ * the card, so another one waits for staff to confirm it from the button
+ * (payment/0019), whatever the account chose.
+ */
+export const cardTerminalOpensItself = ({
+  autoLaunch,
+  trigger,
+  unresolved,
+}: {
+  /** The account's choice; `null` until it makes one. */
+  readonly autoLaunch: CardSwitchioAutoLaunch | null
+  readonly trigger: "open" | "select"
+  readonly unresolved: boolean
+}): boolean => {
+  if (unresolved) return false
+  const choice = autoLaunch ?? defaultCardSwitchioAutoLaunch
+  return choice === "open" || (choice === "select" && trigger === "select")
 }

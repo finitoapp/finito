@@ -27,3 +27,17 @@ export const BankQrFormatSchema = z.enum([
 ])
 
 export type BankQrFormat = z.output<typeof BankQrFormatSchema>
+
+/**
+ * When the card tab of the payment screen opens SwitchioPay by itself
+ * (payment/0033): as soon as the screen opens on it, once staff switch to
+ * it, or only from its button.
+ */
+export const CardSwitchioAutoLaunchSchema = z.enum(["open", "select", "button"])
+
+export type CardSwitchioAutoLaunch = z.output<
+  typeof CardSwitchioAutoLaunchSchema
+>
+
+/** What an account that has not chosen gets (payment/0033). */
+export const defaultCardSwitchioAutoLaunch: CardSwitchioAutoLaunch = "select"

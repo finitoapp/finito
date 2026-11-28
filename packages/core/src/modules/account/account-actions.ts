@@ -52,7 +52,11 @@ import {
   sparkAccountQuery,
 } from "./account-queries.ts"
 import { sparkAccountSyncPointerByAccountIdQuery } from "./account-spark-queries.ts"
-import type { AccountId, BankQrFormat } from "./account-types.ts"
+import type {
+  AccountId,
+  BankQrFormat,
+  CardSwitchioAutoLaunch,
+} from "./account-types.ts"
 import {
   createCardSwitchioAccountId,
   createCashRegisterAccountId,
@@ -927,6 +931,30 @@ export const setCashuPaymentRequestLegs =
       evolu.update(
         "accountCashu",
         { id: accountId, paymentRequestLegs: legs },
+        { ...options, owner: evoluOwner }
+      )
+    )
+    return ok()
+  }
+
+/**
+ * When the payment screen opens SwitchioPay by itself (payment/0033), on
+ * the card terminal's account row.
+ */
+export const setCardSwitchioAutoLaunch =
+  ({
+    accountId,
+    autoLaunch,
+  }: {
+    readonly accountId: AccountId
+    readonly autoLaunch: CardSwitchioAutoLaunch
+  }): Task<void, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const { evolu, evoluOwner } = run.deps
+    await runMutationWithCompletion((options) =>
+      evolu.update(
+        "accountCardSwitchio",
+        { id: accountId, autoLaunch },
         { ...options, owner: evoluOwner }
       )
     )

@@ -8,6 +8,7 @@ import {
 } from "../shared/schema.ts"
 import type { AccountKind } from "./account-types.ts"
 import {
+  cardTerminalOpensItself,
   derivePaymentMethodsOffered,
   normalizeMnemonic,
   type PaymentMethodAccount,
@@ -115,5 +116,37 @@ describe("derivePaymentMethodsOffered", () => {
         qerkoRestaurantPaired: true,
       })
     ).toEqual(["cashRegister", "cardSwitchio", "qerkoPayment"])
+  })
+})
+
+describe("cardTerminalOpensItself", () => {
+  test("by default only a switch to the card tab opens the terminal", () => {
+    const opens = (trigger: "open" | "select") =>
+      cardTerminalOpensItself({ autoLaunch: null, trigger, unresolved: false })
+    expect(opens("open")).toBe(false)
+    expect(opens("select")).toBe(true)
+  })
+
+  test("open also opens it with the screen, button never does", () => {
+    const opens = (
+      autoLaunch: "open" | "select" | "button",
+      trigger: "open" | "select"
+    ) => cardTerminalOpensItself({ autoLaunch, trigger, unresolved: false })
+    expect(opens("open", "open")).toBe(true)
+    expect(opens("open", "select")).toBe(true)
+    expect(opens("select", "open")).toBe(false)
+    expect(opens("button", "open")).toBe(false)
+    expect(opens("button", "select")).toBe(false)
+  })
+
+  test("an attempt whose outcome is unknown waits for the button", () => {
+    for (const trigger of ["open", "select"] as const)
+      expect(
+        cardTerminalOpensItself({
+          autoLaunch: "open",
+          trigger,
+          unresolved: true,
+        })
+      ).toBe(false)
   })
 })

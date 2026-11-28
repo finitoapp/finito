@@ -1,6 +1,6 @@
-# From the home after enable-card: 5.90 with no tip, the "Payment card" tab
-# and its pay button, which launches the fake SwitchioPay. The caller asserts
-# the outcome (the paid panel when the scenario approves).
+# From the home after enable-card: 5.90 with no tip, then the "Payment card"
+# tab, whose tap launches the fake SwitchioPay by itself (payment/0033). The
+# caller asserts the outcome (the paid panel when the scenario approves).
 appId: ${APP_ID}
 ---
 - runFlow: to-tip-step.yaml
@@ -9,11 +9,3 @@ appId: ${APP_ID}
     file: tap-label.yaml
     env:
       LABEL: ${output.t["paymentWait.method.card"]}
-- runFlow:
-    file: assert-label.yaml
-    env:
-      LABEL: ${output.t["paymentWait.cardPaid.action"]}
-- runFlow:
-    file: tap-label.yaml
-    env:
-      LABEL: ${output.t["paymentWait.cardPaid.action"]}

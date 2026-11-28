@@ -14,6 +14,7 @@ import { buildCashuPaymentUri } from "@payky/core/cashu/cashu-payment-request"
 import { createQerkoPaymentQrPayload } from "@payky/core/integrations/qerko/qerko-client"
 import { enabledPaymentMethodAccountsQuery } from "@payky/core/modules/account/account-queries"
 import type { BankQrFormat } from "@payky/core/modules/account/account-types"
+import { cardTerminalOpensItself } from "@payky/core/modules/account/account-utils"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getPaymentMethodOrder } from "@payky/core/modules/app-settings/app-settings-utils"
 import {
@@ -76,6 +77,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs.tsx"
 import { appEnv } from "@/core/app-env.ts"
+import { CardAutoLaunch } from "@/features/payment-wait/payment-wait-card-tab.tsx"
 import { PaymentMethodTabContent } from "@/features/payment-wait/payment-wait-method-tabs.tsx"
 import { QrPaymentRequest } from "@/features/payment-wait/payment-wait-qr-request.tsx"
 import type {
@@ -195,6 +197,10 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     useState<PaymentMethodTab | null>(null)
   const [selectedIbanQrFormat, setSelectedIbanQrFormat] =
     useState<BankQrFormat | null>(null)
+  // What last put the card tab on screen, until it opens the terminal by
+  // itself or staff pick another tab (payment/0033): the screen opening on
+  // it, or staff switching to it.
+  const [cardLaunch, setCardLaunch] = useState<"open" | "select" | null>("open")
   const query = paymentRequestQuery(paymentId)
   const claimsQuery = paymentClaimsQuery(paymentId)
   const { data: payments } = useEvoluQuery(query)
@@ -709,6 +715,19 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     cardAccountId !== null &&
     cardAccountId !== undefined &&
     paymentStatus === "pending"
+  const cardAutoLaunch =
+    cardLaunch !== null &&
+    canPayCard &&
+    cardTerminalOpensItself({
+      autoLaunch:
+        enabledPaymentMethodAccounts.find(
+          (account) => account.id === activePaymentMethod?.accountId
+        )?.cardAutoLaunch ?? null,
+      trigger: cardLaunch,
+      unresolved:
+        cardUnresolvedTransactionId !== null &&
+        cardUnresolvedTransactionId !== undefined,
+    })
   const canCancelPayment = payment.canceledAt === null && !isPaid
   const activeAmountSats =
     activePaymentMethod?.id === "cashu"
@@ -921,7 +940,9 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
               <Tabs
                 value={activePaymentMethod.id}
                 onValueChange={(value) => {
-                  if (isPaymentMethodTab(value)) setSelectedPaymentMethod(value)
+                  if (!isPaymentMethodTab(value)) return
+                  setSelectedPaymentMethod(value)
+                  setCardLaunch(value === "card" ? "select" : null)
                 }}
                 className="w-fit items-center gap-4"
               >
@@ -1069,6 +1090,13 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
               />
             </Suspense>
           ) : null}
+          <CardAutoLaunch
+            armed={cardAutoLaunch}
+            onLaunch={() => {
+              setCardLaunch(null)
+              void handlePayCard()
+            }}
+          />
 
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-5 text-foreground">

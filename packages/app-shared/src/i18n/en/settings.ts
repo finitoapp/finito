@@ -156,6 +156,21 @@ export const enSettings = {
     "the SwitchioPay app on this device,",
   "settings.cardSwitchioAccount.info.switchioPayLink": "About SwitchioPay",
   "settings.cardSwitchioAccount.info.title": "Payment card payments",
+  "settings.cardSwitchioAccount.autoLaunch.title": "Opening the terminal",
+  "settings.cardSwitchioAccount.autoLaunch.description":
+    "When the payment screen opens SwitchioPay without its button.",
+  "settings.cardSwitchioAccount.autoLaunch.open.title":
+    "As soon as the payment opens",
+  "settings.cardSwitchioAccount.autoLaunch.open.description":
+    "Also when the payment opens on the card tab. If the customer pays another way, closing SwitchioPay leaves an attempt to check.",
+  "settings.cardSwitchioAccount.autoLaunch.select.title":
+    "On switching to card",
+  "settings.cardSwitchioAccount.autoLaunch.select.description":
+    "When you tap the card tab. A payment that opens on it waits for the button.",
+  "settings.cardSwitchioAccount.autoLaunch.button.title":
+    "Only with the button",
+  "settings.cardSwitchioAccount.autoLaunch.button.description":
+    "SwitchioPay opens only when you tap Pay with payment card.",
   "settings.cardSwitchioAccount.notInstalledWarning":
     "The SwitchioPay app is not installed on this device.",
   "settings.cardSwitchioAccount.nativeRuntimeWarning":
