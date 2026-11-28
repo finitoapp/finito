@@ -311,6 +311,7 @@
     "@sentry/cli",
   ],
   "patchedDependencies": {
+    "jotai@3.0.2": "patches/jotai@3.0.2.patch",
     "@expo/metro-config@58.0.23": "patches/@expo%2Fmetro-config@58.0.23.patch",
     "@evolu/common@8.27.2": "patches/@evolu%2Fcommon@8.27.2.patch",
     "@tamagui/animations-react-native@3.3.3": "patches/@tamagui%2Fanimations-react-native@3.3.3.patch",
