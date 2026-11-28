@@ -35,7 +35,8 @@ export const APP_FETCH_TIMEOUT_MS = 60_000
 const appFetchAsText =
   (
     url: string | URL,
-    init?: RequestInit
+    init?: RequestInit,
+    timeoutMs: number = APP_FETCH_TIMEOUT_MS
   ): Task<
     Pick<Response, "ok" | "status"> & { text: string },
     FetchError,
@@ -50,7 +51,7 @@ const appFetchAsText =
         const forwardAbort = () => controller.abort(signal.reason)
         if (signal.aborted) forwardAbort()
         else signal.addEventListener("abort", forwardAbort, { once: true })
-        const timer = setTimeout(() => controller.abort(), APP_FETCH_TIMEOUT_MS)
+        const timer = setTimeout(() => controller.abort(), timeoutMs)
         try {
           const response = await deps.fetch(url, {
             ...init,
@@ -109,7 +110,9 @@ const parseJsonBody = (text: string): Result<JsonValue, FetchJsonError> => {
 export const appFetchAsJson =
   (
     url: string | URL,
-    init?: RequestInit
+    init?: RequestInit,
+    /** {@link APP_FETCH_TIMEOUT_MS} unless the caller needs an answer sooner. */
+    timeoutMs?: number
   ): Task<
     Pick<Response, "ok" | "status"> & {
       readonly text: string
@@ -119,7 +122,7 @@ export const appFetchAsJson =
     FetchDep
   > =>
   async (run) => {
-    const response = await run(appFetchAsText(url, init))
+    const response = await run(appFetchAsText(url, init, timeoutMs))
     if (!response.ok) return response
 
     return ok({
@@ -197,12 +200,14 @@ export const fetchAndValidateJson =
   <TSchema extends z.ZodType, EHttp, EResponse>({
     url,
     init,
+    timeoutMs,
     schema,
     onHttpError,
     onResponseError,
   }: {
     readonly url: string | URL
     readonly init?: RequestInit
+    readonly timeoutMs?: number
     readonly schema: TSchema
     readonly onHttpError: (info: {
       readonly status: number
@@ -215,7 +220,7 @@ export const fetchAndValidateJson =
     }) => EResponse
   }): Task<z.output<TSchema>, EHttp | EResponse | FetchError, FetchDep> =>
   async (run) => {
-    const responseResult = await run(appFetchAsJson(url, init))
+    const responseResult = await run(appFetchAsJson(url, init, timeoutMs))
     if (!responseResult.ok) return responseResult
 
     return validateJsonResponse(responseResult.value, {

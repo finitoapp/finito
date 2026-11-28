@@ -1,11 +1,12 @@
 import { testCreateRun } from "@evolu/common"
-import { describe, expect, test } from "vitest"
+import { afterEach, describe, expect, test, vi } from "vitest"
 
 import type { FetchDep } from "../../deps.ts"
 import type { FiatCurrency } from "../../modules/shared/schema.ts"
 import {
   createYadioApiDep,
   fetchYadioBtcExchangeRate,
+  YADIO_FETCH_TIMEOUT_MS,
   type YadioApiDep,
   type YadioApiError,
   type YadioHttpError,
@@ -171,5 +172,31 @@ describe("yadio client", () => {
         type: "FetchError",
       },
     })
+  })
+
+  test("fails a rate nobody answers after its own timeout, not the app-wide one", async () => {
+    vi.useFakeTimers()
+    const deps = {
+      ...createYadioApiDep(),
+      fetch: (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new Error("aborted"))
+          )
+        }),
+    } satisfies YadioApiDep & FetchDep
+    await using run = testCreateRun(deps)
+
+    const result = run(fetchYadioBtcExchangeRate("CZK" satisfies FiatCurrency))
+    await vi.advanceTimersByTimeAsync(YADIO_FETCH_TIMEOUT_MS)
+
+    expect(await result).toMatchObject({
+      ok: false,
+      error: { type: "FetchError" },
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 })
