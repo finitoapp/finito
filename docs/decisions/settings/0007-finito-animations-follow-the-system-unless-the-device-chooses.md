@@ -1,6 +1,6 @@
 # 0007 Finito's animations follow the system unless the device chooses
 
-Status: accepted
+Status: superseded by settings/0008
 Date: 2026-11-27
 
 ## Context
