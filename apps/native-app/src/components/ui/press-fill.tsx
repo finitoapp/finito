@@ -32,11 +32,13 @@ export const pressFillClause = (
 }
 
 /**
- * The kit's `fast` transition, or none under reduced motion (the device's
- * choice, by default the system's setting, settings/0007), which Tamagui's
- * React Native driver ignores. Read once per mount: Tamagui must not see a
- * view gain or lose its transition while mounted, so the root layout mounts
- * the screens again when the choice changes.
+ * The kit's `fast` transition, or `instant` under reduced motion (the
+ * device's choice, by default the system's setting, settings/0007). Never
+ * none: a pressable without a transition gets Tamagui's "0ms" fallback, on
+ * which the React Native driver paints the pressed fill and never the
+ * release, so a keypad key kept its tint. Read once per mount: Tamagui must
+ * not see a view gain or lose its transition while mounted, so the root
+ * layout mounts the screens again when the choice changes.
  *
  * A key a transition animates must stay in the view's style: when one
  * leaves it (a `disabled` variant's opacity on enabling), the driver drops
@@ -52,8 +54,8 @@ export function useFastTransition() {
 export function useKitTransition<Preset extends "fast" | "slide">(
   preset: Preset
 ) {
-  const [transition] = useState(() =>
-    isReduceMotionEnabled() ? undefined : preset
+  const [transition] = useState<Preset | "instant">(() =>
+    isReduceMotionEnabled() ? "instant" : preset
   )
   return transition
 }

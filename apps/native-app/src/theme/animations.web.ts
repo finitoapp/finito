@@ -10,4 +10,5 @@ import { duration } from "./tokens.ts"
 export const animations = createAnimations({
   fast: `ease-out ${duration.fast}ms`,
   slide: `cubic-bezier(0.33, 1, 0.68, 1) ${duration.slide}ms`,
+  instant: "linear 0ms",
 })
