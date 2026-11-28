@@ -20,6 +20,7 @@ import {
   enabledPaymentMethodAccountsQuery,
 } from "@payky/core/modules/account/account-queries"
 import type { AccountId } from "@payky/core/modules/account/account-types"
+import { cardTerminalOpensItself } from "@payky/core/modules/account/account-utils"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import type { DefaultPaymentMethod } from "@payky/core/modules/app-settings/app-settings-types"
 import { getPaymentMethodOrder } from "@payky/core/modules/app-settings/app-settings-utils"
@@ -104,7 +105,7 @@ import { satsAmountParts, useBitcoinUnit } from "../shared/bitcoin-amount.tsx"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
 import { readCashReceived } from "./cash-received.ts"
 import { BoltCardReader } from "./payment-wait-bolt-card.tsx"
-import { CardPaymentTab } from "./payment-wait-card-tab.tsx"
+import { CardAutoLaunch, CardPaymentTab } from "./payment-wait-card-tab.tsx"
 import { CashuPaymentTab } from "./payment-wait-cashu-tab.tsx"
 import { IbanPaymentTab } from "./payment-wait-iban-tab.tsx"
 import { LightningAddressPaymentTab } from "./payment-wait-lightning-address-tab.tsx"
@@ -394,6 +395,10 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const offered = methods.filter(({ id }) => isOffered(id))
   const cashRefused = !cashPayable && methods.some(({ id }) => id === "cash")
   const active = offered.find(({ id }) => id === selected) ?? offered[0]
+  // What last put the card tab on screen, until it opens the terminal by
+  // itself or staff pick another tab (payment/0033): the screen opening on
+  // it, or staff switching to it.
+  const [cardLaunch, setCardLaunch] = useState<"open" | "select" | null>("open")
   const preparationKey =
     active === undefined
       ? null
@@ -653,6 +658,14 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     cardAccountId !== null &&
     cardAccountId !== undefined &&
     status === "pending"
+  const cardAutoLaunch =
+    cardLaunch !== null &&
+    canPayCard &&
+    cardTerminalOpensItself({
+      autoLaunch: cardAccount?.cardAutoLaunch ?? null,
+      trigger: cardLaunch,
+      unresolved: cardUnresolvedTransactionId !== null,
+    })
 
   const payCard = async () => {
     if (!canPayCard || busyRef.current) return
@@ -913,7 +926,13 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
             {t("paymentWait.missingRequest")}
           </Text>
         ) : (
-          <Tabs value={active.id} onValueChange={setSelected}>
+          <Tabs
+            value={active.id}
+            onValueChange={(id) => {
+              setSelected(id)
+              setCardLaunch(id === "card" ? "select" : null)
+            }}
+          >
             {/* The method tabs as Activity's: the active one an accent pill
                 with its icon and name, the others their icon alone. A large
                 control's height, with large icons: the one choice on the
@@ -1188,6 +1207,13 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
             </YStack>
           )}
         </Suspense>
+        <CardAutoLaunch
+          armed={cardAutoLaunch}
+          onLaunch={() => {
+            setCardLaunch(null)
+            void payCard()
+          }}
+        />
 
         {/* The bank transfer keeps its cancel behind "More information". */}
         {active?.id === "iban" && ibanNumber !== null ? null : (

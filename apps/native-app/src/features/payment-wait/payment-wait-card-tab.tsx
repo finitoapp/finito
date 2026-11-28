@@ -1,6 +1,7 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import CreditCard from "lucide-react-native/icons/credit-card"
 import RotateCw from "lucide-react-native/icons/rotate-cw"
+import { useEffect, useEffectEvent, useRef } from "react"
 import { Text, YStack } from "tamagui"
 import { Button } from "../../components/ui/button.tsx"
 import { useTranslation } from "../../hooks/use-translation.ts"
@@ -106,4 +107,31 @@ export function CardPaymentTab({
       )}
     </YStack>
   )
+}
+
+/**
+ * Opens the terminal once, the moment `armed` turns true: the card tab is
+ * ready and the account's choice lets it open by itself (payment/0033).
+ * The ref keeps a simulated remount from opening it twice; it rearms only
+ * once `armed` has turned false. Draws nothing.
+ */
+export function CardAutoLaunch({
+  armed,
+  onLaunch,
+}: {
+  readonly armed: boolean
+  readonly onLaunch: () => void
+}) {
+  const launched = useRef(false)
+  const launch = useEffectEvent(onLaunch)
+  useEffect(() => {
+    if (!armed) {
+      launched.current = false
+      return
+    }
+    if (launched.current) return
+    launched.current = true
+    launch()
+  }, [armed])
+  return null
 }

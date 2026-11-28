@@ -247,6 +247,7 @@ export const cardSwitchioAccountQuery = createQuery((db) =>
       "account.kind",
       "account.isDeleted",
       "accountCardSwitchio.currency",
+      "accountCardSwitchio.autoLaunch",
     ])
     .where("account.kind", "=", "cardSwitchio")
     .where("accountCardSwitchio.isDeleted", "is not", sqliteTrue)
@@ -491,6 +492,7 @@ export const enabledPaymentMethodAccountsQuery = createQuery((db) =>
       "accountIban.defaultQrFormat as ibanDefaultQrFormat",
       "accountCashRegister.currency as cashRegisterCurrency",
       "accountCardSwitchio.currency as cardCurrency",
+      "accountCardSwitchio.autoLaunch as cardAutoLaunch",
       "accountQerkoTerminal.currency as qerkoTerminalCurrency",
       "accountQerkoPayment.currency as qerkoPaymentCurrency",
       "accountQerkoPayment.connectionDeviceId as qerkoPaymentConnectionDeviceId",

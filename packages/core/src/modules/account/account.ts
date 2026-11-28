@@ -13,6 +13,7 @@ import {
   AccountId,
   AccountKindSchema,
   BankQrFormatSchema,
+  CardSwitchioAutoLaunchSchema,
 } from "./account-types.ts"
 
 export const account = {
@@ -55,14 +56,20 @@ export const accountCashRegister = {
 } as const
 
 /**
- * The card terminal the SwitchioPay app is paired with. Owns nothing but a
- * currency: everything else about the terminal (merchant id, acquirer,
- * batches) lives in SwitchioPay itself, which this app only drives through
+ * The card terminal the SwitchioPay app is paired with. Owns a currency and
+ * when the payment screen opens it: everything else about the terminal
+ * (merchant id, acquirer, batches) lives in SwitchioPay itself, which this app only drives through
  * intents. See `src/core/native/switchio.ts`.
  */
 export const accountCardSwitchio = {
   id: AccountId,
   currency: FiatCurrencySchema,
+  /**
+   * When the payment screen opens SwitchioPay by itself (payment/0033);
+   * `null` means `defaultCardSwitchioAutoLaunch`. Nullable, so rows written
+   * before the column existed keep their default.
+   */
+  autoLaunch: CardSwitchioAutoLaunchSchema.nullable(),
 } as const
 
 /**

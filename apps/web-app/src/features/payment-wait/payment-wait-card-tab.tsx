@@ -1,4 +1,5 @@
 import { CreditCardIcon, LoaderCircleIcon } from "lucide-react"
+import { useEffect, useEffectEvent, useRef } from "react"
 
 import { Button } from "@/components/ui/button.tsx"
 import type { CardPaymentTabProps } from "@/features/payment-wait/payment-wait-types.ts"
@@ -56,4 +57,31 @@ export function CardPaymentTab({
       ) : null}
     </div>
   )
+}
+
+/**
+ * Opens the terminal once, the moment `armed` turns true: the card tab is
+ * ready and the account's choice lets it open by itself (payment/0033).
+ * The ref keeps StrictMode's simulated remount from opening it twice; it
+ * rearms only once `armed` has turned false. Draws nothing.
+ */
+export function CardAutoLaunch({
+  armed,
+  onLaunch,
+}: {
+  readonly armed: boolean
+  readonly onLaunch: () => void
+}) {
+  const launched = useRef(false)
+  const launch = useEffectEvent(onLaunch)
+  useEffect(() => {
+    if (!armed) {
+      launched.current = false
+      return
+    }
+    if (launched.current) return
+    launched.current = true
+    launch()
+  }, [armed])
+  return null
 }

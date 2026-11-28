@@ -220,6 +220,19 @@ Cập nhật lần cuối: tháng 10 năm 2026`,
     "ứng dụng SwitchioPay trên thiết bị này,",
   "settings.cardSwitchioAccount.info.switchioPayLink": "Về SwitchioPay",
   "settings.cardSwitchioAccount.info.title": "Thanh toán thẻ",
+  "settings.cardSwitchioAccount.autoLaunch.title": "Mở máy POS",
+  "settings.cardSwitchioAccount.autoLaunch.description":
+    "Khi nào màn hình thanh toán tự mở SwitchioPay mà không cần nút.",
+  "settings.cardSwitchioAccount.autoLaunch.open.title":
+    "Ngay khi mở thanh toán",
+  "settings.cardSwitchioAccount.autoLaunch.open.description":
+    "Cả khi thanh toán mở ở tab thẻ. Nếu khách trả bằng cách khác, đóng SwitchioPay sẽ để lại một giao dịch cần kiểm tra.",
+  "settings.cardSwitchioAccount.autoLaunch.select.title": "Khi chuyển sang thẻ",
+  "settings.cardSwitchioAccount.autoLaunch.select.description":
+    "Khi bạn chạm vào tab thẻ. Thanh toán mở sẵn ở tab này sẽ chờ nút.",
+  "settings.cardSwitchioAccount.autoLaunch.button.title": "Chỉ bằng nút",
+  "settings.cardSwitchioAccount.autoLaunch.button.description":
+    "SwitchioPay chỉ mở khi bạn chạm vào Trả bằng thẻ.",
   "settings.cardSwitchioAccount.notInstalledWarning":
     "Ứng dụng SwitchioPay chưa được cài trên thiết bị này.",
   "settings.cardSwitchioAccount.nativeRuntimeWarning":

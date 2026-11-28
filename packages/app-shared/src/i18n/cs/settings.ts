@@ -156,6 +156,20 @@ export const csSettings = {
     "aplikaci SwitchioPay na tomto zařízení,",
   "settings.cardSwitchioAccount.info.switchioPayLink": "O aplikaci SwitchioPay",
   "settings.cardSwitchioAccount.info.title": "Platby kartou",
+  "settings.cardSwitchioAccount.autoLaunch.title": "Spuštění terminálu",
+  "settings.cardSwitchioAccount.autoLaunch.description":
+    "Kdy platební obrazovka spustí SwitchioPay bez tlačítka.",
+  "settings.cardSwitchioAccount.autoLaunch.open.title":
+    "Hned po otevření platby",
+  "settings.cardSwitchioAccount.autoLaunch.open.description":
+    "I když se platba otevře na záložce karty. Když zákazník zaplatí jinak, po zavření SwitchioPay zůstane pokus ke kontrole.",
+  "settings.cardSwitchioAccount.autoLaunch.select.title":
+    "Po přepnutí na kartu",
+  "settings.cardSwitchioAccount.autoLaunch.select.description":
+    "Když klepnete na záložku karty. Platba otevřená rovnou na ní čeká na tlačítko.",
+  "settings.cardSwitchioAccount.autoLaunch.button.title": "Jen tlačítkem",
+  "settings.cardSwitchioAccount.autoLaunch.button.description":
+    "SwitchioPay se spustí jen po klepnutí na Zaplatit kartou.",
   "settings.cardSwitchioAccount.notInstalledWarning":
     "Aplikace SwitchioPay není na tomto zařízení nainstalovaná.",
   "settings.cardSwitchioAccount.nativeRuntimeWarning":
