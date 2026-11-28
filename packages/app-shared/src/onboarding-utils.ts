@@ -66,18 +66,21 @@ export const validateOnboardingForm = (form: {
  * The `finishOnboarding` input of every new account: Czech, in CZK whatever
  * the UI language (onboarding/0001), the fixed method order whose first
  * entry is the default (onboarding/0007), and how the business sells, with
- * tips on or off, as its last step chose (onboarding/0012), and the starter
- * pack's priced products, none when left out.
+ * tips on or off, as its last step chose (onboarding/0012), the card
+ * terminal on when this device has SwitchioPay (onboarding/0015), and the
+ * starter pack's priced products, none when left out.
  */
 export const createFinishOnboardingInput = ({
   iban,
   homeMode,
   tipsEnabled,
+  cardSwitchio,
   starterItems = [],
 }: {
   readonly iban: Iban | null
   readonly homeMode: TerminalHomeMode
   readonly tipsEnabled: boolean
+  readonly cardSwitchio: boolean
   readonly starterItems?: ReadonlyArray<OnboardingStarterItem>
 }) => ({
   country: onboardingCountry,
@@ -85,6 +88,7 @@ export const createFinishOnboardingInput = ({
   iban,
   homeMode,
   tipsEnabled,
+  cardSwitchio,
   starterItems,
   defaultPaymentMethod: onboardingPaymentMethodOrder[0],
   paymentMethodOrderJson: z.encode(

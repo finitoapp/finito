@@ -72,6 +72,7 @@ import {
   useSetLocale,
   useTranslation,
 } from "../../hooks/use-translation.ts"
+import { isSwitchioInstalled } from "../../platform/switchio.ts"
 import { fontSize, fontWeight, maxWidth } from "../../theme/tokens.ts"
 import { OpenAccountFlow } from "../shared/open-account-flow.tsx"
 import { useRestoreAccount } from "../shared/use-restore-account.ts"
@@ -257,6 +258,9 @@ export function OnboardingPage({
             iban: validation.iban,
             homeMode,
             tipsEnabled,
+            // Asked when finishing, not at mount: SwitchioPay may have been
+            // installed while the wizard waited (onboarding/0015).
+            cardSwitchio: isSwitchioInstalled(),
             starterItems,
           })
         )

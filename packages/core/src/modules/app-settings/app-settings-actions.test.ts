@@ -5,6 +5,7 @@ import { createTestDateDep, testFixedDate } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
 import {
+  cardSwitchioAccountQuery,
   cashRegisterAccountQuery,
   cashuAccountQuery,
   fiatBankAccountQuery,
@@ -253,6 +254,7 @@ const input = {
   paymentMethodOrderJson: JSON.stringify(defaultPaymentMethodOrder),
   homeMode: "numpad",
   tipsEnabled: true,
+  cardSwitchio: false,
 } as const
 
 describe("finishOnboarding", () => {
@@ -314,6 +316,31 @@ describe("finishOnboarding", () => {
       .toEqual([expect.objectContaining({ isDeleted: 0 })])
     expect(await evolu.loadQuery(fiatBankAccountQuery)).toEqual([])
     expect(await evolu.loadQuery(cashuAccountQuery)).toEqual([])
+  })
+
+  test("enables the card terminal in the account's currency when SwitchioPay was found", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun({
+      ...evoluTestDeps(evolu),
+      masterKey: MasterKey("000102030405060708090a0b0c0d0e0f"),
+    })
+    await run.orThrow(finishOnboarding({ ...input, cardSwitchio: true }))
+    await expect
+      .poll(() => evolu.loadQuery(cardSwitchioAccountQuery))
+      .toEqual([expect.objectContaining({ isDeleted: 0, currency: "CZK" })])
+  })
+
+  test("leaves the card terminal off when SwitchioPay was not found", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun({
+      ...evoluTestDeps(evolu),
+      masterKey: MasterKey("000102030405060708090a0b0c0d0e0f"),
+    })
+    await run.orThrow(finishOnboarding(input))
+    await expect.poll(() => evolu.loadQuery(settingsQuery)).toHaveLength(1)
+    expect(await evolu.loadQuery(cardSwitchioAccountQuery)).toEqual([])
   })
 
   test("writes the account's first settings", async () => {

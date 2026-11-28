@@ -1,0 +1,18 @@
+# onboarding/0015: without SwitchioPay (the fake's `not-installed`) card
+# payments stay off, and the payment screen offers no card tab.
+appId: ${APP_ID}
+tags: [onboarding]
+---
+- runFlow: ../../subflows/start.yaml
+# The fake lives in memory: on web the link reloads, `next` returns in-app.
+- openLink: ${BASE_URL}e2e/fake?switchio=not-installed&next=/onboarding
+- extendedWaitUntil:
+    visible: ${output.t["onboarding.welcome.new"]}
+    timeout: 30000
+- runFlow: ../../subflows/complete-onboarding.yaml
+- runFlow: ../../subflows/to-tip-step.yaml
+- tapOn: ${output.re(output.t["paymentTip.none"])}
+- extendedWaitUntil:
+    visible: ${output.t["paymentWait.method.iban"]}
+    timeout: 15000
+- assertNotVisible: ${output.t["paymentWait.method.card"]}

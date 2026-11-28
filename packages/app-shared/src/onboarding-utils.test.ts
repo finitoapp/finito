@@ -72,6 +72,7 @@ describe("createFinishOnboardingInput", () => {
       iban: null,
       homeMode: "pos",
       tipsEnabled: false,
+      cardSwitchio: true,
     })
     expect(input).toMatchObject({
       country: "CZ",
@@ -80,6 +81,7 @@ describe("createFinishOnboardingInput", () => {
       defaultPaymentMethod: "iban",
       homeMode: "pos",
       tipsEnabled: false,
+      cardSwitchio: true,
     })
     expect(JSON.parse(input.paymentMethodOrderJson)).toEqual([
       ...onboardingPaymentMethodOrder,
