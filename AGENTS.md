@@ -34,6 +34,7 @@
     - Create it with `const [valueAtom] = useState(() => atom(initial))`, never `useMemo` — React may discard a memo and mint a fresh atom, losing the value.
     - Components in between only pass it on; leaves that render it call `useAtomValue`, write-only ones `useSetAtom`, and an event handler that reads it without re-rendering uses `useStore().get(valueAtom)`.
     - Plain `useState` stays the default. Never remove an existing instance of this pattern without measuring first.
+    - `patches/jotai@3.0.2.patch` makes `useAtomValue` show a value its atom took while the component was hidden under React's `Activity` (`apps/web-app/src/atoms/jotai-activity-patch.test.tsx`); a Jotai upgrade carries it over (`bun patch`) until upstream fixes it.
 
 ## Glossary
 

@@ -1,0 +1,33 @@
+diff --git a/dist/react/useAtomValueRaw.js b/dist/react/useAtomValueRaw.js
+index a3c49a6504d20ffd48ce6bd83132846e780b9cc9..18a117ec4a1111e5dda451b09ebf3741ba1b8b49 100644
+--- a/dist/react/useAtomValueRaw.js
++++ b/dist/react/useAtomValueRaw.js
+@@ -6,11 +6,16 @@ const createState = (store, atom, value) => [
+     value,
+     store,
+     atom,
+-    (callback) => {
++    // Payky's patch: compares with the value the component last rendered,
++    // passed in by the effect. Comparing with `value`, the one this state
++    // was created with, misses a change made while the component was hidden
++    // (React's `Activity` unsubscribes it) after it had rendered another
++    // value: it resubscribes, sees no change, and keeps showing the old one.
++    (callback, renderedValue) => {
+         const unsub = store.sub(atom, callback);
+         let needsRerender = true;
+         try {
+-            needsRerender = !Object.is(value, store.get(atom));
++            needsRerender = !Object.is(renderedValue, store.get(atom));
+         }
+         catch {
+             // Rerender on error.
+@@ -37,7 +42,8 @@ export function useAtomValueRaw(atom, options) {
+         rerender();
+         value = store.get(atom);
+     }
+-    useEffect(() => subscribe(rerender), [subscribe]);
++    // A revealed `Activity` runs the latest render's effect, so `value` is current.
++    useEffect(() => subscribe(rerender, value), [subscribe]);
+     useDebugValue(value);
+     if (isPromiseLike(value)) {
+         return createContinuablePromise(store, value, () => store.get(atom));
