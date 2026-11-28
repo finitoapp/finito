@@ -8,7 +8,7 @@ import { createBankQrPayloads } from "./payment-iban-qr-payload-utils.ts"
 describe("payment IBAN QR payload utils", () => {
   test("creates SPAYD and Pay by square payloads from bank payment data", () => {
     const payloads = createBankQrPayloads({
-      profileName: null,
+      publicName: null,
       bankAccountName: "Slovak bank account",
       iban: "SK9611000000002918599669",
       amount: 12_900,
@@ -67,7 +67,7 @@ describe("payment IBAN QR payload utils", () => {
 
   test("writes the chosen Pay by square version into the QR header", () => {
     const payloads = createBankQrPayloads({
-      profileName: null,
+      publicName: null,
       bankAccountName: "Slovak bank account",
       iban: "SK9611000000002918599669",
       amount: 12_900,
@@ -87,9 +87,9 @@ describe("payment IBAN QR payload utils", () => {
   })
 
   describe("recipient name", () => {
-    const createPayloads = (profileName: string | null) =>
+    const createPayloads = (publicName: string | null) =>
       createBankQrPayloads({
-        profileName,
+        publicName,
         bankAccountName: "Slovak bank account",
         iban: "SK9611000000002918599669",
         amount: 12_900,
@@ -109,7 +109,7 @@ describe("payment IBAN QR payload utils", () => {
             decodePayBySquare(payload.payload).payments[0]?.beneficiary?.name
         )
 
-    test("names the profile as the recipient", () => {
+    test("names the public name as the recipient", () => {
       const payloads = createPayloads("Kavárna U Lípy")
 
       expect(spaydPayload(payloads)).toBe(
@@ -121,7 +121,7 @@ describe("payment IBAN QR payload utils", () => {
       ])
     })
 
-    test("leaves SPAYD without a recipient and names the bank account in Pay by square when the profile has no name", () => {
+    test("leaves SPAYD without a recipient and names the bank account in Pay by square when the business has no public name", () => {
       const payloads = createPayloads(null)
 
       expect(spaydPayload(payloads)).not.toContain("RN:")

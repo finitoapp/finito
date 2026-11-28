@@ -73,6 +73,7 @@ describe("createFinishOnboardingInput", () => {
       homeMode: "pos",
       tipsEnabled: false,
       cardSwitchio: true,
+      publicName: null,
     })
     expect(input).toMatchObject({
       country: "CZ",

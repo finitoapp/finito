@@ -6,6 +6,7 @@ import {
   countryOptions,
   OTHER_COUNTRY,
 } from "@payky/app-shared/legal-entity-options"
+import { storableNostrName } from "@payky/core/evolu/device-account"
 import {
   mergeProfileMetadata,
   type NostrProfile,
@@ -16,9 +17,13 @@ import {
 import { updateSettings } from "@payky/core/modules/app-settings/app-settings-actions"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
-import { setLegalEntity } from "@payky/core/modules/legal-entity/legal-entity-actions"
+import {
+  setLegalEntity,
+  setLegalEntityPublicName,
+} from "@payky/core/modules/legal-entity/legal-entity-actions"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import type { CountryCode } from "@payky/core/modules/legal-entity/legal-entity-types"
+import type { NonEmptyString255 } from "@payky/core/modules/shared/schema"
 import Copy from "lucide-react-native/icons/copy"
 import ImageIcon from "lucide-react-native/icons/image"
 import Trash from "lucide-react-native/icons/trash"
@@ -76,11 +81,12 @@ import { AccountAvatar } from "../account-avatar.tsx"
 
 /**
  * The business's profile in two cards, as what is public and what is not:
- * - the public profile, web's `ProfileSettingsPage`: the name and picture of
- *   the account's Nostr profile, republished with the account's key as soon
- *   as they are saved, and the public key itself, shortened, with a copy
- *   button. The editor opens only once the published profile is known, so a
- *   save never overwrites fields it could not read.
+ * - the public profile, web's `ProfileSettingsPage`: the business's public
+ *   name, kept in the app (onboarding/0016), and the picture, both
+ *   republished as the account's Nostr profile as soon as they are saved, and
+ *   the public key itself, shortened, with a copy button. The editor opens
+ *   only once the published profile is known, so a save never overwrites
+ *   fields it could not read.
  * - the business, web's legal-entity screen: country, currency and VAT
  *   status, kept in the app and written as soon as each is chosen.
  */
@@ -183,6 +189,9 @@ function ProfileEditor({
   const { t } = useTranslation()
   const runToast = useRunToast()
   const [pictureInvalid, setPictureInvalid] = useState(false)
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
+  const publicName = legalEntity?.publicName ?? null
+  const publishedName = storableNostrName(profile.name)
 
   // ponytail: each save merges into the profile as last published here, so a
   // name and a picture saved at the same instant can drop one of the two.
@@ -198,6 +207,24 @@ function ProfileEditor({
       const result = await run(publishNostrProfile({ metadata }))
       if (!result.ok) return "settings.profile.saveFailed"
       setOwnNostrProfile(pubkey, profileFromMetadata(metadata) ?? profile)
+      return undefined
+    })
+
+  // The app keeps the name first, so one the relays refuse stays saved: the
+  // field takes it, the publish failure toasts, and the notice below offers
+  // to publish it again.
+  const saveName = async (name: NonEmptyString255 | null) => {
+    const stored = await runToast(async (run) => {
+      await run.ok(setLegalEntityPublicName({ publicName: name }))
+      return undefined
+    })
+    if (stored) await publish({ name: name ?? "", picture: profile.picture })
+    return stored
+  }
+
+  const keepPublishedName = (name: NonEmptyString255) =>
+    runToast(async (run) => {
+      await run.ok(setLegalEntityPublicName({ publicName: name }))
       return undefined
     })
 
@@ -250,13 +277,39 @@ function ProfileEditor({
       <InlineEditField
         label={t("settings.profile.name.label")}
         placeholder={t("settings.profile.name.placeholder")}
-        defaultValue={profile.name}
+        defaultValue={publicName ?? publishedName}
         codec={optionalTextCodec}
         errorKey="settings.profile.name.invalid"
-        onSave={(name) =>
-          publish({ name: name ?? "", picture: profile.picture })
-        }
+        onSave={saveName}
       />
+      {publicName !== null && publicName !== publishedName ? (
+        <Alert variant="warning" icon={TriangleAlert}>
+          <AlertDescription>
+            {publishedName === null
+              ? t("settings.profile.name.unpublished")
+              : t("settings.profile.name.differs", { name: publishedName })}
+          </AlertDescription>
+          <AlertAction>
+            <Button
+              size="sm"
+              label={t("settings.profile.name.publish")}
+              onPress={() =>
+                void publish({ name: publicName, picture: profile.picture })
+              }
+            />
+            {publishedName === null ? null : (
+              <Button
+                size="sm"
+                variant="outline"
+                label={t("settings.profile.name.usePublished", {
+                  name: publishedName,
+                })}
+                onPress={() => void keepPublishedName(publishedName)}
+              />
+            )}
+          </AlertAction>
+        </Alert>
+      ) : null}
     </FieldGroup>
   )
 }

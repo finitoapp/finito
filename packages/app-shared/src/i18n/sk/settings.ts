@@ -883,9 +883,14 @@ export const skSettings = {
     "Váš Nostr profil, rovnaký, aký pre túto obnovovaciu frázu zobrazuje Linky.",
   "settings.profile.loadFailed":
     "Nepodarilo sa spojiť so žiadnym Nostr relayom a načítať profil. Skontrolujte pripojenie a skúste to znova.",
+  "settings.profile.name.differs": "Vo zverejnenom profile je meno „{name}“.",
   "settings.profile.name.invalid": "Meno je príliš dlhé.",
   "settings.profile.name.label": "Meno",
   "settings.profile.name.placeholder": "Názov vášho obchodu",
+  "settings.profile.name.publish": "Zverejniť",
+  "settings.profile.name.unpublished":
+    "Meno je uložené, ale vo verejnom profile zatiaľ nie je.",
+  "settings.profile.name.usePublished": "Použiť „{name}“",
   "settings.profile.npub.copied": "Verejný kľúč skopírovaný",
   "settings.profile.npub.copy": "Kopírovať verejný kľúč",
   "settings.profile.npub.copyFailed": "Verejný kľúč sa nepodarilo skopírovať",

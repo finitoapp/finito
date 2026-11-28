@@ -18,7 +18,7 @@ button enabled, and shows an inline error beside the methods. The error goes
 away once a valid method is selected. An invalid account also keeps its own
 validation message.
 
-Validation happens before publishing the business name (onboarding/0004).
+Validation happens before publishing the business name (onboarding/0016).
 The finish-onboarding Task independently rejects an empty method selection
 before writing any rows. Later payment-method settings are unchanged.
 

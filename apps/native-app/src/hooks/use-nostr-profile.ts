@@ -10,6 +10,7 @@ import {
   type NostrIdentity,
   type NostrProfile,
 } from "@payky/core/integrations/nostr/nostr-client"
+import { adoptPublishedPublicName } from "@payky/core/modules/legal-entity/legal-entity-actions"
 import type { MasterKey } from "@payky/core/modules/shared/key-derivation"
 import { useQuery } from "@tanstack/react-query"
 import { useAtomValue } from "jotai"
@@ -18,6 +19,7 @@ import { accountAtom } from "../atoms/account.ts"
 import { deviceEvoluAtom } from "../atoms/device-evolu.ts"
 import { queryClient } from "../core/query-client.ts"
 import { useAppRun } from "./use-app-run.ts"
+import { useRunToast } from "./use-run-toast.ts"
 
 /**
  * The last account's identity. Deriving it is a secp256k1 multiplication in
@@ -48,10 +50,13 @@ const ownProfileKey = (pubkey: string) => ["nostr", "profile", "own", pubkey]
  * reader (the settings card, the rail's tile, the editor), read once per
  * session: the editor is the only writer in this app and records what it
  * published with `setOwnNostrProfile`; `refetch` asks the relays again.
+ * Not `enabled`, it asks no relay but still returns what an earlier read
+ * cached.
  */
-export function useNostrProfile(pubkey: string) {
+export function useNostrProfile(pubkey: string, enabled = true) {
   const appRun = useAppRun()
   const query = useQuery({
+    enabled,
     queryKey: ownProfileKey(pubkey),
     queryFn: async () => {
       await using run = appRun()
@@ -75,16 +80,19 @@ export function useNostrProfile(pubkey: string) {
  * loads, or the editor replaces it, its name and picture are remembered on
  * the device account: that is how the account list shows the other
  * accounts' businesses without asking relays about them, which would let a
- * relay link the accounts (account/0004, account/0011).
+ * relay link the accounts (account/0004, account/0011). Its name also
+ * becomes the business's public name while the account has none, as for an
+ * account named before the app kept it (onboarding/0016).
  *
  * It never suspends: the stored account is loaded inside the effect rather
  * than subscribed, because the settings' profile card reads this and a
  * subscription held the whole Settings screen back on a device-database
  * round trip each time the tab opened.
  */
-export function useActiveNostrProfile() {
+export function useActiveNostrProfile(enabled = true) {
   const identity = useNostrIdentity()
-  const profile = useNostrProfile(identity.pubkey)
+  const profile = useNostrProfile(identity.pubkey, enabled)
+  const runToast = useRunToast()
   const accountId = useAtomValue(accountAtom).id
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const name =
@@ -110,6 +118,14 @@ export function useActiveNostrProfile() {
       current = false
     }
   }, [accountId, deviceEvolu, name, picture])
+
+  useEffect(() => {
+    if (name === undefined || name === null) return
+    void runToast(async (run) => {
+      await run.ok(adoptPublishedPublicName({ name }))
+      return undefined
+    })
+  }, [name, runToast])
 
   return profile
 }

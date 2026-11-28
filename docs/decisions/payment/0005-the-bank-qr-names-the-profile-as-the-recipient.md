@@ -1,6 +1,6 @@
 # 0005 The bank QR names the account's profile as the recipient
 
-Status: accepted
+Status: superseded by payment/0034
 Date: 2026-10-13
 
 ## Context

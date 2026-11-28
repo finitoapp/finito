@@ -138,7 +138,7 @@ export const enOnboarding = {
   "onboarding.businessName.publishFailed.title":
     "The name could not be published",
   "onboarding.businessName.publishFailed.description":
-    "Your form is still filled in. Try again or continue without publishing the name.",
+    "Your form is still filled in. Try again, or continue and publish the name later in your profile settings.",
   "onboarding.businessName.retry": "Try again",
   "onboarding.businessName.continueWithoutPublishing":
     "Continue without publishing the name",

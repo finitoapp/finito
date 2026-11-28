@@ -225,7 +225,7 @@ export function OnboardingPage({
     // Nothing is preselected: the merchant picks how they sell (onboarding/0012),
     // and a checked starter product is never sold at a price not typed.
     if (homeMode === null || starterItems === null) return
-    // Validation precedes publishing the name (onboarding/0004, 0006).
+    // Validation precedes publishing the name (onboarding/0016, 0006).
     if (businessDetailsInvalid) {
       setSubmitAttempted(true)
       setForm((current) => ({ ...current, step: "payments" }))
@@ -261,6 +261,8 @@ export function OnboardingPage({
             // Asked when finishing, not at mount: SwitchioPay may have been
             // installed while the wizard waited (onboarding/0015).
             cardSwitchio: isSwitchioInstalled(),
+            // Kept even when not published (onboarding/0016).
+            publicName: validation.businessName,
             starterItems,
           })
         )

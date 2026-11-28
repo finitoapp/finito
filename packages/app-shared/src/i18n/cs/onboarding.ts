@@ -140,7 +140,7 @@ export const csOnboarding = {
   "onboarding.businessName.publishFailed.title":
     "Název se nepodařilo zveřejnit",
   "onboarding.businessName.publishFailed.description":
-    "Formulář zůstal vyplněný. Zkuste to znovu nebo pokračujte bez zveřejnění názvu.",
+    "Formulář zůstal vyplněný. Zkuste to znovu, nebo pokračujte a název zveřejněte později v nastavení profilu.",
   "onboarding.businessName.retry": "Zkusit znovu",
   "onboarding.businessName.continueWithoutPublishing":
     "Pokračovat bez zveřejnění názvu",

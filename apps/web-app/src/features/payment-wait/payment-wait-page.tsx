@@ -17,6 +17,7 @@ import type { BankQrFormat } from "@payky/core/modules/account/account-types"
 import { cardTerminalOpensItself } from "@payky/core/modules/account/account-utils"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getPaymentMethodOrder } from "@payky/core/modules/app-settings/app-settings-utils"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import {
   cancelPayment,
   markPaymentPaidCash,
@@ -92,7 +93,10 @@ import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useConsole } from "@/hooks/use-console.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
-import { useNostrIdentity, useNostrProfile } from "@/hooks/use-nostr-profile.ts"
+import {
+  useActiveNostrProfile,
+  useNostrIdentity,
+} from "@/hooks/use-nostr-profile.ts"
 import { useCashuRunToast, useRunToast } from "@/hooks/use-run-toast.ts"
 import { useScreenWakeLock } from "@/hooks/use-screen-wake-lock.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
@@ -224,11 +228,19 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       tipAmount: payment.tipAmount,
       currency: payment.currency,
     })
-  // The profile name is the recipient the bank QR names (payment/0005). It
-  // comes from relays, so the QR shows at once and takes the name when it
-  // lands rather than waiting on a relay that may be slow or down.
+  // The business's public name is the recipient the bank QR names
+  // (payment/0034), stored in the account, so no relay is asked. An account
+  // named before the app kept it asks for its published profile once, for a
+  // bank QR only, and keeps the name it finds (onboarding/0016).
   const { pubkey } = useNostrIdentity()
-  const profileName = useNostrProfile(pubkey).data?.name ?? null
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
+  const storedPublicName = legalEntity?.publicName ?? null
+  const publishedProfile = useActiveNostrProfile(
+    storedPublicName === null &&
+      payment !== undefined &&
+      payment.ibanAccountId !== null
+  )
+  const publicName = storedPublicName ?? publishedProfile.data?.name ?? null
   // Spark/Lightning payments always carry an `expiresAt`, and nothing writes
   // a row when that moment arrives — so without a ticking clock the expired
   // QR stayed on screen, `wakeLockEnabled` stayed true and Cancel kept
@@ -302,7 +314,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       const availableIbanQrPayloads: ReadonlyArray<BankQrPayload> =
         canCreateIbanQrPayloads
           ? createBankQrPayloads({
-              profileName,
+              publicName,
               bankAccountName: enabledIbanAccount.name,
               iban: enabledIbanAccount.iban,
               amount: payment.amount,
@@ -474,7 +486,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     now,
     payment,
     paymentId,
-    profileName,
+    publicName,
     pubkey,
     qerkoPaymentPlugin,
     selectedIbanQrFormat,

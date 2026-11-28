@@ -5,6 +5,7 @@ import {
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { eetSettingsQuery } from "@payky/core/modules/eet/eet-queries"
 import { activeFioPluginsQuery } from "@payky/core/modules/fio-plugin/fio-plugin-queries"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import { activeMonetaPluginsQuery } from "@payky/core/modules/moneta-plugin/moneta-plugin-queries"
 import {
   paymentClaimsQuery,
@@ -19,7 +20,8 @@ import { evoluAtom } from "../atoms/evolu.ts"
 
 /**
  * Everything the payment's screen waits on as it opens: the payment and its
- * claims, the methods offered, and what the bank and Qerko tabs read, so
+ * claims, the methods offered, and what the bank and Qerko tabs read (the
+ * bank QR's recipient among it), so
  * whichever tab opens first finds its data in too. The screen preloads them
  * itself (`usePreloadEvoluQueries`).
  */
@@ -34,6 +36,7 @@ export const paymentWaitQueries = (paymentId: PaymentId) =>
     qerkoPluginQuery("standard"),
     activeFioPluginsQuery,
     activeMonetaPluginsQuery,
+    legalEntityQuery,
     qerkoPaymentAttemptsByPaymentIdQuery(paymentId),
   ] as const
 

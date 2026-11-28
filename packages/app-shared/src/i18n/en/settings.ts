@@ -881,9 +881,15 @@ export const enSettings = {
     "Your Nostr profile, the same one Linky shows for this recovery phrase.",
   "settings.profile.loadFailed":
     "Could not reach any Nostr relay to load your profile. Check your connection and try again.",
+  "settings.profile.name.differs":
+    "Your published profile shows the name “{name}”.",
   "settings.profile.name.invalid": "The name is too long.",
   "settings.profile.name.label": "Name",
   "settings.profile.name.placeholder": "Your shop's name",
+  "settings.profile.name.publish": "Publish",
+  "settings.profile.name.unpublished":
+    "Your name is saved but not published in your profile yet.",
+  "settings.profile.name.usePublished": "Use “{name}”",
   "settings.profile.npub.copied": "Public key copied",
   "settings.profile.npub.copy": "Copy public key",
   "settings.profile.npub.copyFailed": "Could not copy the public key",

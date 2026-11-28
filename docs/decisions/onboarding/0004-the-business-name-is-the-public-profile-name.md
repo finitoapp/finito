@@ -1,6 +1,6 @@
 # 0004 The business name is the public profile name
 
-Status: accepted
+Status: superseded by onboarding/0016
 Date: 2026-10-16
 
 ## Context

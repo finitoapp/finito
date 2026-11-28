@@ -531,6 +531,35 @@ for (const outcome of ["success", "retry", "skip", "empty"] as const) {
         expect(relay.attempts).toHaveLength(0)
       } else if (outcome === "skip") {
         expect(relay.attempts).toHaveLength(1)
+        // The name is kept unpublished, and the profile offers to publish it.
+        await gotoPage(
+          page,
+          "/settings/profile",
+          "en",
+          "settings.profile.title"
+        )
+        await expect(
+          page.getByRole("textbox", {
+            name: translate("en", "settings.profile.name.label"),
+            exact: true,
+          })
+        ).toHaveValue("Café Example")
+        const unpublished = page.getByText(
+          translate("en", "settings.profile.name.unpublished"),
+          { exact: true }
+        )
+        await expect(unpublished).toBeVisible()
+        accepts = true
+        await page
+          .getByRole("button", {
+            name: translate("en", "settings.profile.name.publish"),
+          })
+          .click()
+        await expect(unpublished).toBeHidden()
+        expect(JSON.parse(relay.attempts.at(-1)?.content ?? "null")).toEqual({
+          name: "Café Example",
+          display_name: "Café Example",
+        })
       } else {
         expect(relay.attempts.length).toBeGreaterThan(0)
         const published = relay.attempts.at(-1)

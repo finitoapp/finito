@@ -1,5 +1,6 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { optionalTextCodec } from "@payky/app-shared/inline-edit-codecs"
+import { storableNostrName } from "@payky/core/evolu/device-account"
 import {
   emptyNostrProfile,
   mergeProfileMetadata,
@@ -8,6 +9,9 @@ import {
   profileFromMetadata,
   publishNostrProfile,
 } from "@payky/core/integrations/nostr/nostr-client"
+import { setLegalEntityPublicName } from "@payky/core/modules/legal-entity/legal-entity-actions"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import type { NonEmptyString255 } from "@payky/core/modules/shared/schema"
 import { useQueryClient } from "@tanstack/react-query"
 import { CopyIcon, ImageIcon, Trash2Icon } from "lucide-react"
 import { Suspense, useId, useRef, useState } from "react"
@@ -35,17 +39,20 @@ import {
   useInlineChoice,
 } from "@/features/shared/forms/inline-edit-save.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
+import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import {
   nostrProfileQueryKey,
   useActiveNostrProfile,
   useNostrIdentity,
 } from "@/hooks/use-nostr-profile.ts"
+import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { copyToClipboard } from "@/lib/clipboard.ts"
 
 /**
- * Edits the name and picture of the account's Nostr profile; each change is
- * republished with the account's key as soon as it is made. The editor opens
+ * Edits the business's public name, kept in the app (onboarding/0016), and
+ * the picture; each change is republished as the account's Nostr profile as
+ * soon as it is made. The editor opens
  * only once the published profile is known, so a save never overwrites
  * fields it could not read.
  */
@@ -154,6 +161,10 @@ function ProfileEditor({
   const pictureInputId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [pictureInvalid, setPictureInvalid] = useState(false)
+  const runToast = useRunToast()
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
+  const publicName = legalEntity?.publicName ?? null
+  const publishedName = storableNostrName(profile.name)
 
   // ponytail: each save merges into the profile as last published here, so a
   // name and a picture saved at the same instant can drop one of the two;
@@ -177,6 +188,12 @@ function ProfileEditor({
     )
     return undefined
   }
+
+  const storePublicName = (name: NonEmptyString255 | null) =>
+    runToast(async (run) => {
+      await run.ok(setLegalEntityPublicName({ publicName: name }))
+      return undefined
+    })
 
   const picture = useInlineChoice(profile.picture, (next) =>
     publish({ name: profile.name ?? "", picture: next })
@@ -244,18 +261,54 @@ function ProfileEditor({
       <InlineEditField
         label={t("settings.profile.name.label")}
         placeholder={t("settings.profile.name.placeholder")}
-        defaultValue={profile.name}
+        defaultValue={publicName ?? publishedName}
         codec={optionalTextCodec}
         errorKey="settings.profile.name.invalid"
         onSave={async (next) => {
-          const errorKey = await publish({
-            name: next ?? "",
-            picture: profile.picture,
-          })
-          // The field toasts a rejection itself.
-          if (errorKey !== undefined) throw new Error(errorKey)
+          // The app keeps the name first, so one the relays refuse stays
+          // saved: the field takes it, the publish failure toasts, and the
+          // notice below offers to publish it again.
+          await using run = appRun()
+          await run.ok(setLegalEntityPublicName({ publicName: next }))
+          await runToast(() =>
+            publish({ name: next ?? "", picture: profile.picture })
+          )
         }}
       />
+      {publicName !== null && publicName !== publishedName ? (
+        <div role="status" className="flex flex-col items-start gap-2">
+          <p className="text-sm text-muted-foreground">
+            {publishedName === null
+              ? t("settings.profile.name.unpublished")
+              : t("settings.profile.name.differs", { name: publishedName })}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() =>
+                void runToast(() =>
+                  publish({ name: publicName, picture: profile.picture })
+                )
+              }
+            >
+              {t("settings.profile.name.publish")}
+            </Button>
+            {publishedName === null ? null : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void storePublicName(publishedName)}
+              >
+                {t("settings.profile.name.usePublished", {
+                  name: publishedName,
+                })}
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : null}
     </>
   )
 }

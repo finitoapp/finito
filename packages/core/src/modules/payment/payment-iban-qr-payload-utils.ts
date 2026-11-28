@@ -43,14 +43,14 @@ const toSpaydRecipientName = (name: string): string =>
     .replaceAll("*", "%2A")
 
 const createSpaydQrPayload = ({
-  profileName,
+  publicName,
   iban,
   amount,
   currency,
   specificSymbol,
   variableSymbol,
 }: {
-  readonly profileName: string | null
+  readonly publicName: string | null
   readonly iban: string
   readonly amount: number
   readonly currency: Currency
@@ -69,7 +69,7 @@ const createSpaydQrPayload = ({
       `AM:${minorUnitsToFixedDecimalString({ value: Integer(amount), currency })}`,
       `CC:${currency}`,
       "PT:IP",
-      profileName === null ? null : `RN:${toSpaydRecipientName(profileName)}`,
+      publicName === null ? null : `RN:${toSpaydRecipientName(publicName)}`,
       variableSymbol ? `X-VS:${variableSymbol}` : null,
       specificSymbol ? `X-SS:${specificSymbol}` : null,
     ]
@@ -78,7 +78,7 @@ const createSpaydQrPayload = ({
   )
 
 const createPayBySquareQrPayload = ({
-  profileName,
+  publicName,
   bankAccountName,
   iban,
   amount,
@@ -87,7 +87,7 @@ const createPayBySquareQrPayload = ({
   variableSymbol,
   version,
 }: {
-  readonly profileName: string | null
+  readonly publicName: string | null
   readonly bankAccountName: string
   readonly iban: string
   readonly amount: number
@@ -109,9 +109,9 @@ const createPayBySquareQrPayload = ({
               })
             ),
             currencyCode: currency,
-            // Pay by square requires a beneficiary name, so without a profile
+            // Pay by square requires a beneficiary name, so without a public
             // name the payment method's own name stands in.
-            beneficiary: { name: profileName ?? bankAccountName },
+            beneficiary: { name: publicName ?? bankAccountName },
             bankAccounts: [{ iban }],
             ...(variableSymbol ? { variableSymbol } : {}),
             ...(specificSymbol ? { specificSymbol } : {}),
@@ -123,12 +123,12 @@ const createPayBySquareQrPayload = ({
   )
 
 /**
- * The account's profile name is the recipient the customer's banking app
- * shows (payment/0005); `bankAccountName` is the payment method's name, the
+ * The business's public name is the recipient the customer's banking app
+ * shows (payment/0034); `bankAccountName` is the payment method's name, the
  * Pay by square fallback.
  */
 const createBankQrPayload = ({
-  profileName,
+  publicName,
   bankAccountName,
   format,
   iban,
@@ -137,7 +137,7 @@ const createBankQrPayload = ({
   specificSymbol,
   variableSymbol,
 }: {
-  readonly profileName: string | null
+  readonly publicName: string | null
   readonly bankAccountName: string
   readonly format: BankQrFormat
   readonly iban: string
@@ -148,7 +148,7 @@ const createBankQrPayload = ({
 }): NonEmptyString =>
   format === "spayd"
     ? createSpaydQrPayload({
-        profileName,
+        publicName,
         iban,
         amount,
         currency,
@@ -156,7 +156,7 @@ const createBankQrPayload = ({
         variableSymbol,
       })
     : createPayBySquareQrPayload({
-        profileName,
+        publicName,
         bankAccountName,
         iban,
         amount,

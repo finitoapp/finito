@@ -24,6 +24,7 @@ import { cardTerminalOpensItself } from "@payky/core/modules/account/account-uti
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import type { DefaultPaymentMethod } from "@payky/core/modules/app-settings/app-settings-types"
 import { getPaymentMethodOrder } from "@payky/core/modules/app-settings/app-settings-utils"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import {
   cancelPayment,
   markPaymentPaidCash,
@@ -90,8 +91,8 @@ import {
   usePreloadEvoluQueries,
 } from "../../hooks/use-evolu-query.ts"
 import {
+  useActiveNostrProfile,
   useNostrIdentity,
-  useNostrProfile,
 } from "../../hooks/use-nostr-profile.ts"
 import { paymentWaitQueries } from "../../hooks/use-preload-payment-wait.ts"
 import { useCashuRunToast, useRunToast } from "../../hooks/use-run-toast.ts"
@@ -267,13 +268,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const [cardErrorKey, setCardErrorKey] = useState<TranslationKey | null>(null)
   const [cardAsking, setCardAsking] = useState(false)
   const [selected, setSelected] = useState<MethodId | null>(null)
-  // The profile name is the recipient the bank QR names (payment/0005). It
-  // comes from relays, so the QR shows at once and takes the name when it
-  // lands rather than waiting on a relay that may be slow or down. Read once
-  // a session and shared with Settings (`useNostrProfile`), not on every
-  // payment: the relay round trip and its signature check ran on the JS
-  // thread while this screen was animating in.
-  const profileName = useNostrProfile(nostrPubkey).data?.name ?? null
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
   // Refs close the window before the pending state re-renders, so repeated
   // taps neither stack PIN prompts nor settle or cancel twice.
   const busyRef = useRef(false)
@@ -459,6 +454,19 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   // Rebuilt only when what they encode changes, not on every tab switch.
   const hasPayment = payment !== undefined
   const ibanAccountIdOfPayment = payment?.ibanAccountId
+  // The business's public name is the recipient the bank QR names
+  // (payment/0034), stored in the account, so no relay is asked. An account
+  // named before the app kept it asks for its published profile once, for a
+  // bank QR only, and keeps the name it finds (onboarding/0016): the relay
+  // round trip and its signature checks held the JS thread for seconds on a
+  // PAX A920Pro.
+  const storedPublicName = legalEntity?.publicName ?? null
+  const publishedProfile = useActiveNostrProfile(
+    storedPublicName === null &&
+      ibanAccountIdOfPayment !== null &&
+      ibanAccountIdOfPayment !== undefined
+  )
+  const publicName = storedPublicName ?? publishedProfile.data?.name ?? null
   const paymentAmount = payment?.amount
   const paymentCurrency = payment?.currency
   const specificSymbol = payment?.specificSymbol ?? null
@@ -472,7 +480,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       ibanNumber !== null &&
       ibanName !== null
         ? createBankQrPayloads({
-            profileName,
+            publicName,
             bankAccountName: ibanName,
             iban: ibanNumber,
             amount: paymentAmount,
@@ -488,7 +496,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       paymentCurrency,
       ibanNumber,
       ibanName,
-      profileName,
+      publicName,
       specificSymbol,
       variableSymbol,
     ]
@@ -1075,7 +1083,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
               payable={status === "pending"}
               qrPayload={bankQrPayload}
               iban={ibanNumber}
-              recipient={profileName ?? ibanName}
+              recipient={publicName ?? ibanName}
               variableSymbol={payment.variableSymbol}
               preparing={preparing}
               canMarkPaid={canMarkIbanPaid}

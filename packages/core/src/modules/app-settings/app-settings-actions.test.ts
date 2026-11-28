@@ -255,9 +255,30 @@ const input = {
   homeMode: "numpad",
   tipsEnabled: true,
   cardSwitchio: false,
+  publicName: null,
 } as const
 
 describe("finishOnboarding", () => {
+  test("stores the business name typed beside the country it starts in", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun({
+      ...evoluTestDeps(evolu),
+      masterKey: MasterKey("000102030405060708090a0b0c0d0e0f"),
+    })
+
+    await run.orThrow(
+      finishOnboarding({
+        ...input,
+        publicName: NonEmptyString255("Linden Café"),
+      })
+    )
+
+    await expect
+      .poll(() => evolu.loadQuery(legalEntityQuery))
+      .toMatchObject([{ country: "CZ", publicName: "Linden Café" }])
+  })
+
   test("offers home only the mode the merchant chose and keeps their tips choice", async () => {
     await using testEvolu = await createEvoluTest()
     const { evolu } = testEvolu
